@@ -71,18 +71,18 @@ export function createBriefingScreen() {
             <span class="agent-status">IDENTIFIÉE</span>
           </div>
         </div>
+        <div class="briefing-bottom">
+          <div class="briefing-terminal" id="briefing-terminal">
+            <span class="briefing-terminal-line" id="briefing-current-line"></span>
+            <span class="terminal-cursor" id="briefing-cursor">_</span>
+          </div>
+        </div>
       </div>
 
-      <div class="briefing-bottom">
-        <div class="briefing-terminal" id="briefing-terminal">
-          <span class="briefing-terminal-line" id="briefing-current-line"></span>
-          <span class="terminal-cursor" id="briefing-cursor">_</span>
-        </div>
-        <div class="briefing-confirm hidden" id="briefing-confirm">
-          <button id="btn-start-mission" class="btn btn-primary btn-glow btn-large">
-            ACCEPTER LA MISSION
-          </button>
-        </div>
+      <div class="briefing-confirm hidden" id="briefing-confirm">
+        <button id="btn-start-mission" class="btn btn-primary btn-glow btn-large">
+          ACCEPTER LA MISSION
+        </button>
       </div>
 
       <audio id="ai-voice-audio" preload="auto">

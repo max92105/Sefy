@@ -420,8 +420,8 @@ body::after {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-sm);
-  gap: var(--space-sm);
+  padding: 0;
+  gap: 0;
   width: 100%;
   overflow: hidden;
 }
@@ -505,7 +505,33 @@ body.banner-active .screen {
 }
 
 body.banner-active .briefing-layout {
+  padding-top: 48px;
+}
+
+body.banner-active .geo-layout {
   padding-top: calc(var(--space-sm) + 44px);
+}
+
+/* Geo screen: remove default screen padding, let layout fill */
+/* Briefing screen: remove default padding, let layout fill */
+#screen-briefing {
+  padding: 0;
+}
+
+body.banner-active #screen-briefing {
+  padding-top: 0;
+}
+
+#screen-geo {
+  padding: 0;
+}
+
+#screen-geo.active {
+  display: flex;
+}
+
+body.banner-active #screen-geo {
+  padding-top: 0;
 }
 
 /* Center: AI avatar + overlay zone — fills all remaining space */
@@ -528,13 +554,31 @@ body.banner-active .briefing-layout {
   border-radius: 8px;
 }
 
-/* Bottom group: terminal text + confirm button */
+/* Dialogue text — floats over video, above the nav footer */
 .briefing-bottom {
-  width: 100%;
+  position: absolute;
+  bottom: 60px;  /* nav footer height + small offset */
+  left: 5%;
+  right: 5%;
   max-width: 600px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  z-index: 15;
+}
+
+.briefing-bottom .briefing-terminal {
+  background: rgba(13, 13, 20, 0.85);
+  backdrop-filter: blur(6px);
+}
+
+/* Confirm button — pinned at the bottom, minimal offset */
+.briefing-confirm {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-md);
   flex-shrink: 0;
 }
 
@@ -662,13 +706,7 @@ body.banner-active .briefing-layout {
   color: var(--accent-green);
 }
 
-/* Confirm button zone */
-.briefing-confirm {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: var(--space-md) 0;
-}
+/* (briefing-confirm moved to the floating section above) */
 
 .btn-large {
   font-size: var(--font-size-md);
@@ -920,6 +958,35 @@ body.banner-active .briefing-layout {
 }
 
 /* --- Geo Tracker (Warm/Cold) Screen --- */
+
+/* Full-screen layout for both phases — leaves room for nav footer */
+.geo-layout {
+  height: calc(100dvh - 52px);  /* subtract nav footer height */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Phase 1: Intro Cinematic — reuses briefing-center + briefing-bottom ── */
+.geo-intro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+}
+
+/* ── Phase 2: Tracker ── */
+.geo-tracker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .geo-narrative {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);

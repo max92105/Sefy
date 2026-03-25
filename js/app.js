@@ -230,9 +230,7 @@ function bindGlobalEvents() {
       state = resetState();
       closeModal('modal-reset');
       hideBanner();
-      stopBgMusic();
       goTerminal();
-      startBgMusic();
     }
   });
 

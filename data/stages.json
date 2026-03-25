@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "title": "Operation Raven",
+    "version": "0.1.0",
+    "totalStages": 5,
+    "timerMinutes": 60,
+    "description": "Un agent renégat a placé un dispositif dans cette installation. Récupérez les codes de neutralisation avant la fin du temps imparti."
+  },
+  "stages": [
+    {
+      "id": "briefing",
+      "order": 1,
+      "title": "Briefing de Mission",
+      "type": "narrative",
+      "narrative": {
+        "text": "[À COMPLÉTER — Texte du briefing de l'IA]",
+        "media": null
+      },
+      "puzzle": null,
+      "hints": [],
+      "nextStage": "dead-drop"
+    },
+    {
+      "id": "dead-drop",
+      "order": 2,
+      "title": "La Boîte Morte",
+      "type": "geo",
+      "narrative": {
+        "text": "SEFY a détecté une transmission chiffrée provenant d'une boîte morte laissée par l'agent renégat. Utilisez le scanner de proximité pour localiser le signal. Déplacez-vous… SEFY vous guidera.",
+        "media": null
+      },
+      "puzzle": {
+        "type": "geo",
+        "prompt": "Localisez la boîte morte à l'aide du scanner.",
+        "lat": 48.41313883735718,
+        "lng": -71.10581348928307,
+        "radiusMeters": 3,
+        "foundText": "Boîte morte localisée ! Cherchez l'objet caché dans cette zone et entrez le code trouvé à l'intérieur à l'étape suivante."
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER — Indice vague sur la direction]" },
+        { "tier": 2, "text": "[À COMPLÉTER — Indice sur la pièce]" },
+        { "tier": 3, "text": "[À COMPLÉTER — Emplacement exact]" }
+      ],
+      "nextStage": "intelligence"
+    },
+    {
+      "id": "intelligence",
+      "order": 3,
+      "title": "Décodage de Renseignements",
+      "type": "cipher",
+      "narrative": {
+        "text": "[À COMPLÉTER — Mise en place du défi de chiffrement]",
+        "media": null
+      },
+      "puzzle": {
+        "type": "cipher",
+        "prompt": "Décodez le message intercepté :",
+        "answerHash": null,
+        "inputType": "text",
+        "maxLength": 20
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
+      "nextStage": "field-ops"
+    },
+    {
+      "id": "field-ops",
+      "order": 4,
+      "title": "Opérations de Terrain",
+      "type": "multi-code",
+      "narrative": {
+        "text": "[À COMPLÉTER — Instructions de recherche multi-pièces]",
+        "media": null
+      },
+      "puzzle": {
+        "type": "sequence",
+        "prompt": "Entrez les renseignements de terrain combinés :",
+        "answerHash": null,
+        "inputType": "text",
+        "maxLength": 20
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
+      "nextStage": "defusal"
+    },
+    {
+      "id": "defusal",
+      "order": 5,
+      "title": "Désamorçage de la Bombe",
+      "type": "finale",
+      "narrative": {
+        "text": "[À COMPLÉTER — Mise en place du compte à rebours final]",
+        "media": null
+      },
+      "puzzle": {
+        "type": "multi-part",
+        "prompt": "Entrez le code de neutralisation :",
+        "answerHash": null,
+        "inputType": "keypad",
+        "maxLength": 8
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
+      "nextStage": null
+    }
+  ]
+}

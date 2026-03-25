@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEFY // ADMIN</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-panel {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: var(--space-xl);
+    }
+    .admin-title {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xl);
+      color: var(--accent-amber);
+      margin-bottom: var(--space-xl);
+      letter-spacing: 0.1em;
+    }
+    .admin-section {
+      margin-bottom: var(--space-xl);
+      padding: var(--space-lg);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+    }
+    .admin-section h2 {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-md);
+      color: var(--accent-amber);
+      margin-bottom: var(--space-md);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .admin-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+    }
+    .admin-row:last-child { border-bottom: none; }
+    .stage-jump-grid {
+      display: grid;
+      gap: var(--space-sm);
+      margin-top: var(--space-md);
+    }
+    .stage-jump-btn {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      text-transform: uppercase;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: var(--space-md);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color var(--transition-fast);
+    }
+    .stage-jump-btn:hover {
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+    .state-dump {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      color: var(--accent-green);
+      background: var(--bg-dark);
+      padding: var(--space-md);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+    }
+    .admin-actions {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      margin-top: var(--space-md);
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-panel">
+    <h1 class="admin-title">⚙ SEFY ADMIN PANEL</h1>
+
+    <!-- Current State -->
+    <div class="admin-section">
+      <h2>Current State</h2>
+      <div id="state-display" class="state-dump">Loading...</div>
+      <div class="admin-actions">
+        <button id="btn-refresh-state" class="btn btn-outline">Refresh</button>
+        <button id="btn-export-state" class="btn btn-outline">Export JSON</button>
+      </div>
+    </div>
+
+    <!-- Jump to Stage -->
+    <div class="admin-section">
+      <h2>Jump to Stage</h2>
+      <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-dim); margin-bottom: var(--space-sm);">
+        Sets currentStage and redirects to main site.
+      </p>
+      <div id="stage-jump-grid" class="stage-jump-grid">
+        Loading stages...
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="admin-section">
+      <h2>Danger Zone</h2>
+      <div class="admin-actions">
+        <button id="btn-reset-all" class="btn btn-danger">Reset All Progress</button>
+        <button id="btn-back" class="btn btn-outline">← Back to Mission</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -50,11 +50,11 @@ const GEO_INTRO_SEQUENCE = [
 /* ───────── Distance zones ───────── */
 
 const ZONES = [
-  { maxDist: 2,        label: 'BRÛLANT',   cls: 'geo-burning',  msg: 'Vous y êtes presque !',                   sfx: 'assets/audio/zone_burning.mp3' },
-  { maxDist: 5,        label: 'CHAUD',     cls: 'geo-hot',      msg: 'Très proche… cherchez bien.',             sfx: 'assets/audio/zone_hot.mp3' },
-  { maxDist: 10,       label: 'TIÈDE',     cls: 'geo-warm',     msg: 'Vous approchez de la zone.',              sfx: 'assets/audio/zone_warm.mp3' },
-  { maxDist: 15,       label: 'FROID',     cls: 'geo-cold',     msg: 'Encore loin… continuez à explorer.',      sfx: 'assets/audio/zone_cold.mp3' },
-  { maxDist: Infinity, label: 'GLACIAL',   cls: 'geo-freezing', msg: 'Aucun signal détecté dans ce secteur.',   sfx: 'assets/audio/zone_cold.mp3' },
+  { maxDist: 5,        label: 'BRÛLANT',   cls: 'geo-burning',  msg: 'Vous y êtes presque !',                   sfx: 'assets/audio/zone_burning.wav' },
+  { maxDist: 10,        label: 'CHAUD',     cls: 'geo-hot',      msg: 'Très proche… cherchez bien.',             sfx: 'assets/audio/zone_hot.wav' },
+  { maxDist: 15,       label: 'TIÈDE',     cls: 'geo-warm',     msg: 'Vous approchez de la zone.',              sfx: 'assets/audio/zone_warm.wav' },
+  { maxDist: 20,       label: 'FROID',     cls: 'geo-cold',     msg: 'Encore loin… continuez à explorer.',      sfx: 'assets/audio/zone_cold.wav' },
+  { maxDist: Infinity, label: 'GLACIAL',   cls: 'geo-freezing', msg: 'Aucun signal détecté dans ce secteur.',   sfx: 'assets/audio/zone_cold.wav' },
 ];
 
 let watchId = null;

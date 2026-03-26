@@ -32,8 +32,8 @@
       "puzzle": {
         "type": "geo",
         "prompt": "Localisez la boîte morte à l'aide du scanner.",
-        "lat": 48.424107292823436,
-        "lng": -71.0399413253266,
+        "lat": 48.42130648508226,
+        "lng": -71.04006574175735,
         "radiusMeters": 3,
         "foundText": "Boîte morte localisée ! Cherchez l'objet caché dans cette zone et entrez le code trouvé à l'intérieur à l'étape suivante."
       },

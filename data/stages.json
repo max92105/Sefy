@@ -18,45 +18,45 @@
       },
       "puzzle": null,
       "hints": [],
-      "nextStage": "dead-drop"
+      "nextStage": "scanner-reboot"
     },
     {
-      "id": "dead-drop",
+      "id": "scanner-reboot",
       "order": 2,
-      "title": "La Boîte Morte",
+      "title": "Réactivation du Module de Décryptage",
       "type": "geo",
       "narrative": {
-        "text": "SEFY a détecté une transmission chiffrée provenant d'une boîte morte laissée par l'agent renégat. Utilisez le scanner de proximité pour localiser le signal. Déplacez-vous… SEFY vous guidera.",
+        "text": "Mon module de décryptage est hors ligne. J'ai localisé un point de réactivation à proximité. Suivez mes indications pour retrouver le code d'accès qui me permettra de restaurer mes capacités d'analyse.",
         "media": null
       },
       "puzzle": {
         "type": "geo",
-        "prompt": "Localisez la boîte morte à l'aide du scanner.",
+        "prompt": "Suivez le signal pour localiser le code de réactivation.",
         "lat": 48.41326437917094,
         "lng": -71.10586537835142, 
         "radiusMeters": 3,
-        "foundText": "Boîte morte localisée ! Cherchez l'objet caché dans cette zone et entrez le code trouvé à l'intérieur à l'étape suivante."
+        "foundText": "Point de réactivation localisé ! Cherchez le code caché dans cette zone et entrez-le à l'étape suivante pour réactiver mon module de décryptage."
       },
       "hints": [
         { "tier": 1, "text": "[À COMPLÉTER — Indice vague sur la direction]" },
         { "tier": 2, "text": "[À COMPLÉTER — Indice sur la pièce]" },
         { "tier": 3, "text": "[À COMPLÉTER — Emplacement exact]" }
       ],
-      "nextStage": "intelligence"
+      "nextStage": "scanner-reactivation"
     },
     {
-      "id": "intelligence",
+      "id": "scanner-reactivation",
       "order": 3,
-      "title": "Décodage de Renseignements",
-      "type": "cipher",
+      "title": "R\u00e9activation du Module de D\u00e9cryptage",
+      "type": "code-entry",
       "narrative": {
-        "text": "[À COMPLÉTER — Mise en place du défi de chiffrement]",
+        "text": "Vous avez localis\u00e9 le point de r\u00e9activation. Entrez le code trouv\u00e9 sur place pour restaurer le module de d\u00e9cryptage de SEFY. Une fois r\u00e9activ\u00e9, le module de d\u00e9cryptage pourra analyser l'environnement et d\u00e9coder les donn\u00e9es de terrain.",
         "media": null
       },
       "puzzle": {
-        "type": "cipher",
-        "prompt": "Décodez le message intercepté :",
-        "answerHash": null,
+        "type": "code-entry",
+        "prompt": "Entrez le code de r\u00e9activation du module de d\u00e9cryptage :",
+        "answerHash": "f5638cb90af8621df810a20068285b9fba01ca72229848abc088b96a6676fd97",
         "inputType": "text",
         "maxLength": 20
       },
@@ -65,23 +65,21 @@
         { "tier": 2, "text": "[À COMPLÉTER]" },
         { "tier": 3, "text": "[À COMPLÉTER]" }
       ],
-      "nextStage": "field-ops"
+      "nextStage": "qr-lockdown"
     },
     {
-      "id": "field-ops",
+      "id": "qr-lockdown",
       "order": 4,
-      "title": "Opérations de Terrain",
-      "type": "multi-code",
+      "title": "Confinement de Sécurité",
+      "type": "qr-scanner",
       "narrative": {
-        "text": "[À COMPLÉTER — Instructions de recherche multi-pièces]",
+        "text": "L'installation est en confinement. Trois stations de réactivation sont verrouillées. Trouvez les cartes d'accès dissimulées et déverrouillez chaque station pour réactiver le module d'analyse environnementale de SEFY.",
         "media": null
       },
       "puzzle": {
-        "type": "sequence",
-        "prompt": "Entrez les renseignements de terrain combinés :",
-        "answerHash": null,
-        "inputType": "text",
-        "maxLength": 20
+        "type": "qr-scanner",
+        "prompt": "Scannez les QR codes pour collecter les cartes d'accès et déverrouiller les stations.",
+        "requiredLocks": ["RED", "BLUE", "YELLOW"]
       },
       "hints": [
         { "tier": 1, "text": "[À COMPLÉTER]" },

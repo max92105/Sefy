@@ -14,7 +14,7 @@
  */
 
 import { delay } from '../ui.js';
-import { solvePuzzle } from '../state.js';
+import { solvePuzzle, saveState } from '../state.js';
 import { playSFX } from '../ui.js';
 
 /* ───────── Configurable intro sequence (sync with audio) ───────── */
@@ -50,14 +50,15 @@ const GEO_INTRO_SEQUENCE = [
 /* ───────── Distance zones ───────── */
 
 const ZONES = [
-  { maxDist: 5,        label: 'BRÛLANT',   cls: 'geo-burning',  msg: 'Vous y êtes presque !',                   sfx: 'assets/audio/zone_burning.wav' },
-  { maxDist: 10,        label: 'CHAUD',     cls: 'geo-hot',      msg: 'Très proche… cherchez bien.',             sfx: 'assets/audio/zone_hot.wav' },
-  { maxDist: 15,       label: 'TIÈDE',     cls: 'geo-warm',     msg: 'Vous approchez de la zone.',              sfx: 'assets/audio/zone_warm.wav' },
-  { maxDist: 20,       label: 'FROID',     cls: 'geo-cold',     msg: 'Encore loin… continuez à explorer.',      sfx: 'assets/audio/zone_cold.wav' },
-  { maxDist: Infinity, label: 'GLACIAL',   cls: 'geo-freezing', msg: 'Aucun signal détecté dans ce secteur.',   sfx: 'assets/audio/zone_cold.wav' },
+  { maxDist: 5,        label: 'BRÛLANT',   cls: 'geo-burning',  color: 'var(--accent-red)',    msg: 'Vous y êtes presque !',                   sfx: 'assets/audio/zone_burning.wav' },
+  { maxDist: 10,       label: 'CHAUD',     cls: 'geo-hot',      color: '#ff6633',              msg: 'Très proche… cherchez bien.',             sfx: 'assets/audio/zone_hot.wav' },
+  { maxDist: 15,       label: 'TIÈDE',     cls: 'geo-warm',     color: 'var(--accent-amber)',  msg: 'Vous approchez de la zone.',              sfx: 'assets/audio/zone_warm.wav' },
+  { maxDist: 20,       label: 'FROID',     cls: 'geo-cold',     color: '#66bbff',              msg: 'Encore loin… continuez à explorer.',      sfx: 'assets/audio/zone_cold.wav' },
+  { maxDist: Infinity, label: 'GLACIAL',   cls: 'geo-freezing', color: '#4488ff',              msg: 'Aucun signal détecté dans ce secteur.',   sfx: 'assets/audio/zone_cold.wav' },
 ];
 
 let watchId = null;
+let pollInterval = null;
 
 /* ═══════════════  DOM  ═══════════════ */
 
@@ -135,6 +136,11 @@ export function createGeoScreen() {
 export function startGeoTracker(stage, state, onSolved) {
   const puzzle  = stage.puzzle;
 
+  // If briefing already watched, skip straight to tracker
+  if (state.stagePhase && state.stagePhase[stage.id] === 'tracker') {
+    return resumeGeoTracker(stage, state, onSolved);
+  }
+
   // ── Show Phase 1, hide Phase 2 ──
   const introEl   = document.getElementById('geo-intro');
   const trackerEl = document.getElementById('geo-tracker');
@@ -159,6 +165,20 @@ export function startGeoTracker(stage, state, onSolved) {
     abortCtrl.aborted = true;
     if (video) { video.pause(); video.currentTime = 0; }
     if (abortCtrl.currentAudio) { abortCtrl.currentAudio.pause(); abortCtrl.currentAudio = null; }
+    stopWatching();
+  };
+}
+
+/** Resume directly into tracker phase (skips briefing) */
+function resumeGeoTracker(stage, state, onSolved) {
+  const introEl   = document.getElementById('geo-intro');
+  const trackerEl = document.getElementById('geo-tracker');
+  if (introEl)   introEl.classList.add('hidden');
+  if (trackerEl) trackerEl.classList.remove('hidden');
+
+  transitionToTracker(stage, state, onSolved);
+
+  return () => {
     stopWatching();
   };
 }
@@ -343,6 +363,11 @@ function transitionToTracker(stage, state, onSolved) {
   const targetLng = puzzle.lng;
   const radius    = puzzle.radiusMeters || 2;
 
+  // Save phase so we skip briefing on re-entry
+  if (!state.stagePhase) state.stagePhase = {};
+  state.stagePhase[stage.id] = 'tracker';
+  saveState(state);
+
   // Switch visibility
   const introEl   = document.getElementById('geo-intro');
   const trackerEl = document.getElementById('geo-tracker');
@@ -377,70 +402,87 @@ function transitionToTracker(stage, state, onSolved) {
     return;
   }
 
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      if (solved) return;
+  function onPosition(pos) {
+    if (solved) return;
 
-      const dist = haversineDistance(
-        pos.coords.latitude, pos.coords.longitude,
-        targetLat, targetLng
-      );
+    const dist = haversineDistance(
+      pos.coords.latitude, pos.coords.longitude,
+      targetLat, targetLng
+    );
 
-      const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
+    const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
 
-      // Update display
-      if (distanceEl) distanceEl.textContent = dist < 100 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`;
-      if (zoneLabel)  zoneLabel.textContent = zone.label;
-      if (zoneMsg)    zoneMsg.textContent = zone.msg;
+    // Update display — always in meters
+    if (distanceEl) distanceEl.textContent = `${Math.round(dist)} m`;
+    if (zoneLabel)  zoneLabel.textContent = zone.label;
+    if (zoneMsg) {
+      zoneMsg.textContent = zone.msg;
+      zoneMsg.style.color = zone.color;
+    }
+    if (distanceEl) distanceEl.style.color = zone.color;
 
-      // Update radar color + play zone-change SFX
-      if (radar && zone.cls !== lastZoneCls) {
-        if (lastZoneCls) radar.classList.remove(lastZoneCls);
-        radar.classList.add(zone.cls);
-        if (lastZoneCls && zone.sfx) playSFX(zone.sfx);
-        lastZoneCls = zone.cls;
-      }
+    // Update radar color + play zone-change SFX
+    if (radar && zone.cls !== lastZoneCls) {
+      if (lastZoneCls) radar.classList.remove(lastZoneCls);
+      radar.classList.add(zone.cls);
+      if (lastZoneCls && zone.sfx) playSFX(zone.sfx);
+      lastZoneCls = zone.cls;
+    }
 
-      // Dot pulse speed
-      if (dot) {
-        const speed = Math.max(0.3, Math.min(2, dist / 10));
-        dot.style.animationDuration = `${speed}s`;
-      }
+    // Dot pulse speed
+    if (dot) {
+      const speed = Math.max(0.3, Math.min(2, dist / 10));
+      dot.style.animationDuration = `${speed}s`;
+    }
 
-      // Solved?
-      if (dist <= radius && !solved) {
-        solved = true;
-        stopWatching();
+    // Solved?
+    if (dist <= radius && !solved) {
+      solved = true;
+      stopWatching();
 
-        if (zoneLabel) zoneLabel.textContent = 'CIBLE LOCALISÉE';
-        if (zoneMsg)   zoneMsg.textContent = 'Position confirmée. Signal verrouillé.';
-        if (foundEl)   foundEl.classList.remove('hidden');
-        if (radar)     radar.classList.add('geo-locked');
-
-        playSFX('assets/audio/zone_found.mp3');
-        solvePuzzle(state, stage.id);
-
-        setTimeout(() => onSolved(stage), 5000);
-      }
-    },
-    (err) => {
-      if (zoneLabel) zoneLabel.textContent = 'ERREUR';
+      if (zoneLabel) zoneLabel.textContent = 'CIBLE LOCALISÉE';
       if (zoneMsg) {
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            zoneMsg.textContent = 'Accès à la localisation refusé. Activez la géolocalisation dans les paramètres.';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            zoneMsg.textContent = 'Position indisponible. Essayez de vous déplacer.';
-            break;
-          case err.TIMEOUT:
-            zoneMsg.textContent = 'Délai d\'attente dépassé. Réessai en cours…';
-            break;
-        }
+        zoneMsg.textContent = 'Position confirmée. Signal verrouillé.';
+        zoneMsg.style.color = 'var(--accent-green)';
       }
-    },
-    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
-  );
+      if (distanceEl) distanceEl.style.color = 'var(--accent-green)';
+      if (foundEl)   foundEl.classList.remove('hidden');
+      if (radar)     radar.classList.add('geo-locked');
+
+      playSFX('assets/audio/zone_found.wav');
+      solvePuzzle(state, stage.id);
+
+      setTimeout(() => onSolved(stage), 5000);
+    }
+  }
+
+  function onError(err) {
+    if (zoneLabel) zoneLabel.textContent = 'ERREUR';
+    if (zoneMsg) {
+      switch (err.code) {
+        case err.PERMISSION_DENIED:
+          zoneMsg.textContent = 'Accès à la localisation refusé. Activez la géolocalisation dans les paramètres.';
+          break;
+        case err.POSITION_UNAVAILABLE:
+          zoneMsg.textContent = 'Position indisponible. Essayez de vous déplacer.';
+          break;
+        case err.TIMEOUT:
+          zoneMsg.textContent = 'Délai d\'attente dépassé. Réessai en cours…';
+          break;
+      }
+    }
+  }
+
+  const geoOpts = { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 };
+
+  // Get first position immediately
+  navigator.geolocation.getCurrentPosition(onPosition, onError, geoOpts);
+
+  // Poll every 1s for maximum freshness (more reliable than watchPosition)
+  pollInterval = setInterval(() => {
+    if (solved) return;
+    navigator.geolocation.getCurrentPosition(onPosition, onError, geoOpts);
+  }, 1000);
 }
 
 /* ───────── Helpers ───────── */
@@ -449,6 +491,10 @@ function stopWatching() {
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
+  }
+  if (pollInterval !== null) {
+    clearInterval(pollInterval);
+    pollInterval = null;
   }
 }
 

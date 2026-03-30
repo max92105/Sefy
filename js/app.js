@@ -11,7 +11,7 @@ import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
 import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO } from './components/banner.js';
-import { createNav, showNav, hideNav, bindNav } from './components/nav.js';
+import { createNav, showNav, hideNav, bindNav, setInventoryVisible } from './components/nav.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
@@ -20,14 +20,16 @@ import { createTerminalScreen, runBootSequence } from './screens/terminal.js';
 import { createLandingScreen, runLanding } from './screens/landing.js';
 import { createBriefingScreen, runBriefing } from './screens/briefing.js';
 import { createStageScreen, populateStage, openHintModal } from './screens/stage.js';
-import { createEvidenceScreen, populateEvidence } from './screens/evidence.js';
+import { createInventoryScreen, populateInventory, updateInventoryBadge } from './screens/evidence.js';
 import { createDefusalScreen } from './screens/defusal.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createGeoScreen, startGeoTracker } from './screens/geo.js';
+import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
 
 let state = null;
 let currentStage = null;
 let puzzleCleanup = null;
+let lastActiveScreen = null;
 
 // ---- Build the DOM ----
 
@@ -43,8 +45,9 @@ function buildDOM() {
   app.appendChild(createLandingScreen());
   app.appendChild(createBriefingScreen());
   app.appendChild(createStageScreen());
-  app.appendChild(createEvidenceScreen());
+  app.appendChild(createInventoryScreen());
   app.appendChild(createGeoScreen());
+  app.appendChild(createQRScannerScreen());
   app.appendChild(createDefusalScreen());
   app.appendChild(createSuccessScreen());
   app.appendChild(createFailureScreen());
@@ -124,7 +127,13 @@ function enterStage(stage) {
 
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
 
+  // Show inventory button only during/after QR scanner stages
+  const needsInventory = stage.puzzle?.type === 'qr-scanner'
+    || (state.keycards && state.keycards.length > 0);
+  setInventoryVisible(needsInventory);
+
   if (stage.type === 'finale') {
+    lastActiveScreen = 'screen-defusal';
     showScreen('screen-defusal');
     showNav();
     return;
@@ -133,12 +142,23 @@ function enterStage(stage) {
   // Geo tracker puzzle type
   if (stage.puzzle?.type === 'geo') {
     puzzleCleanup = startGeoTracker(stage, state, onPuzzleSolved);
+    lastActiveScreen = 'screen-geo';
     showScreen('screen-geo');
     showNav();
     return;
   }
 
+  // QR scanner puzzle type
+  if (stage.puzzle?.type === 'qr-scanner') {
+    puzzleCleanup = startQRScanner(stage, state, onPuzzleSolved);
+    lastActiveScreen = 'screen-qrscanner';
+    showScreen('screen-qrscanner');
+    showNav();
+    return;
+  }
+
   puzzleCleanup = populateStage(stage, state, onPuzzleSolved);
+  lastActiveScreen = 'screen-stage';
   showScreen('screen-stage');
   showNav();
 }
@@ -173,11 +193,19 @@ function missionSuccess() {
   showScreen('screen-success');
 }
 
-// ---- Evidence Board ----
+// ---- Inventory ----
 
-function showEvidenceBoard() {
-  populateEvidence(state);
-  showScreen('screen-evidence');
+function showInventory() {
+  populateInventory(state);
+  showScreen('screen-inventory');
+}
+
+function returnFromInventory() {
+  if (lastActiveScreen) {
+    showScreen(lastActiveScreen);
+  } else if (currentStage) {
+    enterStage(currentStage);
+  }
 }
 
 // ---- Sound Toggle ----
@@ -203,18 +231,14 @@ function bindGlobalEvents() {
     if (e.target.closest('#btn-close-hint')) closeModal('modal-hint');
   });
 
-  // Evidence
+  // Inventory
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-evidence')) showEvidenceBoard();
-  });
-
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-evidence-back') && currentStage) enterStage(currentStage);
+    if (e.target.closest('#btn-inventory-back')) returnFromInventory();
   });
 
   // Nav
   bindNav({
-    onEvidence: () => showEvidenceBoard(),
+    onInventory: () => showInventory(),
     onSoundToggle: () => toggleSound(),
   });
 

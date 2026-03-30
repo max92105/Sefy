@@ -35,22 +35,52 @@ function renderStageJumps() {
 
   grid.innerHTML = '';
   for (const stage of stages) {
+    // Main jump button (starts at briefing intro)
     const btn = document.createElement('button');
     btn.className = 'stage-jump-btn';
     btn.textContent = `${stage.order}. ${stage.title} [${stage.id}]`;
-    btn.addEventListener('click', () => {
-      state.missionStarted = true;
-      // Mark all previous stages as solved
-      for (const s of stages) {
-        if (s.order < stage.order && !state.solvedPuzzles.includes(s.id)) {
-          state.solvedPuzzles.push(s.id);
-        }
-      }
-      state = setStage(state, stage.id);
-      window.location.href = 'index.html';
-    });
+    btn.addEventListener('click', () => jumpToStage(stages, stage));
     grid.appendChild(btn);
+
+    // "After briefing" button for stages that have a two-phase intro
+    const phaseMap = { geo: 'tracker', 'qr-scanner': 'scanner' };
+    const phase = phaseMap[stage.puzzle?.type];
+    if (phase) {
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'stage-jump-btn';
+      skipBtn.style.borderLeftColor = 'var(--accent-green)';
+      skipBtn.style.borderLeftWidth = '3px';
+      skipBtn.textContent = `  ↳ Skip briefing → ${phase}`;
+      skipBtn.addEventListener('click', () => jumpToStage(stages, stage, phase));
+      grid.appendChild(skipBtn);
+    }
   }
+}
+
+function jumpToStage(stages, stage, phase) {
+  state.missionStarted = true;
+  if (!state.timestamps?.start) {
+    state.timestamps = state.timestamps || {};
+    state.timestamps.start = new Date().toISOString();
+    // Set a deadline 90 min from now
+    state.timestamps.deadline = new Date(Date.now() + 90 * 60 * 1000).toISOString();
+  }
+  // Mark all previous stages as solved
+  for (const s of stages) {
+    if (s.order < stage.order && !state.solvedPuzzles.includes(s.id)) {
+      state.solvedPuzzles.push(s.id);
+    }
+  }
+  // Set phase to skip briefing if requested
+  if (phase) {
+    if (!state.stagePhase) state.stagePhase = {};
+    state.stagePhase[stage.id] = phase;
+  } else {
+    // Clear any saved phase so briefing plays
+    if (state.stagePhase) delete state.stagePhase[stage.id];
+  }
+  state = setStage(state, stage.id);
+  window.location.href = 'index.html';
 }
 
 function bindEvents() {

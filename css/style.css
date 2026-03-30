@@ -790,11 +790,12 @@ body.banner-active #screen-geo {
 
 .input-group {
   display: flex;
+  flex-direction: column;
   gap: var(--space-sm);
 }
 
 .code-input {
-  flex: 1;
+  width: 100%;
   font-family: var(--font-mono);
   font-size: var(--font-size-lg);
   letter-spacing: 0.2em;
@@ -806,6 +807,7 @@ body.banner-active #screen-geo {
   outline: none;
   caret-color: var(--accent-green);
   transition: border-color var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .code-input:focus {
@@ -920,33 +922,85 @@ body.banner-active #screen-geo {
   text-align: center;
 }
 
-/* --- Evidence Board --- */
-.evidence-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+/* --- Inventory --- */
+.inv-keycards {
+  display: flex;
   gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.evidence-card {
+.inv-keycard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-panel);
+  border: 1px solid var(--card-color, var(--border));
+  border-left: 3px solid var(--card-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--card-color) 20%, transparent);
+  min-width: 90px;
+  cursor: default;
+  transition: box-shadow 0.3s ease;
+}
+
+.inv-keycard-icon {
+  font-size: 1.8rem;
+}
+
+.inv-keycard-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--card-color);
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+.inv-locks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.inv-lock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
   padding: var(--space-md);
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-blue);
+  border-left: 3px solid var(--lock-color);
+  font-family: var(--font-mono);
 }
 
-.evidence-card .evidence-label {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: var(--space-xs);
+.inv-lock.unlocked {
+  border-color: var(--accent-green);
+  border-left-color: var(--accent-green);
 }
 
-.evidence-card .evidence-value {
-  font-family: var(--font-mono);
+.inv-lock-icon {
+  font-size: 1.4rem;
+}
+
+.inv-lock-label {
   font-size: var(--font-size-sm);
   color: var(--text-primary);
+  flex: 1;
+}
+
+.inv-lock-status {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.inv-lock.locked .inv-lock-status {
+  color: var(--lock-color);
+}
+
+.inv-lock.unlocked .inv-lock-status {
+  color: var(--accent-green);
 }
 
 .empty-state {
@@ -990,7 +1044,7 @@ body.banner-active #screen-geo {
 .geo-narrative {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--accent-green);
   line-height: 1.6;
   text-align: center;
   padding: 0 var(--space-md);
@@ -1095,6 +1149,7 @@ body.banner-active #screen-geo {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   color: var(--text-dim);
+  transition: color 0.5s ease;
 }
 
 .geo-distance {
@@ -1104,6 +1159,7 @@ body.banner-active #screen-geo {
   letter-spacing: 0.1em;
   text-align: center;
   margin-top: var(--space-sm);
+  transition: color 0.5s ease;
 }
 
 /* Zone label colors */
@@ -1415,11 +1471,29 @@ body.banner-active #screen-geo {
   opacity: 0.5;
   transition: opacity var(--transition-fast);
   touch-action: manipulation;
+  position: relative;
 }
 
 .nav-btn:hover,
 .nav-btn:active {
   opacity: 1;
+}
+
+.nav-badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  background: var(--accent-red);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 0 3px;
 }
 
 /* --- Utility --- */
@@ -1476,7 +1550,235 @@ body.banner-active #screen-geo {
 }
 
 @media (min-width: 768px) {
-  .evidence-grid {
-    grid-template-columns: 1fr 1fr;
+  .inv-keycards {
+    justify-content: center;
   }
+}
+
+/* --- QR Scanner Screen --- */
+
+.qr-layout {
+  height: calc(100dvh - 52px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+#screen-qrscanner {
+  padding: 0;
+}
+
+#screen-qrscanner.active {
+  display: flex;
+}
+
+body.banner-active #screen-qrscanner {
+  padding-top: 0;
+}
+
+body.banner-active .qr-layout {
+  height: calc(100dvh - 52px - 44px - var(--space-sm));
+}
+
+.qr-intro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Camera wrapper */
+.qr-camera-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.qr-camera-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-crosshair {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border: 2px solid var(--accent-green);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 20px rgba(0, 255, 65, 0.05);
+  pointer-events: none;
+  animation: crosshairPulse 2s ease infinite;
+}
+
+.qr-crosshair::before,
+.qr-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--accent-green);
+}
+
+.qr-crosshair::before {
+  width: 1px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.qr-crosshair::after {
+  width: 20px;
+  height: 1px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes crosshairPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+/* Lock panel — 3 locks displayed below camera */
+.qr-lock-panel {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+}
+
+.qr-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  min-width: 80px;
+  transition: all 0.5s ease;
+}
+
+.qr-lock.closed {
+  border-color: var(--lock-color);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--lock-color) 15%, transparent);
+}
+
+.qr-lock.open {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 12px rgba(0, 255, 65, 0.2);
+}
+
+.qr-lock-icon {
+  font-size: 1.5rem;
+}
+
+.qr-lock-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.qr-lock.open .qr-lock-name {
+  color: var(--accent-green);
+}
+
+/* QR feedback bar */
+.qr-feedback {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-feedback-success {
+  color: var(--accent-green);
+  border-top-color: rgba(0, 255, 65, 0.3);
+}
+
+.qr-feedback-error {
+  color: var(--accent-red);
+  border-top-color: rgba(255, 0, 64, 0.3);
+}
+
+.qr-feedback-info {
+  color: var(--accent-amber);
+  border-top-color: rgba(255, 171, 0, 0.3);
+}
+
+/* Keycard reveal overlay */
+.qr-card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.qr-card-overlay.revealed {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.qr-card-overlay.dismissing {
+  opacity: 0;
+}
+
+.qr-card-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-green);
+  box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+  animation: cardReveal 0.5s ease forwards;
+}
+
+.qr-card-icon {
+  font-size: 3rem;
+}
+
+.qr-card-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  color: var(--accent-green);
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+.qr-card-color {
+  width: 60px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* QR scanner within the scanner phase */
+.qr-scanner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }

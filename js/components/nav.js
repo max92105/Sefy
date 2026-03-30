@@ -8,8 +8,9 @@ export function createNav() {
   nav.id = 'global-nav';
   nav.className = 'global-nav hidden';
   nav.innerHTML = `
-    <button class="nav-btn" data-action="evidence" title="Tableau des preuves">
-      <span class="nav-icon">📋</span>
+    <button class="nav-btn" data-action="inventory" title="Inventaire">
+      <span class="nav-icon">🎒</span>
+      <span class="nav-badge hidden" id="inv-badge">0</span>
     </button>
     <button class="nav-btn" data-action="sound-toggle" title="Son">
       <span class="nav-icon" id="sound-icon">🔊</span>
@@ -31,12 +32,18 @@ export function hideNav() {
   document.getElementById('global-nav')?.classList.add('hidden');
 }
 
-/** Bind nav button actions. Receives callbacks object: { onEvidence, onSoundToggle } */
-export function bindNav({ onEvidence, onSoundToggle }) {
+/** Show/hide the inventory button */
+export function setInventoryVisible(visible) {
+  const btn = document.querySelector('.nav-btn[data-action="inventory"]');
+  if (btn) btn.classList.toggle('hidden', !visible);
+}
+
+/** Bind nav button actions */
+export function bindNav({ onInventory, onSoundToggle }) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.action;
-      if (action === 'evidence' && onEvidence) onEvidence();
+      if (action === 'inventory' && onInventory) onInventory();
       if (action === 'sound-toggle' && onSoundToggle) onSoundToggle();
     });
   });

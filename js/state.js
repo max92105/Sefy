@@ -12,6 +12,9 @@ function createDefaultState() {
     solvedPuzzles: [],
     hintsUsed: {},
     inventory: [],
+    keycards: [],
+    unlockedStations: [],
+    stagePhase: {},
     timestamps: {},
     finalModeUnlocked: false,
     settings: {
@@ -78,6 +81,33 @@ export function addInventoryItem(state, itemId) {
   }
   saveState(state);
   return state;
+}
+
+/** Add a keycard (RED, BLUE, YELLOW) */
+export function addKeycard(state, cardId) {
+  if (!state.keycards) state.keycards = [];
+  if (!state.keycards.includes(cardId)) {
+    state.keycards.push(cardId);
+    saveState(state);
+    return true; // new card
+  }
+  return false; // already had it
+}
+
+/** Unlock a lock station */
+export function unlockStation(state, stationId) {
+  if (!state.unlockedStations) state.unlockedStations = [];
+  if (!state.unlockedStations.includes(stationId)) {
+    state.unlockedStations.push(stationId);
+    saveState(state);
+    return true;
+  }
+  return false;
+}
+
+/** Check if player has a specific keycard */
+export function hasKeycard(state, cardId) {
+  return (state.keycards || []).includes(cardId);
 }
 
 /** Advance to a specific stage */

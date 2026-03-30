@@ -41,7 +41,6 @@ export function createStageScreen() {
 
       <div class="stage-actions">
         <button id="btn-hint" class="btn btn-secondary">DEMANDER UN INDICE</button>
-        <button id="btn-evidence" class="btn btn-outline">TABLEAU DES PREUVES</button>
       </div>
     </div>
   `;

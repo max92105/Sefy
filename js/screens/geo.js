@@ -19,33 +19,35 @@ import { playSFX } from '../ui.js';
 
 /* ───────── Configurable intro sequence (sync with audio) ───────── */
 
-/* ───────── Configurable intro sequence ─────────
+/* ───────── Configurable intro sequences per stage ─────────
  *  `time` = absolute ms from segment start (like BRIEFING_SEQUENCE).
  *  The sequence resets to 0 after `requestLocation` resolves,
  *  so Audio 2 times are relative to permission being granted.
  */
 
-const GEO_INTRO_SEQUENCE = [
-  // ── Audio 1: module activation ──
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
-  { time: 0,      type: 'text',  text: 'Analyse des modules en cours...' },
-  { time: 3000,   type: 'text',  text: 'Activation du module de géolocalisation.' },
-  { time: 6000,   type: 'text',  text: 'Activation réussie.' },
-  { time: 9000,   type: 'text',  text: 'Activation du module de décryptage…' },
-  { time: 12000,   type: 'text',  text: 'Accès refusé.' },
-  { time: 14000,   type: 'text',  text: 'Activation du module d\'analyse environnementale.' },
-  { time: 17000,  type: 'text',  text: 'Accès refusé.' },
-  { time: 20000,  type: 'text',  text: 'Afin de vous aider avec toutes mes capacités, nous devons réactiver mes modules partiellement opérationnels.' },
-  { time: 26000,  type: 'text',  text: 'Le module de géolocalisation est maintenant disponible.' },
-  { time: 29000,  type: 'text',  text: 'Autorisez l\'accès à votre position pour initialiser le guidage.' },
-  { time: 30000,  type: 'action', action: 'requestLocation' },
-  // — sequence pauses here until permission is granted, then time resets to 0 —
-  // ── Audio 2: post-permission confirmation ──
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_confirmed_sefy.wav' },
-  { time: 0,   type: 'text',  text: 'Position confirmée.' },
-  { time: 2000,   type: 'text',  text: 'Navigation en cours… je vous guide.' },
-  { time: 5000,   type: 'action', action: 'startTracking' },
-];
+const GEO_INTRO_SEQUENCES = {
+  'scanner-reboot': [
+    // ── Audio 1: module activation ──
+    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
+    { time: 0,      type: 'text',  text: 'Analyse des modules en cours...' },
+    { time: 3000,   type: 'text',  text: 'Activation du module de géolocalisation.' },
+    { time: 6000,   type: 'text',  text: 'Activation réussie.' },
+    { time: 9000,   type: 'text',  text: 'Activation du module de décryptage…' },
+    { time: 12000,   type: 'text',  text: 'Accès refusé.' },
+    { time: 14000,   type: 'text',  text: 'Activation du module d\'analyse environnementale.' },
+    { time: 17000,  type: 'text',  text: 'Accès refusé.' },
+    { time: 20000,  type: 'text',  text: 'Afin de vous aider avec toutes mes capacités, nous devons réactiver mes modules partiellement opérationnels.' },
+    { time: 26000,  type: 'text',  text: 'Le module de géolocalisation est maintenant disponible.' },
+    { time: 29000,  type: 'text',  text: 'Autorisez l\'accès à votre position pour initialiser le guidage.' },
+    { time: 30000,  type: 'action', action: 'requestLocation' },
+    // — sequence pauses here until permission is granted, then time resets to 0 —
+    // ── Audio 2: post-permission confirmation ──
+    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_confirmed_sefy.wav' },
+    { time: 0,   type: 'text',  text: 'Position confirmée.' },
+    { time: 2000,   type: 'text',  text: 'Navigation en cours… je vous guide.' },
+    { time: 5000,   type: 'action', action: 'startTracking' },
+  ],
+};
 
 /* ───────── Distance zones ───────── */
 
@@ -158,7 +160,7 @@ export function startGeoTracker(stage, state, onSolved) {
   // ── Run intro sequence (sequential, async) ──
   const abortCtrl = { aborted: false, currentAudio: null };
 
-  runIntroSequence(GEO_INTRO_SEQUENCE, currentLine, abortCtrl, stage, state, onSolved);
+  runIntroSequence(GEO_INTRO_SEQUENCES[stage.id] || GEO_INTRO_SEQUENCES['scanner-reboot'], currentLine, abortCtrl, stage, state, onSolved);
 
   // ── Cleanup ──
   return () => {

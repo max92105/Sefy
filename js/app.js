@@ -25,6 +25,8 @@ import { createDefusalScreen } from './screens/defusal.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createGeoScreen, startGeoTracker } from './screens/geo.js';
 import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
+import { createCodeEntryScreen, startCodeEntry } from './screens/codeentry.js';
+import { createARScanScreen, startARScan } from './screens/arscan.js';
 
 let state = null;
 let currentStage = null;
@@ -48,6 +50,8 @@ function buildDOM() {
   app.appendChild(createInventoryScreen());
   app.appendChild(createGeoScreen());
   app.appendChild(createQRScannerScreen());
+  app.appendChild(createCodeEntryScreen());
+  app.appendChild(createARScanScreen());
   app.appendChild(createDefusalScreen());
   app.appendChild(createSuccessScreen());
   app.appendChild(createFailureScreen());
@@ -153,6 +157,24 @@ function enterStage(stage) {
     puzzleCleanup = startQRScanner(stage, state, onPuzzleSolved);
     lastActiveScreen = 'screen-qrscanner';
     showScreen('screen-qrscanner');
+    showNav();
+    return;
+  }
+
+  // AR scan puzzle type
+  if (stage.puzzle?.type === 'ar-scan') {
+    puzzleCleanup = startARScan(stage, state, onPuzzleSolved);
+    lastActiveScreen = 'screen-arscan';
+    showScreen('screen-arscan');
+    showNav();
+    return;
+  }
+
+  // Code-entry with briefing intro
+  if (stage.briefingIntro) {
+    puzzleCleanup = startCodeEntry(stage, state, onPuzzleSolved);
+    lastActiveScreen = 'screen-codeentry';
+    showScreen('screen-codeentry');
     showNav();
     return;
   }

@@ -43,8 +43,9 @@ function renderStageJumps() {
     grid.appendChild(btn);
 
     // "After briefing" button for stages that have a two-phase intro
-    const phaseMap = { geo: 'tracker', 'qr-scanner': 'scanner' };
-    const phase = phaseMap[stage.puzzle?.type];
+    const phaseMap = { geo: 'tracker', 'qr-scanner': 'scanner', 'ar-scan': 'scanner' };
+    let phase = phaseMap[stage.puzzle?.type];
+    if (!phase && stage.briefingIntro) phase = 'code-entry';
     if (phase) {
       const skipBtn = document.createElement('button');
       skipBtn.className = 'stage-jump-btn';

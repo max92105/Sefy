@@ -508,7 +508,8 @@ body.banner-active .briefing-layout {
   padding-top: 48px;
 }
 
-body.banner-active .geo-layout {
+body.banner-active .geo-layout,
+body.banner-active .codeentry-layout {
   padding-top: calc(var(--space-sm) + 44px);
 }
 
@@ -522,15 +523,18 @@ body.banner-active #screen-briefing {
   padding-top: 0;
 }
 
-#screen-geo {
+#screen-geo,
+#screen-codeentry {
   padding: 0;
 }
 
-#screen-geo.active {
+#screen-geo.active,
+#screen-codeentry.active {
   display: flex;
 }
 
-body.banner-active #screen-geo {
+body.banner-active #screen-geo,
+body.banner-active #screen-codeentry {
   padding-top: 0;
 }
 
@@ -1014,7 +1018,8 @@ body.banner-active #screen-geo {
 /* --- Geo Tracker (Warm/Cold) Screen --- */
 
 /* Full-screen layout for both phases — leaves room for nav footer */
-.geo-layout {
+.geo-layout,
+.codeentry-layout {
   height: calc(100dvh - 52px);  /* subtract nav footer height */
   display: flex;
   flex-direction: column;
@@ -1023,7 +1028,8 @@ body.banner-active #screen-geo {
 }
 
 /* ── Phase 1: Intro Cinematic — reuses briefing-center + briefing-bottom ── */
-.geo-intro {
+.geo-intro,
+.codeentry-intro {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1036,6 +1042,13 @@ body.banner-active #screen-geo {
 
 /* ── Phase 2: Tracker ── */
 .geo-tracker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Code Entry Phase 2: Puzzle ── */
+.codeentry-puzzle {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1781,4 +1794,381 @@ body.banner-active .qr-layout {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* --- AR Scanner Screen --- */
+
+.arscan-layout {
+  height: calc(100dvh - 52px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+#screen-arscan {
+  padding: 0;
+}
+
+#screen-arscan.active {
+  display: flex;
+}
+
+body.banner-active #screen-arscan {
+  padding-top: 0;
+}
+
+body.banner-active .arscan-layout {
+  height: calc(100dvh - 52px - 44px - var(--space-sm));
+}
+
+.arscan-intro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+}
+
+.arscan-scanner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Camera wrapper */
+.arscan-camera-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.arscan-camera-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Scan overlay with grid effect */
+.arscan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid rgba(0, 255, 65, 0.15);
+  /* grid lines */
+  background:
+    linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Animated scan line */
+.arscan-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+  box-shadow: 0 0 10px var(--accent-green), 0 0 20px var(--accent-green);
+  animation: arScanLine 4s ease-in-out infinite;
+}
+
+@keyframes arScanLine {
+  0%   { top: 5%; opacity: 0.8; }
+  50%  { top: 95%; opacity: 1; }
+  100% { top: 5%; opacity: 0.8; }
+}
+
+/* AR markers container */
+.arscan-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Individual AR marker */
+.arscan-marker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 10;
+  animation: arMarkerAppear 0.5s ease-out;
+}
+
+@keyframes arMarkerAppear {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.arscan-marker-ring {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border: 2px solid var(--accent-green);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: arRingPulse 1.5s ease infinite;
+}
+
+@keyframes arRingPulse {
+  0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+.arscan-marker-pulse {
+  animation: arMarkerAppear 0.5s ease-out, arMarkerBounce 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes arMarkerBounce {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.1); }
+}
+
+.arscan-marker-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.5));
+}
+
+.arscan-marker-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-green);
+  background: rgba(13, 13, 20, 0.85);
+  padding: 2px 8px;
+  border: 1px solid var(--accent-green);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  text-shadow: 0 0 8px var(--accent-green);
+}
+
+/* Status bar */
+.arscan-status {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: var(--space-sm) var(--space-md);
+  flex-shrink: 0;
+}
+
+.arscan-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.arscan-progress-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+.arscan-progress-count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-green);
+}
+
+.arscan-objects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.arscan-obj {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.arscan-obj.found {
+  border-color: var(--accent-green);
+}
+
+.arscan-obj.found .arscan-obj-status {
+  color: var(--accent-green);
+}
+
+.arscan-obj.missing .arscan-obj-status {
+  color: var(--text-dim);
+}
+
+.arscan-obj-icon {
+  font-size: 1.2rem;
+}
+
+.arscan-obj-label {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.arscan-obj-status {
+  font-weight: bold;
+}
+
+/* Feedback bar */
+.arscan-feedback {
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-green);
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.arscan-feedback-success {
+  color: var(--accent-green);
+  border-top-color: var(--accent-green);
+}
+
+.arscan-feedback-error {
+  color: var(--accent-red);
+  border-top-color: var(--accent-red);
+}
+
+/* Object reveal overlay */
+.arscan-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.arscan-reveal-overlay.revealed {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.arscan-reveal-overlay.dismissing {
+  opacity: 0;
+}
+
+.arscan-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  animation: arRevealPop 0.4s ease-out;
+}
+
+@keyframes arRevealPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.arscan-reveal-icon {
+  font-size: 4rem;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 65, 0.6));
+}
+
+.arscan-reveal-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  color: var(--accent-green);
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+.arscan-reveal-desc {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  text-align: center;
+  max-width: 300px;
+}
+
+/* Searching indicator (Phase 2 — before room calibration) */
+.arscan-searching {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.arscan-searching-icon {
+  font-size: 3rem;
+  animation: arSearchPulse 2s ease-in-out infinite;
+}
+
+@keyframes arSearchPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.2); }
+}
+
+.arscan-searching-text {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  color: var(--accent-green);
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+.arscan-searching-hint {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+/* Compass indicator */
+.arscan-compass {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: rgba(13, 13, 20, 0.85);
+  backdrop-filter: blur(4px);
+  padding: 4px 10px;
+  border: 1px solid var(--accent-green);
+  border-radius: 4px;
+  z-index: 15;
+}
+
+.arscan-compass-icon {
+  font-size: 1.2rem;
+}
+
+.arscan-compass-heading {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-green);
+  letter-spacing: 0.1em;
 }

@@ -2,7 +2,7 @@
   "meta": {
     "title": "Operation Raven",
     "version": "0.1.0",
-    "totalStages": 5,
+    "totalStages": 7,
     "timerMinutes": 60,
     "description": "Un agent renégat a placé un dispositif dans cette installation. Récupérez les codes de neutralisation avant la fin du temps imparti."
   },
@@ -18,11 +18,35 @@
       },
       "puzzle": null,
       "hints": [],
+      "nextStage": "geo-activation"
+    },
+    {
+      "id": "geo-activation",
+      "order": 2,
+      "title": "Activation du Module de Géolocalisation",
+      "type": "code-entry",
+      "briefingIntro": true,
+      "narrative": {
+        "text": "Entrez le code d'accès trouvé dans le centre de commande pour activer le module de géolocalisation de SEFY.",
+        "media": null
+      },
+      "puzzle": {
+        "type": "code-entry",
+        "prompt": "Entrez le code d'activation du module de géolocalisation :",
+        "answerHash": "7d7179c146d0d6af4ebd304ab799a718fe949a8dcd660cd6d12fb97915f9ab0a",
+        "inputType": "text",
+        "maxLength": 20
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
       "nextStage": "scanner-reboot"
     },
     {
       "id": "scanner-reboot",
-      "order": 2,
+      "order": 3,
       "title": "Réactivation du Module de Décryptage",
       "type": "geo",
       "narrative": {
@@ -46,7 +70,7 @@
     },
     {
       "id": "scanner-reactivation",
-      "order": 3,
+      "order": 4,
       "title": "R\u00e9activation du Module de D\u00e9cryptage",
       "type": "code-entry",
       "narrative": {
@@ -69,7 +93,7 @@
     },
     {
       "id": "qr-lockdown",
-      "order": 4,
+      "order": 5,
       "title": "Confinement de Sécurité",
       "type": "qr-scanner",
       "narrative": {
@@ -86,11 +110,31 @@
         { "tier": 2, "text": "[À COMPLÉTER]" },
         { "tier": 3, "text": "[À COMPLÉTER]" }
       ],
+      "nextStage": "bomb-search"
+    },
+    {
+      "id": "bomb-search",
+      "order": 6,
+      "title": "Analyse Environnementale",
+      "type": "ar-scan",
+      "narrative": {
+        "text": "Le module d'analyse environnementale est maintenant opérationnel. Utilisez le scanner pour localiser la bombe et reconstruire les cartes d'accès tier 3 nécessaires au désamorçage.",
+        "media": null
+      },
+      "puzzle": {
+        "type": "ar-scan",
+        "prompt": "Explorez la pièce avec la caméra pour détecter les objets cachés."
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
       "nextStage": "defusal"
     },
     {
       "id": "defusal",
-      "order": 5,
+      "order": 7,
       "title": "Désamorçage de la Bombe",
       "type": "finale",
       "narrative": {

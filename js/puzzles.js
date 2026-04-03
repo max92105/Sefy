@@ -12,11 +12,15 @@ import { showFeedback, hideFeedback, glitch } from './ui.js';
  * Takes a stage definition, wires up input + submit.
  * Returns cleanup function.
  */
-export function setupCodeEntry(stage, state, onSolved) {
-  const input = document.getElementById('puzzle-input');
-  const submitBtn = document.getElementById('btn-submit-answer');
-  const prompt = document.getElementById('puzzle-prompt');
-  const feedbackId = 'puzzle-feedback';
+export function setupCodeEntry(stage, state, onSolved, ids) {
+  const inputId    = ids?.inputId    || 'puzzle-input';
+  const submitId   = ids?.submitId   || 'btn-submit-answer';
+  const promptId   = ids?.promptId   || 'puzzle-prompt';
+  const feedbackId = ids?.feedbackId || 'puzzle-feedback';
+
+  const input     = document.getElementById(inputId);
+  const submitBtn = document.getElementById(submitId);
+  const prompt    = document.getElementById(promptId);
 
   if (!stage.puzzle) return () => {};
 

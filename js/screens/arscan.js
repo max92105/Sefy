@@ -128,7 +128,6 @@ export function createARScanScreen() {
           <div class="arscan-seeking hidden" id="arscan-seeking">
             <div class="arscan-seeking-arrow" id="arscan-seeking-arrow">➤</div>
             <div class="arscan-seeking-text" id="arscan-seeking-text">Signal détecté ! Cherchez autour…</div>
-            <div class="arscan-seeking-proximity" id="arscan-seeking-proximity"></div>
           </div>
 
           <!-- AR object marker (shown when aimed correctly) -->
@@ -550,7 +549,6 @@ function startSeeking(obj, stage, state, onSolved, abort) {
   const seekingEl   = document.getElementById('arscan-seeking');
   const seekTextEl  = document.getElementById('arscan-seeking-text');
   const seekArrowEl = document.getElementById('arscan-seeking-arrow');
-  const proximityEl = document.getElementById('arscan-seeking-proximity');
   const markersEl   = document.getElementById('arscan-markers');
 
   if (searchingEl) searchingEl.classList.add('hidden');
@@ -563,58 +561,53 @@ function startSeeking(obj, stage, state, onSolved, abort) {
   // Start tracking orientation
   startOrientationTracking();
 
-  // Capture origin orientation at the moment QR was scanned
-  const origin = {
-    alpha: currentOrientation.alpha,
-    beta:  currentOrientation.beta,
-    gamma: currentOrientation.gamma,
-  };
-
-  console.log('[AR] Seeking started — origin:', origin, 'target:', obj.seekDirection);
-
   let objectRevealed = false;
 
-  seekLoop = setInterval(() => {
+  // Wait a moment for orientation data to arrive, then capture origin
+  setTimeout(() => {
     if (abort.aborted || objectRevealed) return;
 
-    const result = isAimedAtTarget(origin, obj.seekDirection, obj.seekTolerance);
-
-    // Update arrow direction to point toward the target
-    if (seekArrowEl && result.deltaYaw != null) {
-      const targetYaw = obj.seekDirection.yaw;
-      const arrowAngle = targetYaw - result.deltaYaw;
-      // Add pitch offset: arrow points down if they need to tilt more
-      seekArrowEl.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}deg)`;
-    }
-
-    // Proximity feedback
-    if (proximityEl && result.yawDiff != null) {
-      const maxDist = 180;
-      const dist = Math.max(result.yawDiff, result.pitchDiff);
-      if (dist < 30) {
-        proximityEl.textContent = '🔥 TRÈS PROCHE';
-        proximityEl.className = 'arscan-seeking-proximity hot';
-      } else if (dist < 60) {
-        proximityEl.textContent = '🔶 Proche';
-        proximityEl.className = 'arscan-seeking-proximity warm';
-      } else if (dist < 120) {
-        proximityEl.textContent = '🔵 Signal faible';
-        proximityEl.className = 'arscan-seeking-proximity cool';
-      } else {
-        proximityEl.textContent = '❄️ Froid';
-        proximityEl.className = 'arscan-seeking-proximity cold';
-      }
-    }
-
-    if (result.aimed) {
-      // Object found!
-      objectRevealed = true;
-      if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+    // If no gyroscope available (desktop or unsupported device), just show after a delay
+    if (currentOrientation.alpha == null) {
+      console.log('[AR] No gyroscope available — showing object after delay');
       if (seekingEl) seekingEl.classList.add('hidden');
+      objectRevealed = true;
       playSFX('assets/audio/zone_found.wav');
       showObjectOnCamera(obj, stage, state, onSolved, abort);
+      return;
     }
-  }, 100);
+
+    // Capture origin orientation NOW (after listener has had time to fire)
+    const origin = {
+      alpha: currentOrientation.alpha,
+      beta:  currentOrientation.beta,
+      gamma: currentOrientation.gamma,
+    };
+
+    console.log('[AR] Seeking started — origin:', origin, 'target:', obj.seekDirection);
+
+    seekLoop = setInterval(() => {
+      if (abort.aborted || objectRevealed) return;
+
+      const result = isAimedAtTarget(origin, obj.seekDirection, obj.seekTolerance);
+
+      // Update arrow direction to point toward the target
+      if (seekArrowEl && result.deltaYaw != null) {
+        const targetYaw = obj.seekDirection.yaw;
+        const arrowAngle = targetYaw - result.deltaYaw;
+        seekArrowEl.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}deg)`;
+      }
+
+      if (result.aimed) {
+        // Object found!
+        objectRevealed = true;
+        if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+        if (seekingEl) seekingEl.classList.add('hidden');
+        playSFX('assets/audio/zone_found.wav');
+        showObjectOnCamera(obj, stage, state, onSolved, abort);
+      }
+    }, 100);
+  }, 500);
 
   // Timeout: if they don't find it in 60s, give up and resume QR scanning
   setTimeout(() => {
@@ -623,7 +616,6 @@ function startSeeking(obj, stage, state, onSolved, abort) {
     if (seekingEl) seekingEl.classList.add('hidden');
     updateSearchingVisibility();
     showFeedback('Signal perdu. Scannez à nouveau le QR code…', 'info');
-    // Restart QR scanning
     resumeQRScanning(stage, state, onSolved, abort);
   }, 60000);
 }

@@ -99,12 +99,10 @@ function bindEvents() {
     URL.revokeObjectURL(url);
   });
 
-  document.getElementById('btn-reset-all')?.addEventListener('click', async () => {
-    if (confirm('This will erase ALL mission progress (app + terminals + server). Are you sure?')) {
+  document.getElementById('btn-reset-all')?.addEventListener('click', () => {
+    if (confirm('This will erase ALL mission progress. Are you sure?')) {
       state = resetState();
       renderState();
-      // Also reset server-side team state (tiers, decrypt, progression)
-      try { await fetch('/api/reset', { method: 'POST' }); } catch { /* offline */ }
     }
   });
 

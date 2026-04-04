@@ -59,8 +59,7 @@
         "lat": 48.41326437917094,
         "lng": -71.10586537835142, 
         "radiusMeters": 3,
-        "waitForTerminal": true,
-        "foundText": "Point de réactivation localisé ! Trouvez le code caché dans cette zone et rendez-vous à un terminal pour l'entrer."
+        "foundText": "Point de réactivation localisé ! Cherchez le code caché dans cette zone et entrez-le à l'étape suivante pour réactiver mon module de décryptage."
       },
       "hints": [
         { "tier": 1, "text": "[À COMPLÉTER — Indice vague sur la direction]" },

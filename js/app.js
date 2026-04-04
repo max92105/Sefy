@@ -15,9 +15,6 @@ import { createNav, showNav, hideNav, bindNav, setInventoryVisible } from './com
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
-// -- Sync --
-import { connect as syncConnect, on as syncOn, send as syncSend, isConnected as syncIsConnected } from './sync.js';
-
 // -- Screens --
 import { createTerminalScreen, runBootSequence } from './screens/boot.js';
 import { createLandingScreen, runLanding } from './screens/landing.js';
@@ -46,7 +43,6 @@ let state = null;
 let currentStage = null;
 let puzzleCleanup = null;
 let lastActiveScreen = null;
-let syncTeamId = null;
 
 // ---- Build the DOM ----
 
@@ -87,56 +83,12 @@ async function init() {
   bindGlobalEvents();
   initButtonSounds();
   startBgMusic();
-  initSync();
 
   if (state.missionStarted && state.currentStage) {
     resumeMission();
   } else {
     goTerminal();
   }
-}
-
-// ---- Sync (WebSocket) ----
-
-function initSync() {
-  // Team from URL param: ?team=1 or ?team=2
-  const params = new URLSearchParams(location.search);
-  const teamParam = params.get('team');
-  if (!teamParam) return;
-
-  syncTeamId = `team-${teamParam}`;
-  syncConnect(syncTeamId, 'app');
-
-  // Listen for terminal commands
-  syncOn('terminal-command', (msg) => {
-    if (msg.command === 'advance-stage') {
-      handleTerminalAdvance();
-    }
-  });
-
-  // Listen for reset
-  syncOn('reset', () => {
-    state = resetState();
-    hideBanner();
-    goTerminal();
-  });
-}
-
-/** Terminal triggered an advance (e.g. DECRYPT command). */
-function handleTerminalAdvance() {
-  if (!currentStage) return;
-
-  // Clean up current puzzle
-  if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
-
-  // Mark as solved if not already
-  if (!state.solvedPuzzles.includes(currentStage.id)) {
-    state.solvedPuzzles.push(currentStage.id);
-    saveState(state);
-  }
-
-  // Advance to next stage
-  onPuzzleSolved(currentStage);
 }
 
 // ---- Screen Flows ----
@@ -265,15 +217,9 @@ function enterStage(stage) {
 }
 
 function onPuzzleSolved(stage) {
-  // Notify server of puzzle solved + stage change
-  if (syncTeamId) {
-    syncSend('puzzle-solved', { puzzleId: stage.id });
-  }
-
   const next = getNextStage(stage.id);
   if (next) {
     state = setStage(state, next.id);
-    if (syncTeamId) syncSend('stage-update', { stageId: next.id });
     enterStage(next);
   } else {
     missionSuccess();

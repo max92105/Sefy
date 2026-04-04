@@ -56,16 +56,7 @@ function renderStageJumps() {
       grid.appendChild(skipBtn);
     }
 
-    // AR scan: extra button to skip directly to compass phase
-    if (stage.puzzle?.type === 'ar-scan') {
-      const compassBtn = document.createElement('button');
-      compassBtn.className = 'stage-jump-btn';
-      compassBtn.style.borderLeftColor = 'var(--accent-amber)';
-      compassBtn.style.borderLeftWidth = '3px';
-      compassBtn.textContent = `  ↳ Skip to compass AR (room calibrated)`;
-      compassBtn.addEventListener('click', () => jumpToStage(stages, stage, 'compass'));
-      grid.appendChild(compassBtn);
-    }
+
   }
 }
 
@@ -87,11 +78,6 @@ function jumpToStage(stages, stage, phase) {
   if (phase) {
     if (!state.stagePhase) state.stagePhase = {};
     state.stagePhase[stage.id] = phase;
-
-    // AR scan compass phase: set a fake calibration heading (north)
-    if (phase === 'compass') {
-      state.arCalibrationHeading = 0;
-    }
   } else {
     // Clear any saved phase so briefing plays
     if (state.stagePhase) delete state.stagePhase[stage.id];

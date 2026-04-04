@@ -2146,29 +2146,4 @@ body.banner-active .arscan-layout {
   letter-spacing: 0.1em;
 }
 
-/* Compass indicator */
-.arscan-compass {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  background: rgba(13, 13, 20, 0.85);
-  backdrop-filter: blur(4px);
-  padding: 4px 10px;
-  border: 1px solid var(--accent-green);
-  border-radius: 4px;
-  z-index: 15;
-}
 
-.arscan-compass-icon {
-  font-size: 1.2rem;
-}
-
-.arscan-compass-heading {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--accent-green);
-  letter-spacing: 0.1em;
-}

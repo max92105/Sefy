@@ -1,19 +1,17 @@
 /**
- * Screen: AR Scanner — camera + compass-based environmental analysis puzzle.
+ * Screen: AR Scanner — camera-based environmental analysis puzzle.
  *
  * Phase 1 — SEFY Briefing (video + typed text).
- * Phase 2 — Room scan: camera feed running + jsQR scanning for calibration QR.
- *   Player walks through the house with camera open. The screen shows
- *   "Recherche du signal…" until they enter the right room and point
- *   the camera at a small calibration QR (SEFY:ROOM:MAIN).
- * Phase 3 — Compass-anchored AR: device orientation used to anchor objects
- *   at specific compass bearings relative to the calibration heading.
- *   Objects appear on the camera feed when the phone points within ±20°
- *   of their assigned direction. Player taps to collect.
+ * Phase 2 — Camera scanning: player walks through the house with camera open.
+ *   Each hidden object has its own QR code placed in a specific room.
+ *   When the camera detects a QR, the corresponding object appears as an
+ *   overlay on the camera feed. Player taps to collect.
  *
- * QR calibration code: SEFY:ROOM:MAIN
- *   Place this QR where you want "forward" (0°) to be in the room.
- *   All object bearings are offsets from this forward direction.
+ * QR codes:
+ *   SEFY:AR:BOMB   → bomb found (place in room where bomb "is")
+ *   SEFY:AR:CARD   → tier-3 card found (place on a desk in another room)
+ *
+ * Both collected → puzzle solved → advance to defusal.
  */
 
 import { delay } from '../ui.js';
@@ -36,38 +34,26 @@ const AR_INTRO_SEQUENCE = [
   { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_confirmed_sefy.wav' },
   { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
   { time: 2000,   type: 'text',  text: 'Activation du scanner environnemental…' },
-  { time: 4000,   type: 'text',  text: 'Explorez l\'installation avec votre caméra. Je vous indiquerai quand le signal sera détecté.' },
+  { time: 4000,   type: 'text',  text: 'Explorez l\'installation avec votre caméra. Je vous indiquerai quand un objet sera détecté.' },
   { time: 7000,   type: 'action', action: 'startScanner' },
 ];
 
-/* ───────── Room calibration QR ───────── */
-
-const ROOM_QR_CODE = 'SEFY:ROOM:MAIN';
-
-/* ───────── AR Objects to find ─────────
- * `bearing` = degrees offset from calibration heading (0° = where QR was scanned).
- *   e.g. 180 = directly behind the QR, 90 = right of QR.
- * `tolerance` = ± degrees window where object is visible (default 20).
- */
+/* ───────── AR Objects — each tied to a QR code ───────── */
 
 const AR_OBJECTS = [
   {
     id: 'bomb',
+    qrCode: 'SEFY:AR:BOMB',
     label: 'BOMBE DÉTECTÉE',
     icon: '💣',
     description: 'Dispositif explosif localisé. Accès tier 3 requis pour le désamorçage.',
-    bearing: 180,     // behind the calibration QR
-    tolerance: 20,
-    required: true,
   },
   {
     id: 'tier3-card',
+    qrCode: 'SEFY:AR:CARD',
     label: 'CARTE ACCÈS TIER 3',
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 3 obtenue.',
-    bearing: 90,      // to the right of the QR
-    tolerance: 20,
-    required: true,
   },
 ];
 
@@ -111,7 +97,7 @@ export function createARScanScreen() {
         </div>
       </div>
 
-      <!-- Phase 2 & 3: AR Camera Scanner -->
+      <!-- Phase 2: AR Camera Scanner -->
       <div class="arscan-scanner hidden" id="arscan-scanner">
         <div class="arscan-camera-wrap">
           <video id="arscan-camera" autoplay playsinline muted></video>
@@ -122,21 +108,15 @@ export function createARScanScreen() {
             <div class="arscan-scan-line" id="arscan-scan-line"></div>
           </div>
 
-          <!-- Searching indicator (Phase 2 — before room found) -->
+          <!-- Searching indicator -->
           <div class="arscan-searching" id="arscan-searching">
             <div class="arscan-searching-icon">📡</div>
             <div class="arscan-searching-text">Recherche du signal…</div>
             <div class="arscan-searching-hint">Explorez l'installation avec la caméra</div>
           </div>
 
-          <!-- AR object markers (Phase 3 — placed by compass) -->
-          <div class="arscan-markers" id="arscan-markers"></div>
-
-          <!-- Compass indicator -->
-          <div class="arscan-compass hidden" id="arscan-compass">
-            <span class="arscan-compass-icon">🧭</span>
-            <span class="arscan-compass-heading" id="arscan-heading">--°</span>
-          </div>
+          <!-- AR object marker (shown when QR detected) -->
+          <div class="arscan-markers hidden" id="arscan-markers"></div>
         </div>
 
         <!-- Status bar -->
@@ -171,21 +151,12 @@ export function createARScanScreen() {
 
 let cameraStream = null;
 let scanLoop = null;
-let orientationHandler = null;
 let foundObjects = [];
-let calibrationHeading = null;  // compass heading when QR was scanned
-let currentHeading = null;      // live compass heading
 
 /* ═══════════════  Public entry  ═══════════════ */
 
 export function startARScan(stage, state, onSolved) {
   foundObjects = state.arFound || [];
-
-  // If room already calibrated, skip to compass phase
-  if (state.stagePhase && state.stagePhase[stage.id] === 'compass') {
-    calibrationHeading = state.arCalibrationHeading ?? null;
-    return resumeARCompass(stage, state, onSolved);
-  }
 
   // If briefing already watched, skip to scanning phase
   if (state.stagePhase && state.stagePhase[stage.id] === 'scanner') {
@@ -221,22 +192,7 @@ function resumeARScanner(stage, state, onSolved) {
   if (scannerEl) scannerEl.classList.remove('hidden');
 
   const abortCtrl = { aborted: false, currentAudio: null };
-  transitionToRoomScan(stage, state, onSolved, abortCtrl);
-
-  return () => {
-    abortCtrl.aborted = true;
-    stopARCamera();
-  };
-}
-
-function resumeARCompass(stage, state, onSolved) {
-  const introEl   = document.getElementById('arscan-intro');
-  const scannerEl = document.getElementById('arscan-scanner');
-  if (introEl)   introEl.classList.add('hidden');
-  if (scannerEl) scannerEl.classList.remove('hidden');
-
-  const abortCtrl = { aborted: false, currentAudio: null };
-  transitionToCompassAR(stage, state, onSolved, abortCtrl);
+  transitionToScanner(stage, state, onSolved, abortCtrl);
 
   return () => {
     abortCtrl.aborted = true;
@@ -279,7 +235,7 @@ async function runIntroSequence(sequence, currentLine, abort, stage, state, onSo
       }
 
       if (event.action === 'startScanner') {
-        transitionToRoomScan(stage, state, onSolved, abort);
+        transitionToScanner(stage, state, onSolved, abort);
         return;
       }
     }
@@ -377,9 +333,9 @@ function requestCameraPermission() {
     .catch(() => 'denied');
 }
 
-/* ═══════════════  Phase 2 — Room Scan (QR detection)  ═══════════════ */
+/* ═══════════════  Phase 2 — Camera Scanner  ═══════════════ */
 
-async function transitionToRoomScan(stage, state, onSolved, abort) {
+async function transitionToScanner(stage, state, onSolved, abort) {
   const introEl   = document.getElementById('arscan-intro');
   const scannerEl = document.getElementById('arscan-scanner');
   if (introEl)   introEl.classList.add('hidden');
@@ -394,14 +350,8 @@ async function transitionToRoomScan(stage, state, onSolved, abort) {
   const avatarVideo = document.getElementById('arscan-avatar-video');
   if (avatarVideo) { avatarVideo.pause(); avatarVideo.currentTime = 0; }
 
-  // Show searching indicator, hide compass
-  const searchingEl = document.getElementById('arscan-searching');
-  const compassEl   = document.getElementById('arscan-compass');
-  if (searchingEl) searchingEl.classList.remove('hidden');
-  if (compassEl)   compassEl.classList.add('hidden');
-
   renderObjectStatus();
-  showFeedback('Explorez l\'installation pour trouver la zone d\'analyse…', 'info');
+  updateSearchingVisibility();
 
   // Load jsQR
   try {
@@ -426,12 +376,20 @@ async function transitionToRoomScan(stage, state, onSolved, abort) {
     return;
   }
 
-  // Start device orientation tracking early
-  startOrientationTracking();
+  // Check if already all found (resume case)
+  const remaining = AR_OBJECTS.filter(o => !foundObjects.includes(o.id));
+  if (remaining.length === 0) {
+    completeScan(stage, state, onSolved);
+    return;
+  }
 
-  // QR scan loop — looking for the room calibration code
+  showFeedback('Explorez l\'installation pour détecter les signaux…', 'info');
+
+  let cooldown = false;
+
+  // QR scan loop
   scanLoop = setInterval(() => {
-    if (abort.aborted || !cameraVideo || cameraVideo.readyState < 2) return;
+    if (abort.aborted || !cameraVideo || cameraVideo.readyState < 2 || cooldown) return;
 
     canvas.width  = cameraVideo.videoWidth;
     canvas.height = cameraVideo.videoHeight;
@@ -439,220 +397,99 @@ async function transitionToRoomScan(stage, state, onSolved, abort) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
-
     if (!qr || !qr.data) return;
 
-    if (qr.data === ROOM_QR_CODE) {
-      // Room found! Calibrate compass heading
-      calibrationHeading = currentHeading;
-      state.arCalibrationHeading = calibrationHeading;
+    // Match QR to an AR object
+    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data);
+    if (!obj) return;
 
-      // Stop QR scanning
-      if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-
-      playSFX('assets/audio/zone_found.wav');
-      showFeedback('Zone d\'analyse confirmée ! Calibration en cours…', 'success');
-
-      // Transition to compass AR after a brief pause
-      setTimeout(() => {
-        if (!abort.aborted) {
-          transitionToCompassAR(stage, state, onSolved, abort);
-        }
-      }, 2000);
+    // Already collected?
+    if (foundObjects.includes(obj.id)) {
+      showFeedback(`${obj.label} — déjà collecté.`, 'info');
+      cooldown = true;
+      setTimeout(() => { cooldown = false; }, 3000);
+      return;
     }
+
+    // Object detected — show it!
+    cooldown = true;
+    playSFX('assets/audio/zone_found.wav');
+    showObjectOnCamera(obj, stage, state, onSolved, abort, () => { cooldown = false; });
   }, 300);
 }
 
-/* ═══════════════  Device Orientation  ═══════════════ */
+/* ───────── Show object on camera feed ───────── */
 
-function startOrientationTracking() {
-  // iOS 13+ requires permission
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          bindOrientationListener();
-        }
-      })
-      .catch(() => {});
-  } else {
-    bindOrientationListener();
-  }
-}
-
-function bindOrientationListener() {
-  orientationHandler = (e) => {
-    // webkitCompassHeading (iOS) or alpha (Android)
-    if (e.webkitCompassHeading != null) {
-      currentHeading = e.webkitCompassHeading;
-    } else if (e.alpha != null) {
-      // Android: alpha is 0-360 but counts counterclockwise from north
-      // Convert to compass heading (clockwise from north)
-      currentHeading = (360 - e.alpha) % 360;
-    }
-
-    // Update compass display
-    const headingEl = document.getElementById('arscan-heading');
-    if (headingEl && currentHeading != null) {
-      headingEl.textContent = `${Math.round(currentHeading)}°`;
-    }
-  };
-  window.addEventListener('deviceorientation', orientationHandler, true);
-}
-
-function stopOrientationTracking() {
-  if (orientationHandler) {
-    window.removeEventListener('deviceorientation', orientationHandler, true);
-    orientationHandler = null;
-  }
-}
-
-/**
- * Get the relative bearing from the calibration heading to the current heading.
- * Returns 0-360 where 0 = same direction as the QR code.
- */
-function getRelativeBearing() {
-  if (calibrationHeading == null || currentHeading == null) return null;
-  return ((currentHeading - calibrationHeading) % 360 + 360) % 360;
-}
-
-/**
- * Check if current heading is within tolerance of a target bearing.
- */
-function isAimedAt(targetBearing, tolerance) {
-  const relative = getRelativeBearing();
-  if (relative == null) return false;
-  const diff = Math.abs(((relative - targetBearing) + 180) % 360 - 180);
-  return diff <= tolerance;
-}
-
-/* ═══════════════  Phase 3 — Compass-Anchored AR  ═══════════════ */
-
-async function transitionToCompassAR(stage, state, onSolved, abort) {
-  // Save phase
-  if (!state.stagePhase) state.stagePhase = {};
-  state.stagePhase[stage.id] = 'compass';
-  saveState(state);
-
-  // Hide searching, show compass
+function showObjectOnCamera(obj, stage, state, onSolved, abort, onDone) {
   const searchingEl = document.getElementById('arscan-searching');
-  const compassEl   = document.getElementById('arscan-compass');
+  const markersEl   = document.getElementById('arscan-markers');
+
+  // Hide searching, show marker
   if (searchingEl) searchingEl.classList.add('hidden');
-  if (compassEl)   compassEl.classList.remove('hidden');
+  if (markersEl)   markersEl.classList.remove('hidden');
 
-  // Ensure camera is running (in case of resume)
-  const cameraVideo = document.getElementById('arscan-camera');
-  if (!cameraStream || !cameraStream.active) {
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
-      if (cameraVideo) cameraVideo.srcObject = cameraStream;
-    } catch {
-      showFeedback('Erreur : accès caméra refusé.', 'error');
-      return;
-    }
+  if (markersEl) {
+    markersEl.innerHTML = '';
+
+    const marker = document.createElement('div');
+    marker.className = 'arscan-marker arscan-marker-pulse';
+    marker.style.left = '50%';
+    marker.style.top = '45%';
+    marker.innerHTML = `
+      <div class="arscan-marker-ring"></div>
+      <div class="arscan-marker-icon">${obj.icon}</div>
+      <div class="arscan-marker-label">${obj.label}</div>
+      <div class="arscan-marker-tap">APPUYEZ POUR ANALYSER</div>
+    `;
+
+    marker.addEventListener('click', () => {
+      collectObject(obj, stage, state, onSolved);
+    });
+
+    markersEl.appendChild(marker);
   }
 
-  // Ensure orientation tracking
-  if (!orientationHandler) startOrientationTracking();
+  showFeedback(`${obj.label} — Appuyez pour analyser !`, 'success');
 
-  renderObjectStatus();
-  showFeedback('Scannez la pièce en déplaçant votre téléphone pour détecter les objets.', 'info');
-
-  // Check remaining objects
-  const remaining = AR_OBJECTS.filter(o => o.required && !foundObjects.includes(o.id));
-  if (remaining.length === 0) {
-    completeScan(stage, state, onSolved);
-    return;
-  }
-
-  // Start compass tracking loop
-  startCompassLoop(stage, state, onSolved, abort);
-}
-
-let compassLoop = null;
-let visibleObject = null;
-
-function startCompassLoop(stage, state, onSolved, abort) {
-  const markersEl = document.getElementById('arscan-markers');
-
-  compassLoop = setInterval(() => {
+  // If they move the camera away (don't tap within 10s), hide and resume scanning
+  setTimeout(() => {
     if (abort.aborted) return;
-
-    const remaining = AR_OBJECTS.filter(o => o.required && !foundObjects.includes(o.id));
-    if (remaining.length === 0) return;
-
-    // Find which object (if any) the phone is currently aimed at
-    let aimed = null;
-    for (const obj of remaining) {
-      if (isAimedAt(obj.bearing, obj.tolerance)) {
-        aimed = obj;
-        break;
-      }
+    if (!foundObjects.includes(obj.id)) {
+      if (markersEl) { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
+      updateSearchingVisibility();
+      showFeedback('Signal perdu. Continuez à scanner…', 'info');
     }
-
-    if (aimed && visibleObject?.id !== aimed.id) {
-      // Show this object's marker
-      visibleObject = aimed;
-      showMarker(aimed, stage, state, onSolved, abort);
-      showFeedback(`Signal détecté : ${aimed.label} — Appuyez pour analyser !`, 'info');
-      playSFX('assets/audio/zone_warm.wav');
-    } else if (!aimed && visibleObject) {
-      // Moved away — hide marker
-      visibleObject = null;
-      if (markersEl) markersEl.innerHTML = '';
-      showFeedback('Scannez la pièce en déplaçant votre téléphone…', 'info');
-    }
-  }, 200);
+    onDone();
+  }, 10000);
 }
 
-function showMarker(obj, stage, state, onSolved, abort) {
-  const markersEl = document.getElementById('arscan-markers');
-  if (!markersEl) return;
+/* ───────── Collect object ───────── */
 
-  markersEl.innerHTML = '';
+function collectObject(obj, stage, state, onSolved) {
+  if (foundObjects.includes(obj.id)) return;
 
-  const marker = document.createElement('div');
-  marker.className = 'arscan-marker arscan-marker-pulse';
-  marker.style.left = '50%';
-  marker.style.top = '45%';
-  marker.innerHTML = `
-    <div class="arscan-marker-ring"></div>
-    <div class="arscan-marker-icon">${obj.icon}</div>
-    <div class="arscan-marker-label">${obj.label}</div>
-  `;
-
-  marker.addEventListener('click', () => {
-    if (foundObjects.includes(obj.id)) return;
-    collectObject(obj, stage, state, onSolved, abort);
-  });
-
-  markersEl.appendChild(marker);
-}
-
-function collectObject(obj, stage, state, onSolved, abort) {
   foundObjects.push(obj.id);
   if (!state.arFound) state.arFound = [];
   state.arFound.push(obj.id);
   saveState(state);
 
-  visibleObject = null;
   playSFX('assets/audio/zone_found.wav');
   showObjectReveal(obj);
   renderObjectStatus();
 
-  // Clear markers
+  // Hide marker
   const markersEl = document.getElementById('arscan-markers');
-  if (markersEl) markersEl.innerHTML = '';
+  if (markersEl) { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
 
-  // Check if all required objects found
-  const allFound = AR_OBJECTS.filter(o => o.required).every(o => foundObjects.includes(o.id));
+  // Check if all objects found
+  const allFound = AR_OBJECTS.every(o => foundObjects.includes(o.id));
   if (allFound) {
     setTimeout(() => completeScan(stage, state, onSolved), 3000);
   } else {
-    showFeedback('Objet collecté ! Continuez à scanner…', 'success');
+    updateSearchingVisibility();
+    setTimeout(() => {
+      showFeedback('Objet collecté ! Continuez à explorer…', 'success');
+    }, 2600);
   }
 }
 
@@ -664,19 +501,33 @@ function completeScan(stage, state, onSolved) {
   setTimeout(() => onSolved(stage), 3000);
 }
 
+/* ───────── Searching indicator visibility ───────── */
+
+function updateSearchingVisibility() {
+  const searchingEl = document.getElementById('arscan-searching');
+  const remaining = AR_OBJECTS.filter(o => !foundObjects.includes(o.id));
+  if (searchingEl) {
+    if (remaining.length > 0) {
+      searchingEl.classList.remove('hidden');
+    } else {
+      searchingEl.classList.add('hidden');
+    }
+  }
+}
+
 /* ───────── Object status display ───────── */
 
 function renderObjectStatus() {
   const countEl   = document.getElementById('arscan-count');
   const objectsEl = document.getElementById('arscan-objects');
 
-  const total = AR_OBJECTS.filter(o => o.required).length;
+  const total = AR_OBJECTS.length;
   const found = foundObjects.length;
 
   if (countEl) countEl.textContent = `${found} / ${total}`;
 
   if (objectsEl) {
-    objectsEl.innerHTML = AR_OBJECTS.filter(o => o.required).map(obj => {
+    objectsEl.innerHTML = AR_OBJECTS.map(obj => {
       const isFound = foundObjects.includes(obj.id);
       return `
         <div class="arscan-obj ${isFound ? 'found' : 'missing'}">
@@ -733,9 +584,6 @@ function showFeedback(msg, type = 'info') {
 
 function stopARCamera() {
   if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-  if (compassLoop) { clearInterval(compassLoop); compassLoop = null; }
-  stopOrientationTracking();
-  visibleObject = null;
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;

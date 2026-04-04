@@ -17,11 +17,20 @@
 import { delay } from '../ui.js';
 import { playSFX } from '../ui.js';
 import { solvePuzzle, saveState } from '../state.js';
+import { typewriter } from '../typewriter.js';
+import { runIntroSequence } from '../intro-runner.js';
+
+/* ───────── Media paths (easy to change) ───────── */
+const MEDIA = {
+  video: 'assets/video/sefy_avatar.mp4',
+  audioIntro: 'assets/audio/geo_intro_sefy.wav',
+  audioConfirmed: 'assets/audio/geo_confirmed_sefy.wav',
+};
 
 /* ───────── Intro sequence ───────── */
 
 const AR_INTRO_SEQUENCE = [
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
+  { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
   { time: 0,      type: 'text',  text: 'Module d\'analyse environnementale réactivé.' },
   { time: 4000,   type: 'text',  text: 'Nous pouvons maintenant trouver la bombe.' },
   { time: 8000,   type: 'text',  text: 'Mais je vais avoir besoin d\'un accès tier 3 pour pouvoir la désamorcer.' },
@@ -31,7 +40,7 @@ const AR_INTRO_SEQUENCE = [
   { time: 30000,  type: 'text',  text: 'Autorisez l\'accès à la caméra pour activer le scanner environnemental.' },
   { time: 31000,  type: 'action', action: 'requestCamera' },
   // — pauses until camera granted, then time resets to 0 —
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_confirmed_sefy.wav' },
+  { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
   { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
   { time: 2000,   type: 'text',  text: 'Activation du scanner environnemental…' },
   { time: 4000,   type: 'text',  text: 'Explorez l\'installation avec votre caméra. Je vous indiquerai quand un objet sera détecté.' },
@@ -95,12 +104,11 @@ export function createARScanScreen() {
       <div class="arscan-intro" id="arscan-intro">
         <div class="briefing-center" id="arscan-intro-center">
           <video id="arscan-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
-            <source src="assets/video/sefy_avatar.mp4" type="video/mp4">
+            <source src="${MEDIA.video}" type="video/mp4">
           </video>
           <div class="briefing-bottom">
             <div class="briefing-terminal" id="arscan-terminal">
               <span class="briefing-terminal-line" id="arscan-current-line"></span>
-              <span class="terminal-cursor" id="arscan-cursor">_</span>
             </div>
           </div>
         </div>
@@ -193,7 +201,20 @@ export function startARScan(stage, state, onSolved) {
   if (currentLine) currentLine.textContent = '';
 
   const abortCtrl = { aborted: false, currentAudio: null };
-  runIntroSequence(AR_INTRO_SEQUENCE, currentLine, abortCtrl, stage, state, onSolved);
+
+  const actionHandlers = {
+    async requestCamera(event, abort) {
+      const granted = await requestCameraWithRetry(currentLine, abort);
+      if (abort.aborted || !granted) return 'stop';
+      return 'reset-clock';
+    },
+    startScanner() {
+      transitionToScanner(stage, state, onSolved, abortCtrl);
+      return 'stop';
+    },
+  };
+
+  runIntroSequence(AR_INTRO_SEQUENCE, currentLine, abortCtrl, actionHandlers);
 
   return () => {
     abortCtrl.aborted = true;
@@ -218,69 +239,11 @@ function resumeARScanner(stage, state, onSolved) {
   };
 }
 
-/* ═══════════════  Phase 1 — Intro Runner  ═══════════════ */
-
-async function runIntroSequence(sequence, currentLine, abort, stage, state, onSolved) {
-  let segmentStart = Date.now();
-
-  for (const event of sequence) {
-    if (abort.aborted) return;
-
-    const elapsed = Date.now() - segmentStart;
-    const waitMs = event.time - elapsed;
-    if (waitMs > 0) await delay(waitMs);
-    if (abort.aborted) return;
-
-    if (event.type === 'text') {
-      await typeText(currentLine, event.text);
-    }
-
-    if (event.type === 'action') {
-      if (event.action === 'playAudio') {
-        if (abort.currentAudio) { abort.currentAudio.pause(); }
-        const audio = new Audio(event.src);
-        audio.volume = 0.8;
-        abort.currentAudio = audio;
-        await ensureAudioPlays(audio, abort);
-        segmentStart = Date.now() - event.time;
-      }
-
-      if (event.action === 'requestCamera') {
-        const granted = await requestCameraWithRetry(currentLine, abort);
-        if (abort.aborted) return;
-        if (!granted) return;
-        segmentStart = Date.now();
-      }
-
-      if (event.action === 'startScanner') {
-        transitionToScanner(stage, state, onSolved, abort);
-        return;
-      }
-    }
-  }
-}
-
-function ensureAudioPlays(audio, abort) {
-  return new Promise(resolve => {
-    audio.play().then(resolve).catch(() => {
-      const EVENTS = ['click', 'touchstart', 'touchend', 'pointerdown', 'pointerup', 'keydown', 'mousedown'];
-      const resume = () => {
-        for (const e of EVENTS) document.removeEventListener(e, resume, true);
-        if (abort.aborted || abort.currentAudio !== audio) { resolve(); return; }
-        audio.play().then(resolve).catch(resolve);
-      };
-      for (const e of EVENTS) document.addEventListener(e, resume, { capture: true, passive: true });
-    });
-  });
-}
+/* ═══════════════  Phase 1 helpers  ═══════════════ */
 
 async function typeText(el, text) {
   if (!el) return;
-  el.textContent = '';
-  for (let i = 0; i < text.length; i++) {
-    el.textContent += text[i];
-    await delay(20 + Math.random() * 20);
-  }
+  await typewriter(el, text, 25);
 }
 
 /* ═══════════════  Camera Permission  ═══════════════ */

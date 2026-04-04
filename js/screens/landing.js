@@ -2,7 +2,8 @@
  * Screen: SEFY Landing — logo reveal + typewriter subtitles + launch button.
  */
 
-import { typewriter, delay } from '../ui.js';
+import { typewriter } from '../typewriter.js';
+import { delay } from '../ui.js';
 
 /** Create the landing screen DOM */
 export function createLandingScreen() {
@@ -35,17 +36,13 @@ export async function runLanding(onLaunch) {
   await delay(1200);
 
   if (line1) {
-    line1.classList.add('typing');
     await typewriter(line1, 'Sécurité de l\'Établissement compromise', 30);
-    line1.classList.remove('typing');
   }
 
   await delay(400);
 
   if (line2) {
-    line2.classList.add('typing');
     await typewriter(line2, 'Intervention humaine requise.', 30);
-    line2.classList.remove('typing');
   }
 
   await delay(300);

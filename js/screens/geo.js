@@ -16,11 +16,18 @@
 import { delay } from '../ui.js';
 import { solvePuzzle, saveState } from '../state.js';
 import { playSFX } from '../ui.js';
+import { typewriter } from '../typewriter.js';
+import { runIntroSequence } from '../intro-runner.js';
 
-/* ───────── Configurable intro sequence (sync with audio) ───────── */
+/* ───────── Media paths (easy to change) ───────── */
+const MEDIA = {
+  video: 'assets/video/sefy_avatar.mp4',
+  audioIntro: 'assets/audio/geo_intro_sefy.wav',
+  audioConfirmed: 'assets/audio/geo_confirmed_sefy.wav',
+};
 
 /* ───────── Configurable intro sequences per stage ─────────
- *  `time` = absolute ms from segment start (like BRIEFING_SEQUENCE).
+ *  `time` = absolute ms from segment start.
  *  The sequence resets to 0 after `requestLocation` resolves,
  *  so Audio 2 times are relative to permission being granted.
  */
@@ -28,7 +35,7 @@ import { playSFX } from '../ui.js';
 const GEO_INTRO_SEQUENCES = {
   'scanner-reboot': [
     // ── Audio 1: module activation ──
-    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
+    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
     { time: 0,      type: 'text',  text: 'Analyse des modules en cours...' },
     { time: 3000,   type: 'text',  text: 'Activation du module de géolocalisation.' },
     { time: 6000,   type: 'text',  text: 'Activation réussie.' },
@@ -42,7 +49,7 @@ const GEO_INTRO_SEQUENCES = {
     { time: 30000,  type: 'action', action: 'requestLocation' },
     // — sequence pauses here until permission is granted, then time resets to 0 —
     // ── Audio 2: post-permission confirmation ──
-    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/geo_confirmed_sefy.wav' },
+    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
     { time: 0,   type: 'text',  text: 'Position confirmée.' },
     { time: 2000,   type: 'text',  text: 'Navigation en cours… je vous guide.' },
     { time: 5000,   type: 'action', action: 'startTracking' },
@@ -75,13 +82,12 @@ export function createGeoScreen() {
       <div class="geo-intro" id="geo-intro">
         <div class="briefing-center" id="geo-intro-center">
           <video id="geo-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
-            <source src="assets/video/sefy_avatar.mp4" type="video/mp4">
+            <source src="${MEDIA.video}" type="video/mp4">
           </video>
 
           <div class="briefing-bottom">
             <div class="briefing-terminal" id="geo-terminal">
               <span class="briefing-terminal-line" id="geo-current-line"></span>
-              <span class="terminal-cursor" id="geo-cursor">_</span>
             </div>
           </div>
         </div>
@@ -160,7 +166,19 @@ export function startGeoTracker(stage, state, onSolved) {
   // ── Run intro sequence (sequential, async) ──
   const abortCtrl = { aborted: false, currentAudio: null };
 
-  runIntroSequence(GEO_INTRO_SEQUENCES[stage.id] || GEO_INTRO_SEQUENCES['scanner-reboot'], currentLine, abortCtrl, stage, state, onSolved);
+  const actionHandlers = {
+    async requestLocation(event, abort) {
+      const granted = await requestLocationWithRetry(currentLine, abort);
+      if (abort.aborted || !granted) return 'stop';
+      return 'reset-clock';
+    },
+    startTracking() {
+      transitionToTracker(stage, state, onSolved);
+      return 'stop';
+    },
+  };
+
+  runIntroSequence(GEO_INTRO_SEQUENCES[stage.id] || GEO_INTRO_SEQUENCES['scanner-reboot'], currentLine, abortCtrl, actionHandlers);
 
   // ── Cleanup ──
   return () => {
@@ -185,80 +203,11 @@ function resumeGeoTracker(stage, state, onSolved) {
   };
 }
 
-/* ═══════════════  Phase 1 — Sequential Intro Runner  ═══════════════ */
+/* ═══════════════  Phase 1 helpers  ═══════════════ */
 
-async function runIntroSequence(sequence, currentLine, abort, stage, state, onSolved) {
-  let segmentStart = Date.now(); // resets after blocking actions
-
-  for (const event of sequence) {
-    if (abort.aborted) return;
-
-    // Wait until the absolute time for this event
-    const elapsed = Date.now() - segmentStart;
-    const waitMs = event.time - elapsed;
-    if (waitMs > 0) await delay(waitMs);
-    if (abort.aborted) return;
-
-    if (event.type === 'text') {
-      await typeText(currentLine, event.text);
-    }
-
-    if (event.type === 'action') {
-      if (event.action === 'playAudio') {
-        // Stop any previous audio, start the new track
-        if (abort.currentAudio) { abort.currentAudio.pause(); }
-        const audio = new Audio(event.src);
-        audio.volume = 0.8;
-        abort.currentAudio = audio;
-        // Await until audio actually plays — blocks sequence if autoplay is denied
-        await ensureAudioPlays(audio, abort);
-        // Re-anchor clock so absolute times start from when audio began
-        segmentStart = Date.now() - event.time;
-      }
-
-      if (event.action === 'requestLocation') {
-        const granted = await requestLocationWithRetry(currentLine, abort);
-        if (abort.aborted) return;
-        if (!granted) return;
-        // Reset clock — times after this are relative to permission granted
-        segmentStart = Date.now();
-      }
-
-      if (event.action === 'startTracking') {
-        transitionToTracker(stage, state, onSolved);
-        return;
-      }
-    }
-  }
-}
-
-/**
- * Try to play audio. If autoplay is blocked, wait for any user gesture
- * before resolving — the sequence stays paused until audio starts.
- */
-function ensureAudioPlays(audio, abort) {
-  return new Promise(resolve => {
-    audio.play().then(resolve).catch(() => {
-      // Autoplay blocked — wait for a gesture
-      const EVENTS = ['click', 'touchstart', 'touchend', 'pointerdown', 'pointerup', 'keydown', 'mousedown'];
-      const resume = () => {
-        for (const e of EVENTS) document.removeEventListener(e, resume, true);
-        if (abort.aborted || abort.currentAudio !== audio) { resolve(); return; }
-        audio.play().then(resolve).catch(resolve);
-      };
-      for (const e of EVENTS) document.addEventListener(e, resume, { capture: true, passive: true });
-    });
-  });
-}
-
-/** Typewriter a line of text into the element */
 async function typeText(el, text) {
   if (!el) return;
-  el.textContent = '';
-  for (let i = 0; i < text.length; i++) {
-    el.textContent += text[i];
-    await delay(20 + Math.random() * 20);
-  }
+  await typewriter(el, text, 25);
 }
 
 /**

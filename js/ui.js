@@ -1,5 +1,5 @@
 /**
- * UI Helpers — screen transitions, modals, typewriter, audio
+ * UI Helpers — screen transitions, modals, audio
  */
 
 // ---- Screen Management ----
@@ -58,30 +58,6 @@ export function initModals() {
     btn.addEventListener('click', () => {
       btn.closest('.modal')?.classList.add('hidden');
     });
-  });
-}
-
-// ---- Typewriter Effect ----
-
-/**
- * Animate text character by character into an element.
- * Returns a promise that resolves when done.
- */
-export function typewriter(element, text, speed = 35) {
-  return new Promise(resolve => {
-    element.textContent = '';
-    element.classList.add('typewriter');
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < text.length) {
-        element.textContent += text[i];
-        i++;
-      } else {
-        clearInterval(interval);
-        element.classList.remove('typewriter');
-        resolve();
-      }
-    }, speed);
   });
 }
 

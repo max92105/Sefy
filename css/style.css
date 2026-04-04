@@ -129,6 +129,7 @@ body::after {
 .terminal-lines {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.15rem;
   max-width: 700px;
   padding-bottom: var(--space-md);
@@ -141,9 +142,6 @@ body::after {
   line-height: 1.6;
   color: var(--accent-green);
   white-space: pre-wrap;
-  opacity: 0;
-  transform: translateY(4px);
-  animation: termLineIn 0.3s ease forwards;
 }
 
 .terminal-line.error {
@@ -164,21 +162,7 @@ body::after {
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
-@keyframes termLineIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-/* Blinking cursor at the bottom */
-.terminal-cursor {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--accent-green);
-  animation: blink-caret 0.6s step-end infinite;
-  margin-top: var(--space-xs);
-}
 
 /* Screen shake for error moments */
 .screen-shake {
@@ -370,12 +354,16 @@ body::after {
   text-transform: uppercase;
   opacity: 1;
   min-height: 1.4em;
-  border-right: 2px solid transparent;
 }
 
-.boot-subtitle.typing {
-  border-right-color: currentColor;
-  animation: blink-caret 0.6s step-end infinite;
+.typing::after {
+  content: '|';
+  animation: cursorBlink 0.6s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .boot-subtitle-line1 {
@@ -396,17 +384,6 @@ body::after {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* --- Typewriter Effect --- */
-.typewriter {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--accent-green);
-  white-space: nowrap;
-  overflow: hidden;
-  border-right: 2px solid var(--accent-green);
-  animation: blink-caret 0.75s step-end infinite;
 }
 
 @keyframes blink-caret {
@@ -642,11 +619,12 @@ body.banner-active #screen-codeentry {
 }
 
 .agent-photo {
-  width: 120px;
-  height: 120px;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid var(--accent-green);
+  border: 3px solid var(--accent-green);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.15);
   background: var(--bg-dark);
 }
 
@@ -727,13 +705,8 @@ body.banner-active #screen-codeentry {
   }
 
   .agent-photo {
-    width: 90px;
-    height: 90px;
-  }
-
-  .agent-photo {
-    width: 60px;
-    height: 60px;
+    width: 140px;
+    height: 140px;
   }
 }
 

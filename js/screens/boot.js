@@ -1,16 +1,23 @@
 /**
- * Screen: Terminal Boot Sequence — typewritten lines with glitch effects.
+ * Screen: Terminal Boot Sequence — typewritten lines.
  */
 
+import { typewriter } from '../typewriter.js';
 import { delay } from '../ui.js';
 
 const TERMINAL_LINES = [
-  { text: 'DÉMARRAGE DU SYSTÈME…', delay: 800, cls: '' },
-  { text: 'RÉCUPÉRATION DES DONNÉES', delay: 1200, cls: '' },
-  { text: 'SIGNAL INTERMITTENT…', delay: 1000, cls: 'warning' },
-  { text: 'ERREUR… ERREUR…', delay: 600, cls: 'error', shake: true, glitch: true },
-  { text: 'PROTOCOLE D\'URGENCE ACTIVÉ…', delay: 1200, cls: 'warning' },
-  { text: 'SIGNAL DÉTECTÉ…', delay: 1000, cls: 'bright' },
+  { text: 'DÉMARRAGE DU SYSTÈME ET RÉCUPÉRATION DES DONNÉES', delay: 1500, speed: 30, cls: '' },
+  { text: 'SIGNAL INTERMITTENT', delay: 1000, speed: 30, cls: 'warning' },
+  { text: 'TENTATIVE D\'ACTIVATION DU PROTOCOLE D\'URGENCE', delay: 1500, speed: 30, cls: 'warning' },
+  { text: 'TANTATIVE 1', delay: 800, speed: 30, cls: '' },
+  { text: '...', delay: 1500, speed: 200, cls: '' },
+  { text: 'ERREUR', delay: 600, speed: 30, cls: 'error' },
+  { text: 'TANTATIVE 2', delay: 800, speed: 30, cls: '' },
+  { text: '...', delay: 1500, speed: 200, cls: '' },
+  { text: 'ERREUR', delay: 600, speed: 30, cls: 'error' },
+  { text: 'TANTATIVE 3', delay: 800, speed: 30, cls: '' },
+  { text: '...', delay: 1500, speed: 200, cls: '' },
+  { text: 'SIGNAL DÉTECTÉ', delay: 1000, speed: 30, cls: '' },
 ];
 
 /** Create the terminal screen DOM */
@@ -21,7 +28,6 @@ export function createTerminalScreen() {
   section.innerHTML = `
     <div class="terminal-screen">
       <div class="terminal-lines" id="terminal-lines"></div>
-      <div class="terminal-cursor" id="terminal-cursor">_</div>
     </div>
   `;
   return section;
@@ -30,8 +36,6 @@ export function createTerminalScreen() {
 /** Run the typewriter boot sequence, then call onComplete */
 export async function runBootSequence(onComplete) {
   const container = document.getElementById('terminal-lines');
-  const cursor = document.getElementById('terminal-cursor');
-  const noise = document.getElementById('static-noise');
   const screen = document.getElementById('screen-terminal');
 
   if (container) container.innerHTML = '';
@@ -43,28 +47,10 @@ export async function runBootSequence(onComplete) {
     lineEl.className = `terminal-line ${line.cls || ''}`;
     container?.appendChild(lineEl);
 
-    for (let i = 0; i < line.text.length; i++) {
-      lineEl.textContent += line.text[i];
-      await delay(25 + Math.random() * 35);
-    }
-
-    if (line.glitch && screen) {
-      screen.classList.add('heavy-glitch');
-      if (noise) noise.classList.add('flash');
-      setTimeout(() => {
-        screen.classList.remove('heavy-glitch');
-        if (noise) noise.classList.remove('flash');
-      }, 600);
-    }
-    if (line.shake && screen) {
-      screen.classList.add('screen-shake');
-      setTimeout(() => screen.classList.remove('screen-shake'), 400);
-    }
-
+    await typewriter(lineEl, line.text, line.speed);
     await delay(line.delay);
   }
 
-  if (cursor) cursor.style.display = 'none';
   await delay(800);
 
   onComplete();

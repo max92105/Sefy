@@ -28,6 +28,15 @@ import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
 import { createCodeEntryScreen, startCodeEntry } from './screens/codeentry.js';
 import { createARScanScreen, startARScan } from './screens/arscan.js';
 
+// Stage intro sequences (only for stages that have one)
+import { INTRO_SEQUENCE as geoActivationIntro } from './stages/geo-activation.js';
+import { INTRO_SEQUENCE as sefyRogueIntro } from './stages/sefy-rogue.js';
+
+const STAGE_INTROS = {
+  'geo-activation': geoActivationIntro,
+  'sefy-rogue': sefyRogueIntro,
+};
+
 let state = null;
 let currentStage = null;
 let puzzleCleanup = null;
@@ -190,9 +199,9 @@ function enterStage(stage) {
     return;
   }
 
-  // Code-entry with briefing intro
-  if (stage.briefingIntro) {
-    puzzleCleanup = startCodeEntry(stage, state, onPuzzleSolved);
+  // Code-entry puzzle (with optional intro sequence)
+  if (stage.puzzle?.type === 'code-entry') {
+    puzzleCleanup = startCodeEntry(stage, state, onPuzzleSolved, STAGE_INTROS[stage.id] || null);
     lastActiveScreen = 'screen-codeentry';
     showScreen('screen-codeentry');
     showNav();

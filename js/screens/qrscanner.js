@@ -15,15 +15,24 @@ import { delay } from '../ui.js';
 import { playSFX } from '../ui.js';
 import { addKeycard, hasKeycard, unlockStation, solvePuzzle, saveState } from '../state.js';
 import { KEYCARD_COLORS, LOCK_STATIONS, updateInventoryBadge } from './evidence.js';
+import { typewriter } from '../typewriter.js';
+import { runIntroSequence } from '../intro-runner.js';
 
 /* ───────── QR prefix ───────── */
 const QR_PREFIX = 'SEFY:';
+
+/* ───────── Media paths (easy to change) ───────── */
+const MEDIA = {
+  video: 'assets/video/sefy_avatar.mp4',
+  audioIntro: 'assets/audio/qr_intro_sefy.wav',
+  audioConfirmed: 'assets/audio/qr_confirmed_sefy.wav',
+};
 
 /* ───────── Intro sequences per stage ───────── */
 const QR_INTRO_SEQUENCES = {
   'qr-lockdown': [
     // ── Audio 1: module activation ──
-    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_intro_sefy.wav' },
+    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
     { time: 0,      type: 'text',  text: 'Module de décryptage activé avec succès.' },
     { time: 3000,   type: 'text',  text: 'Analyse de l\'environnement en cours…' },
     { time: 6000,   type: 'text',  text: 'Installation est en confinement.' },
@@ -33,7 +42,7 @@ const QR_INTRO_SEQUENCES = {
     { time: 22000,  type: 'text',  text: 'Déverrouillez les trois stations pour réactiver mon module d\'analyse environnementale.' },
     { time: 26000,  type: 'text',  text: 'Autorisez l\'accès à la caméra pour que je puisse vous assister.' },
     { time: 27000,  type: 'action', action: 'requestCamera' },
-    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_confirmed_sefy.wav' },
+    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
     { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
     { time: 2000,   type: 'text',  text: 'Activation du scanner optique…' },
     { time: 4000,   type: 'action', action: 'startScanner' },
@@ -75,12 +84,11 @@ export function createQRScannerScreen() {
       <div class="qr-intro" id="qr-intro">
         <div class="briefing-center" id="qr-intro-center">
           <video id="qr-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
-            <source src="assets/video/sefy_avatar.mp4" type="video/mp4">
+            <source src="${MEDIA.video}" type="video/mp4">
           </video>
           <div class="briefing-bottom">
             <div class="briefing-terminal" id="qr-terminal">
               <span class="briefing-terminal-line" id="qr-current-line"></span>
-              <span class="terminal-cursor" id="qr-cursor">_</span>
             </div>
           </div>
         </div>
@@ -138,8 +146,20 @@ export function startQRScanner(stage, state, onSolved) {
 
   const abortCtrl = { aborted: false, currentAudio: null };
 
+  const actionHandlers = {
+    async requestCamera(event, abort) {
+      const granted = await requestCameraWithRetry(currentLine, abort);
+      if (abort.aborted || !granted) return 'stop';
+      return 'reset-clock';
+    },
+    startScanner() {
+      transitionToScanner(stage, state, onSolved, abortCtrl);
+      return 'stop';
+    },
+  };
+
   const introSeq = QR_INTRO_SEQUENCES[stage.id] || QR_INTRO_SEQUENCES['qr-lockdown'];
-  runIntroSequence(introSeq, currentLine, abortCtrl, stage, state, onSolved);
+  runIntroSequence(introSeq, currentLine, abortCtrl, actionHandlers);
 
   return () => {
     abortCtrl.aborted = true;
@@ -165,71 +185,11 @@ function resumeQRScanner(stage, state, onSolved) {
   };
 }
 
-/* ═══════════════  Phase 1 — Intro Runner  ═══════════════ */
-
-async function runIntroSequence(sequence, currentLine, abort, stage, state, onSolved) {
-  let segmentStart = Date.now();
-
-  for (const event of sequence) {
-    if (abort.aborted) return;
-
-    const elapsed = Date.now() - segmentStart;
-    const waitMs = event.time - elapsed;
-    if (waitMs > 0) await delay(waitMs);
-    if (abort.aborted) return;
-
-    if (event.type === 'text') {
-      await typeText(currentLine, event.text);
-    }
-
-    if (event.type === 'action') {
-      if (event.action === 'playAudio') {
-        if (abort.currentAudio) { abort.currentAudio.pause(); }
-        const audio = new Audio(event.src);
-        audio.volume = 0.8;
-        abort.currentAudio = audio;
-        await ensureAudioPlays(audio, abort);
-        segmentStart = Date.now() - event.time;
-      }
-
-      if (event.action === 'requestCamera') {
-        const granted = await requestCameraWithRetry(currentLine, abort);
-        if (abort.aborted) return;
-        if (!granted) return;
-        // Reset clock — times after this are relative to permission granted
-        segmentStart = Date.now();
-      }
-
-      if (event.action === 'startScanner') {
-        transitionToScanner(stage, state, onSolved, abort);
-        return;
-      }
-    }
-  }
-}
-
-function ensureAudioPlays(audio, abort) {
-  return new Promise(resolve => {
-    audio.play().then(resolve).catch(() => {
-      // Autoplay blocked — wait for a gesture
-      const EVENTS = ['click', 'touchstart', 'touchend', 'pointerdown', 'pointerup', 'keydown', 'mousedown'];
-      const resume = () => {
-        for (const e of EVENTS) document.removeEventListener(e, resume, true);
-        if (abort.aborted || abort.currentAudio !== audio) { resolve(); return; }
-        audio.play().then(resolve).catch(resolve);
-      };
-      for (const e of EVENTS) document.addEventListener(e, resume, { capture: true, passive: true });
-    });
-  });
-}
+/* ═══════════════  Phase 1 helpers  ═══════════════ */
 
 async function typeText(el, text) {
   if (!el) return;
-  el.textContent = '';
-  for (let i = 0; i < text.length; i++) {
-    el.textContent += text[i];
-    await delay(20 + Math.random() * 20);
-  }
+  await typewriter(el, text, 25);
 }
 
 /* ═══════════════  Camera Permission  ═══════════════ */

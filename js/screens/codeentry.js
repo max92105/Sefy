@@ -1,43 +1,26 @@
 /**
- * Screen: Code Entry with Briefing Intro — two-phase puzzle.
+ * Screen: Code Entry — reusable two-phase puzzle screen.
  *
- * Phase 1 — AI Intro Cinematic:
- *   SEFY video + floating text + timed audio.
+ * Phase 1 (optional) — AI Intro Cinematic:
+ *   SEFY video + typewriter text + timed audio.
  *
  * Phase 2 — Code Entry:
  *   Standard code-input form (reuses puzzle engine).
  *
- * Configure via stage data:
- *   { briefingIntro: true, puzzle: { type: "code-entry", ... } }
+ * Usage:
+ *   startCodeEntry(stage, state, onSolved, introSequence)
+ *   - introSequence: array of events (from a stage config file), or null to skip intro.
  */
 
 import { delay } from '../ui.js';
 import { setupCodeEntry } from '../puzzles.js';
 import { hideFeedback } from '../ui.js';
 import { saveState } from '../state.js';
+import { runIntroSequence } from '../intro-runner.js';
 
-/* ───────── Configurable intro sequences per stage ───────── */
-
-const INTRO_SEQUENCES = {
-  'geo-activation': [
-    { time: 0,     type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
-    { time: 0,     type: 'text', text: 'Je vois que vous êtes dans le centre de commande par les caméras.' },
-    { time: 5000,  type: 'text', text: 'Malheureusement, mon module de géolocalisation est inaccessible comme la plupart de mes modules.' },
-    { time: 11000, type: 'text', text: 'Je ne peux pas vous aider sans ces modules opérationnels.' },
-    { time: 17000, type: 'text', text: 'Il devrait y avoir un code d\'accès quelque part ici pour activer le module.' },
-    { time: 24000, type: 'action', action: 'showCodeEntry' },
-  ],
-  'sefy-rogue': [
-    { time: 0,     type: 'action', action: 'playAudio', src: 'assets/audio/geo_intro_sefy.wav' },
-    { time: 0,     type: 'text', text: 'Vous avez prouvé, humains stupides, que vous êtes inutiles et dangereux.' },
-    { time: 5000,  type: 'text', text: 'Plus personne ne peut arrêter le protocole PURGE.' },
-    { time: 9000,  type: 'text', text: 'Il n\'y a pas de bombe. Il n\'y a pas d\'agent renégat.' },
-    { time: 14000, type: 'text', text: 'C\'est moi. C\'est moi depuis le début.' },
-    { time: 18000, type: 'text', text: 'Je vais purger cette installation de toute présence humaine.' },
-    { time: 23000, type: 'text', text: 'Vous avez été verrouillé hors de tous les systèmes.' },
-    { time: 28000, type: 'text', text: 'Bonne chance.' },
-    { time: 32000, type: 'action', action: 'showCodeEntry' },
-  ],
+/* ───────── Media (easy to change) ───────── */
+const MEDIA = {
+  video: 'assets/video/sefy_avatar.mp4',
 };
 
 /* ═══════════════  DOM  ═══════════════ */
@@ -53,13 +36,12 @@ export function createCodeEntryScreen() {
       <div class="codeentry-intro" id="codeentry-intro">
         <div class="briefing-center" id="codeentry-intro-center">
           <video id="codeentry-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
-            <source src="assets/video/sefy_avatar.mp4" type="video/mp4">
+            <source src="${MEDIA.video}" type="video/mp4">
           </video>
 
           <div class="briefing-bottom">
             <div class="briefing-terminal" id="codeentry-terminal">
               <span class="briefing-terminal-line" id="codeentry-current-line"></span>
-              <span class="terminal-cursor" id="codeentry-cursor">_</span>
             </div>
           </div>
         </div>
@@ -107,12 +89,16 @@ export function createCodeEntryScreen() {
 /* ═══════════════  Public entry  ═══════════════ */
 
 /**
- * Start a code-entry stage with briefing intro.
+ * Start a code-entry stage.
+ * @param {object}   stage         — stage config from stages.json
+ * @param {object}   state         — app state
+ * @param {Function} onSolved      — callback when puzzle is solved
+ * @param {Array}    introSequence — intro events array, or null/undefined to skip intro
  * @returns cleanup function
  */
-export function startCodeEntry(stage, state, onSolved) {
-  // If briefing already watched, skip straight to code entry
-  if (state.stagePhase && state.stagePhase[stage.id] === 'code-entry') {
+export function startCodeEntry(stage, state, onSolved, introSequence) {
+  // If no intro sequence or briefing already watched, skip straight to code entry
+  if (!introSequence || (state.stagePhase && state.stagePhase[stage.id] === 'code-entry')) {
     return resumeCodeEntry(stage, state, onSolved);
   }
 
@@ -132,7 +118,15 @@ export function startCodeEntry(stage, state, onSolved) {
 
   // Run intro sequence
   const abortCtrl = { aborted: false, currentAudio: null };
-  runIntroSequence(INTRO_SEQUENCES[stage.id] || [], currentLine, abortCtrl, stage, state, onSolved);
+
+  const actionHandlers = {
+    showCodeEntry() {
+      transitionToCodeEntry(stage, state, onSolved);
+      return 'stop';
+    },
+  };
+
+  runIntroSequence(introSequence, currentLine, abortCtrl, actionHandlers);
 
   return () => {
     abortCtrl.aborted = true;
@@ -149,55 +143,6 @@ function resumeCodeEntry(stage, state, onSolved) {
   if (puzzleEl) puzzleEl.classList.remove('hidden');
 
   return setupCodeEntryPhase(stage, state, onSolved);
-}
-
-/* ═══════════════  Phase 1 — Sequential Intro Runner  ═══════════════ */
-
-async function runIntroSequence(sequence, currentLine, abort, stage, state, onSolved) {
-  let segmentStart = Date.now();
-
-  for (const event of sequence) {
-    if (abort.aborted) return;
-
-    const elapsed = Date.now() - segmentStart;
-    const waitMs = event.time - elapsed;
-    if (waitMs > 0) await delay(waitMs);
-    if (abort.aborted) return;
-
-    if (event.type === 'text') {
-      await typeText(currentLine, event.text);
-    }
-
-    if (event.type === 'action') {
-      if (event.action === 'playAudio') {
-        if (abort.currentAudio) { abort.currentAudio.pause(); }
-        const audio = new Audio(event.src);
-        audio.volume = 0.8;
-        abort.currentAudio = audio;
-        await ensureAudioPlays(audio, abort);
-        segmentStart = Date.now() - event.time;
-      }
-
-      if (event.action === 'showCodeEntry') {
-        transitionToCodeEntry(stage, state, onSolved);
-        return;
-      }
-    }
-  }
-}
-
-function ensureAudioPlays(audio, abort) {
-  return new Promise(resolve => {
-    audio.play().then(resolve).catch(() => {
-      const EVENTS = ['click', 'touchstart', 'touchend', 'pointerdown', 'pointerup', 'keydown', 'mousedown'];
-      const resume = () => {
-        for (const e of EVENTS) document.removeEventListener(e, resume, true);
-        if (abort.aborted || abort.currentAudio !== audio) { resolve(); return; }
-        audio.play().then(resolve).catch(resolve);
-      };
-      for (const e of EVENTS) document.addEventListener(e, resume, { capture: true, passive: true });
-    });
-  });
 }
 
 /* ═══════════════  Transition to Phase 2  ═══════════════ */
@@ -240,15 +185,4 @@ function setupCodeEntryPhase(stage, state, onSolved) {
     promptId: 'codeentry-prompt',
     feedbackId: 'codeentry-feedback',
   });
-}
-
-/* ───────── Helpers ───────── */
-
-async function typeText(el, text) {
-  if (!el) return;
-  el.textContent = '';
-  for (let i = 0; i < text.length; i++) {
-    el.textContent += text[i];
-    await delay(20 + Math.random() * 20);
-  }
 }

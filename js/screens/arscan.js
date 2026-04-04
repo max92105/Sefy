@@ -47,6 +47,12 @@ const AR_OBJECTS = [
     label: 'BOMBE DÉTECTÉE',
     icon: '💣',
     description: 'Dispositif explosif localisé. Accès tier 3 requis pour le désamorçage.',
+    // Direction to look RELATIVE to QR scan orientation:
+    //   yaw = horizontal rotation in degrees (+ = right, - = left)
+    //   pitch = vertical tilt in degrees (+ = down, - = up)
+    seekDirection: { yaw: 180, pitch: 30 },
+    seekTolerance: 25, // degrees
+    seekHint: 'Retournez-vous et regardez vers le bas…',
   },
   {
     id: 'tier3-card',
@@ -54,6 +60,9 @@ const AR_OBJECTS = [
     label: 'CARTE ACCÈS TIER 3',
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 3 obtenue.',
+    seekDirection: { yaw: -90, pitch: 25 },
+    seekTolerance: 25,
+    seekHint: 'Tournez à gauche et regardez vers le bas…',
   },
 ];
 
@@ -115,7 +124,14 @@ export function createARScanScreen() {
             <div class="arscan-searching-hint">Explorez l'installation avec la caméra</div>
           </div>
 
-          <!-- AR object marker (shown when QR detected) -->
+          <!-- Seeking direction indicator (shown after QR, before object appears) -->
+          <div class="arscan-seeking hidden" id="arscan-seeking">
+            <div class="arscan-seeking-arrow" id="arscan-seeking-arrow">➤</div>
+            <div class="arscan-seeking-text" id="arscan-seeking-text">Signal détecté ! Cherchez autour…</div>
+            <div class="arscan-seeking-proximity" id="arscan-seeking-proximity"></div>
+          </div>
+
+          <!-- AR object marker (shown when aimed correctly) -->
           <div class="arscan-markers hidden" id="arscan-markers"></div>
         </div>
 
@@ -151,7 +167,10 @@ export function createARScanScreen() {
 
 let cameraStream = null;
 let scanLoop = null;
+let seekLoop = null;
+let orientationHandler = null;
 let foundObjects = [];
+let currentOrientation = { alpha: null, beta: null, gamma: null };
 
 /* ═══════════════  Public entry  ═══════════════ */
 
@@ -426,10 +445,11 @@ async function transitionToScanner(stage, state, onSolved, abort) {
       return;
     }
 
-    // Object detected — show it!
+    // QR detected — enter seeking phase (player must turn to find the object)
     cooldown = true;
+    if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
     playSFX('assets/audio/zone_found.wav');
-    showObjectOnCamera(obj, stage, state, onSolved, abort, () => { cooldown = false; });
+    startSeeking(obj, stage, state, onSolved, abort);
   }, 250);
 }
 
@@ -452,17 +472,199 @@ function waitForVideoReady(video) {
   });
 }
 
-/* ───────── Show object on camera feed ───────── */
+/* ═══════════════  Device Orientation  ═══════════════ */
 
-function showObjectOnCamera(obj, stage, state, onSolved, abort, onDone) {
+function startOrientationTracking() {
+  if (orientationHandler) return;
+
+  // iOS 13+ requires explicit permission
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => { if (response === 'granted') bindOrientationListener(); })
+      .catch(() => {});
+  } else {
+    bindOrientationListener();
+  }
+}
+
+function bindOrientationListener() {
+  orientationHandler = (e) => {
+    currentOrientation.alpha = e.alpha;
+    currentOrientation.beta  = e.beta;
+    currentOrientation.gamma = e.gamma;
+  };
+  window.addEventListener('deviceorientation', orientationHandler, true);
+}
+
+function stopOrientationTracking() {
+  if (orientationHandler) {
+    window.removeEventListener('deviceorientation', orientationHandler, true);
+    orientationHandler = null;
+  }
+}
+
+/**
+ * Compute the angular delta from an origin orientation to the current one.
+ * Returns { yaw, pitch } in degrees.
+ *   yaw: how far the phone has rotated horizontally (+ = clockwise / right)
+ *   pitch: how far the phone has tilted forward/down (+ = tilted down)
+ */
+function getOrientationDelta(origin) {
+  if (origin.alpha == null || currentOrientation.alpha == null) return null;
+
+  // Yaw = change in alpha (compass heading)
+  let yaw = currentOrientation.alpha - origin.alpha;
+  // Normalize to -180..+180
+  yaw = ((yaw + 540) % 360) - 180;
+
+  // Pitch = change in beta (front-back tilt, 0=flat, 90=vertical)
+  let pitch = currentOrientation.beta - origin.beta;
+
+  return { yaw, pitch };
+}
+
+/**
+ * Check if the current orientation delta is within tolerance of a target direction.
+ */
+function isAimedAtTarget(origin, target, tolerance) {
+  const delta = getOrientationDelta(origin);
+  if (!delta) return { aimed: false, yawDiff: 999, pitchDiff: 999 };
+
+  const yawDiff   = Math.abs(((delta.yaw - target.yaw) + 540) % 360 - 180);
+  const pitchDiff = Math.abs(delta.pitch - target.pitch);
+
+  return {
+    aimed: yawDiff <= tolerance && pitchDiff <= tolerance,
+    yawDiff,
+    pitchDiff,
+    deltaYaw: delta.yaw,
+    deltaPitch: delta.pitch,
+  };
+}
+
+/* ───────── Seeking phase — player must rotate to find the object ───────── */
+
+function startSeeking(obj, stage, state, onSolved, abort) {
   const searchingEl = document.getElementById('arscan-searching');
+  const seekingEl   = document.getElementById('arscan-seeking');
+  const seekTextEl  = document.getElementById('arscan-seeking-text');
+  const seekArrowEl = document.getElementById('arscan-seeking-arrow');
+  const proximityEl = document.getElementById('arscan-seeking-proximity');
   const markersEl   = document.getElementById('arscan-markers');
 
-  // Hide searching, show marker
   if (searchingEl) searchingEl.classList.add('hidden');
-  if (markersEl)   markersEl.classList.remove('hidden');
+  if (seekingEl)   seekingEl.classList.remove('hidden');
+  if (markersEl)   { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
+  if (seekTextEl)  seekTextEl.textContent = obj.seekHint || 'Signal détecté ! Cherchez autour…';
+
+  showFeedback('Signal détecté dans cette zone ! Cherchez l\'objet…', 'success');
+
+  // Start tracking orientation
+  startOrientationTracking();
+
+  // Capture origin orientation at the moment QR was scanned
+  const origin = {
+    alpha: currentOrientation.alpha,
+    beta:  currentOrientation.beta,
+    gamma: currentOrientation.gamma,
+  };
+
+  console.log('[AR] Seeking started — origin:', origin, 'target:', obj.seekDirection);
+
+  let objectRevealed = false;
+
+  seekLoop = setInterval(() => {
+    if (abort.aborted || objectRevealed) return;
+
+    const result = isAimedAtTarget(origin, obj.seekDirection, obj.seekTolerance);
+
+    // Update arrow direction to point toward the target
+    if (seekArrowEl && result.deltaYaw != null) {
+      const targetYaw = obj.seekDirection.yaw;
+      const arrowAngle = targetYaw - result.deltaYaw;
+      // Add pitch offset: arrow points down if they need to tilt more
+      seekArrowEl.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}deg)`;
+    }
+
+    // Proximity feedback
+    if (proximityEl && result.yawDiff != null) {
+      const maxDist = 180;
+      const dist = Math.max(result.yawDiff, result.pitchDiff);
+      if (dist < 30) {
+        proximityEl.textContent = '🔥 TRÈS PROCHE';
+        proximityEl.className = 'arscan-seeking-proximity hot';
+      } else if (dist < 60) {
+        proximityEl.textContent = '🔶 Proche';
+        proximityEl.className = 'arscan-seeking-proximity warm';
+      } else if (dist < 120) {
+        proximityEl.textContent = '🔵 Signal faible';
+        proximityEl.className = 'arscan-seeking-proximity cool';
+      } else {
+        proximityEl.textContent = '❄️ Froid';
+        proximityEl.className = 'arscan-seeking-proximity cold';
+      }
+    }
+
+    if (result.aimed) {
+      // Object found!
+      objectRevealed = true;
+      if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+      if (seekingEl) seekingEl.classList.add('hidden');
+      playSFX('assets/audio/zone_found.wav');
+      showObjectOnCamera(obj, stage, state, onSolved, abort);
+    }
+  }, 100);
+
+  // Timeout: if they don't find it in 60s, give up and resume QR scanning
+  setTimeout(() => {
+    if (abort.aborted || objectRevealed) return;
+    if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+    if (seekingEl) seekingEl.classList.add('hidden');
+    updateSearchingVisibility();
+    showFeedback('Signal perdu. Scannez à nouveau le QR code…', 'info');
+    // Restart QR scanning
+    resumeQRScanning(stage, state, onSolved, abort);
+  }, 60000);
+}
+
+function resumeQRScanning(stage, state, onSolved, abort) {
+  const cameraVideo = document.getElementById('arscan-camera');
+  const canvas      = document.getElementById('arscan-canvas');
+  const ctx         = canvas?.getContext('2d', { willReadFrequently: true });
+  if (!cameraVideo || !canvas || !ctx) return;
+
+  let cooldown = false;
+
+  scanLoop = setInterval(() => {
+    if (abort.aborted || !cameraVideo || cameraVideo.readyState < 2 || cooldown) return;
+    if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+
+    canvas.width  = cameraVideo.videoWidth;
+    canvas.height = cameraVideo.videoHeight;
+    ctx.drawImage(cameraVideo, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
+    if (!qr || !qr.data) return;
+
+    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data.trim());
+    if (!obj || foundObjects.includes(obj.id)) return;
+
+    cooldown = true;
+    if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
+    playSFX('assets/audio/zone_found.wav');
+    startSeeking(obj, stage, state, onSolved, abort);
+  }, 250);
+}
+
+/* ───────── Show object on camera feed (after seeking) ───────── */
+
+function showObjectOnCamera(obj, stage, state, onSolved, abort) {
+  const markersEl = document.getElementById('arscan-markers');
 
   if (markersEl) {
+    markersEl.classList.remove('hidden');
     markersEl.innerHTML = '';
 
     const marker = document.createElement('div');
@@ -477,7 +679,7 @@ function showObjectOnCamera(obj, stage, state, onSolved, abort, onDone) {
     `;
 
     marker.addEventListener('click', () => {
-      collectObject(obj, stage, state, onSolved);
+      collectObject(obj, stage, state, onSolved, abort);
     });
 
     markersEl.appendChild(marker);
@@ -485,21 +687,21 @@ function showObjectOnCamera(obj, stage, state, onSolved, abort, onDone) {
 
   showFeedback(`${obj.label} — Appuyez pour analyser !`, 'success');
 
-  // If they move the camera away (don't tap within 10s), hide and resume scanning
+  // If they don't tap within 15s, hide and resume QR scanning
   setTimeout(() => {
     if (abort.aborted) return;
     if (!foundObjects.includes(obj.id)) {
       if (markersEl) { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
       updateSearchingVisibility();
-      showFeedback('Signal perdu. Continuez à scanner…', 'info');
+      showFeedback('Signal perdu. Scannez à nouveau le QR code…', 'info');
+      resumeQRScanning(stage, state, onSolved, abort);
     }
-    onDone();
-  }, 10000);
+  }, 15000);
 }
 
 /* ───────── Collect object ───────── */
 
-function collectObject(obj, stage, state, onSolved) {
+function collectObject(obj, stage, state, onSolved, abort) {
   if (foundObjects.includes(obj.id)) return;
 
   foundObjects.push(obj.id);
@@ -523,6 +725,8 @@ function collectObject(obj, stage, state, onSolved) {
     updateSearchingVisibility();
     setTimeout(() => {
       showFeedback('Objet collecté ! Continuez à explorer…', 'success');
+      // Resume QR scanning for the next object
+      resumeQRScanning(stage, state, onSolved, abort);
     }, 2600);
   }
 }
@@ -618,6 +822,8 @@ function showFeedback(msg, type = 'info') {
 
 function stopARCamera() {
   if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
+  if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+  stopOrientationTracking();
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;

@@ -65,8 +65,8 @@ const ACTION_CODES = [
  */
 const TIER_UPGRADE_HASHES = [
   {
-    // TODO: replace with SHA-256 hash of the physical code hidden at the geo location
-    hash: 'TODO_REPLACE_WITH_HASH',
+    // Physical code: 546967232 (hidden at the geo location)
+    hash: '9a9ea23dc02d785f82b9d935f720b74f06c033213c84e5031c88ec89814b3261',
     tier: 2,
     response: [
       '╔══════════════════════════════════════╗',

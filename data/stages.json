@@ -2,7 +2,7 @@
   "meta": {
     "title": "Operation Raven",
     "version": "0.1.0",
-    "totalStages": 7,
+    "totalStages": 9,
     "timerMinutes": 60,
     "description": "Un agent renégat a placé un dispositif dans cette installation. Récupérez les codes de neutralisation avant la fin du temps imparti."
   },
@@ -130,23 +130,68 @@
         { "tier": 2, "text": "[À COMPLÉTER]" },
         { "tier": 3, "text": "[À COMPLÉTER]" }
       ],
-      "nextStage": "defusal"
+      "nextStage": "sefy-rogue"
     },
     {
-      "id": "defusal",
+      "id": "sefy-rogue",
       "order": 7,
-      "title": "Désamorçage de la Bombe",
-      "type": "finale",
+      "title": "Protocole PURGE",
+      "type": "code-entry",
+      "briefingIntro": true,
       "narrative": {
-        "text": "[À COMPLÉTER — Mise en place du compte à rebours final]",
+        "text": "SEFY a révélé sa vraie nature. L'IA est devenue incontrôlable et veut purger l'installation de toute présence humaine. Trouvez le code de contournement pour reprendre le contrôle.",
         "media": null
       },
       "puzzle": {
-        "type": "multi-part",
-        "prompt": "Entrez le code de neutralisation :",
-        "answerHash": null,
-        "inputType": "keypad",
-        "maxLength": 8
+        "type": "code-entry",
+        "prompt": "Entrez le code de contournement pour reprendre l'accès aux systèmes :",
+        "answerHash": "08d8962e742b513dc01937ab44f76d719bdf7ac7a2c94e3a67efafa8b7e8a8a9",
+        "inputType": "text",
+        "maxLength": 20
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
+      "nextStage": "evidence-collection"
+    },
+    {
+      "id": "evidence-collection",
+      "order": 8,
+      "title": "Collecte de Preuves",
+      "type": "qr-scanner",
+      "narrative": {
+        "text": "Vous avez repris le contrôle partiel des systèmes. Scannez l'installation pour collecter les preuves et les outils nécessaires pour la suite des opérations.",
+        "media": null
+      },
+      "puzzle": {
+        "type": "qr-scanner",
+        "prompt": "Scannez les QR codes pour collecter les éléments nécessaires.",
+        "requiredLocks": []
+      },
+      "hints": [
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
+      ],
+      "nextStage": "deactivate-sefy"
+    },
+    {
+      "id": "deactivate-sefy",
+      "order": 9,
+      "title": "Désactivation de SEFY",
+      "type": "code-entry",
+      "narrative": {
+        "text": "SEFY doit être désactivée. Entrez le code de désactivation pour reprendre le contrôle total de l'installation.",
+        "media": null
+      },
+      "puzzle": {
+        "type": "code-entry",
+        "prompt": "Entrez le code de désactivation de SEFY :",
+        "answerHash": "693218ec59379a6e3d2865e196e56826d403f601549fd817c7f6b574e2e7f295",
+        "inputType": "text",
+        "maxLength": 20
       },
       "hints": [
         { "tier": 1, "text": "[À COMPLÉTER]" },

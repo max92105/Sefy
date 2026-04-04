@@ -1704,6 +1704,13 @@ body.banner-active .qr-layout {
   color: var(--accent-green);
 }
 
+/* QR continue button (free-collection mode) */
+.qr-continue-btn {
+  margin: var(--space-sm) auto;
+  display: block;
+  min-width: 200px;
+}
+
 /* QR feedback bar */
 .qr-feedback {
   padding: var(--space-sm) var(--space-md);

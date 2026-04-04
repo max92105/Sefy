@@ -1,22 +1,67 @@
 /**
- * Screen: Bomb Defusal Finale — keypad + wire-cutting challenge.
+ * Screen: Deactivate SEFY — code-entry to shut down the rogue AI.
+ * Player can switch back to evidence-collection and return here.
  */
 
-/** Create the defusal screen DOM */
+import { setupCodeEntry } from '../puzzles.js';
+
+/** Create the deactivation screen DOM */
 export function createDefusalScreen() {
   const section = document.createElement('section');
   section.id = 'screen-defusal';
   section.className = 'screen';
   section.innerHTML = `
     <div class="screen-content centered">
-      <div class="defusal-header">
-        <span class="alert-flash">⚠ DISPOSITIF LOCALISÉ ⚠</span>
-        <div class="countdown" id="defusal-countdown">60:00</div>
+      <div class="screen-header">
+        <span class="header-tag">ÉTAPE 9</span>
+        <span class="header-title">DÉSACTIVATION DE SEFY</span>
       </div>
-      <div class="defusal-keypad" id="defusal-keypad"></div>
-      <div class="defusal-wires" id="defusal-wires"></div>
-      <div id="defusal-feedback" class="feedback hidden"></div>
+
+      <div class="narrative-box">
+        SEFY doit être désactivée. Entrez le code de désactivation pour reprendre le contrôle total de l'installation.
+      </div>
+
+      <div class="puzzle-area">
+        <p class="puzzle-prompt" id="defusal-prompt"></p>
+        <div class="input-group">
+          <input
+            type="text"
+            id="defusal-input"
+            class="code-input"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="ENTRER LE CODE"
+          >
+          <button id="btn-defusal-submit" class="btn btn-primary">VALIDER</button>
+        </div>
+        <div id="defusal-feedback" class="feedback hidden"></div>
+      </div>
+
+      <button id="btn-defusal-back" class="btn btn-secondary" style="margin-top: var(--space-md);">
+        ◀ RETOUR AU SCANNER
+      </button>
     </div>
   `;
   return section;
+}
+
+/** Set up the deactivation code entry and back button */
+export function startDefusal(stage, state, onSolved, onBackToScanner) {
+  const cleanup = setupCodeEntry(stage, state, onSolved, {
+    inputId: 'defusal-input',
+    submitId: 'btn-defusal-submit',
+    promptId: 'defusal-prompt',
+    feedbackId: 'defusal-feedback',
+  });
+
+  const backBtn = document.getElementById('btn-defusal-back');
+  const handleBack = () => { if (onBackToScanner) onBackToScanner(); };
+  backBtn?.addEventListener('click', handleBack);
+
+  return () => {
+    cleanup();
+    backBtn?.removeEventListener('click', handleBack);
+  };
 }

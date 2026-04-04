@@ -16,12 +16,12 @@ import { createModals, initModals, openModal, closeModal } from './components/mo
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
 // -- Screens --
-import { createTerminalScreen, runBootSequence } from './screens/terminal.js';
+import { createTerminalScreen, runBootSequence } from './screens/boot.js';
 import { createLandingScreen, runLanding } from './screens/landing.js';
 import { createBriefingScreen, runBriefing } from './screens/briefing.js';
 import { createStageScreen, populateStage, openHintModal } from './screens/stage.js';
 import { createInventoryScreen, populateInventory, updateInventoryBadge } from './screens/evidence.js';
-import { createDefusalScreen } from './screens/defusal.js';
+import { createDefusalScreen, startDefusal } from './screens/defusal.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createGeoScreen, startGeoTracker } from './screens/geo.js';
 import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
@@ -131,15 +131,25 @@ function enterStage(stage) {
 
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
 
-  // Show inventory button only during/after QR scanner stages
+  // Show inventory button during/after QR scanner stages or if player has items
   const needsInventory = stage.puzzle?.type === 'qr-scanner'
-    || (state.keycards && state.keycards.length > 0);
+    || (state.keycards && state.keycards.length > 0)
+    || (state.arFound && state.arFound.length > 0);
   setInventoryVisible(needsInventory);
 
-  if (stage.type === 'finale') {
+  if (stage.type === 'finale' || stage.id === 'deactivate-sefy') {
+    puzzleCleanup = startDefusal(stage, state, onPuzzleSolved, () => {
+      // Switch back to evidence-collection
+      const evStage = getStageById('evidence-collection');
+      if (evStage) {
+        state = setStage(state, evStage.id);
+        enterStage(evStage);
+      }
+    });
     lastActiveScreen = 'screen-defusal';
     showScreen('screen-defusal');
     showNav();
+    setInventoryVisible(true);
     return;
   }
 
@@ -154,7 +164,17 @@ function enterStage(stage) {
 
   // QR scanner puzzle type
   if (stage.puzzle?.type === 'qr-scanner') {
-    puzzleCleanup = startQRScanner(stage, state, onPuzzleSolved);
+    // Evidence-collection: "continue" just navigates to deactivate-sefy without solving
+    const qrOnSolved = (stage.id === 'evidence-collection')
+      ? () => {
+          const deactivateStage = getStageById('deactivate-sefy');
+          if (deactivateStage) {
+            state = setStage(state, deactivateStage.id);
+            enterStage(deactivateStage);
+          }
+        }
+      : onPuzzleSolved;
+    puzzleCleanup = startQRScanner(stage, state, qrOnSolved);
     lastActiveScreen = 'screen-qrscanner';
     showScreen('screen-qrscanner');
     showNav();

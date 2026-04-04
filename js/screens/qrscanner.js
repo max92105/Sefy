@@ -19,26 +19,34 @@ import { KEYCARD_COLORS, LOCK_STATIONS, updateInventoryBadge } from './evidence.
 /* ───────── QR prefix ───────── */
 const QR_PREFIX = 'SEFY:';
 
-/* ───────── Intro sequence ───────── */
-const QR_INTRO_SEQUENCE = [
-  // ── Audio 1: module activation ──
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_intro_sefy.wav' },
-  { time: 0,      type: 'text',  text: 'Module de décryptage activé avec succès.' },
-  { time: 3000,   type: 'text',  text: 'Analyse de l\'environnement en cours…' },
-  { time: 6000,   type: 'text',  text: 'Installation est en confinement.' },
-  { time: 9000,   type: 'text',  text: 'Trois stations de réactivation ont été verrouillées.' },
-  { time: 13000,  type: 'text',  text: 'Trouvé les cartes d\'accès dissimulées dans l\'édifice. Utilisez le scanner pour les enregistrer.' },
-  { time: 18000,  type: 'text',  text: 'Chaque station requiert une carte de couleur spécifique.' },
-  { time: 22000,  type: 'text',  text: 'Déverrouillez les trois stations pour réactiver mon module d\'analyse environnementale.' },
-  { time: 26000,  type: 'text',  text: 'Autorisez l\'accès à la caméra pour que je puisse vous assister.' },
-  { time: 27000,  type: 'action', action: 'requestCamera' },
-  // — sequence pauses here until camera permission is granted, then time resets to 0 —
-  // ── Audio 2: post-permission confirmation ──
-  { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_confirmed_sefy.wav' },
-  { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
-  { time: 2000,   type: 'text',  text: 'Activation du scanner optique…' },
-  { time: 4000,   type: 'action', action: 'startScanner' },
-];
+/* ───────── Intro sequences per stage ───────── */
+const QR_INTRO_SEQUENCES = {
+  'qr-lockdown': [
+    // ── Audio 1: module activation ──
+    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_intro_sefy.wav' },
+    { time: 0,      type: 'text',  text: 'Module de décryptage activé avec succès.' },
+    { time: 3000,   type: 'text',  text: 'Analyse de l\'environnement en cours…' },
+    { time: 6000,   type: 'text',  text: 'Installation est en confinement.' },
+    { time: 9000,   type: 'text',  text: 'Trois stations de réactivation ont été verrouillées.' },
+    { time: 13000,  type: 'text',  text: 'Trouvé les cartes d\'accès dissimulées dans l\'édifice. Utilisez le scanner pour les enregistrer.' },
+    { time: 18000,  type: 'text',  text: 'Chaque station requiert une carte de couleur spécifique.' },
+    { time: 22000,  type: 'text',  text: 'Déverrouillez les trois stations pour réactiver mon module d\'analyse environnementale.' },
+    { time: 26000,  type: 'text',  text: 'Autorisez l\'accès à la caméra pour que je puisse vous assister.' },
+    { time: 27000,  type: 'action', action: 'requestCamera' },
+    { time: 0,      type: 'action', action: 'playAudio', src: 'assets/audio/qr_confirmed_sefy.wav' },
+    { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
+    { time: 2000,   type: 'text',  text: 'Activation du scanner optique…' },
+    { time: 4000,   type: 'action', action: 'startScanner' },
+  ],
+  'evidence-collection': [
+    { time: 0,      type: 'text',  text: 'Accès aux systèmes partiellement rétabli.' },
+    { time: 3000,   type: 'text',  text: 'Scanner optique en ligne. Collectez les éléments nécessaires.' },
+    { time: 6000,   type: 'text',  text: 'Autorisez l\'accès à la caméra.' },
+    { time: 7000,   type: 'action', action: 'requestCamera' },
+    { time: 0,      type: 'text',  text: 'Caméra en ligne. Scannez les QR codes pour collecter les preuves.' },
+    { time: 3000,   type: 'action', action: 'startScanner' },
+  ],
+};
 
 /* ───────── jsQR lazy-load ───────── */
 let jsQRLoaded = false;
@@ -88,6 +96,8 @@ export function createQRScannerScreen() {
 
         <div class="qr-lock-panel" id="qr-lock-panel"></div>
 
+        <button class="btn btn-primary qr-continue-btn hidden" id="qr-continue-btn">DÉSACTIVER SEFY ▶</button>
+
         <div class="qr-feedback" id="qr-feedback">
           <span id="qr-feedback-text">Scannez un QR code…</span>
         </div>
@@ -128,7 +138,8 @@ export function startQRScanner(stage, state, onSolved) {
 
   const abortCtrl = { aborted: false, currentAudio: null };
 
-  runIntroSequence(QR_INTRO_SEQUENCE, currentLine, abortCtrl, stage, state, onSolved);
+  const introSeq = QR_INTRO_SEQUENCES[stage.id] || QR_INTRO_SEQUENCES['qr-lockdown'];
+  runIntroSequence(introSeq, currentLine, abortCtrl, stage, state, onSolved);
 
   return () => {
     abortCtrl.aborted = true;
@@ -324,7 +335,20 @@ async function transitionToScanner(stage, state, onSolved, abort) {
   const avatarVideo = document.getElementById('qr-avatar-video');
   if (avatarVideo) { avatarVideo.pause(); avatarVideo.currentTime = 0; }
 
-  renderLockPanel(state);
+  renderLockPanel(state, stage);
+
+  // Free-collection mode: no required locks — show button to go to deactivation
+  const freeMode = !stage.puzzle?.requiredLocks?.length;
+  const continueBtn = document.getElementById('qr-continue-btn');
+  if (freeMode && continueBtn) {
+    continueBtn.classList.remove('hidden');
+    continueBtn.onclick = () => {
+      stopCamera();
+      onSolved(stage);
+    };
+  } else if (continueBtn) {
+    continueBtn.classList.add('hidden');
+  }
 
   // Load jsQR
   try {
@@ -396,11 +420,17 @@ function handleQRCode(data, stage, state, onSolved) {
     } else {
       showQRFeedback(`Carte ${KEYCARD_COLORS[color]?.label || color} déjà en possession.`, 'info');
     }
-    renderLockPanel(state);
+    renderLockPanel(state, stage);
     return;
   }
 
   if (type === 'LOCK') {
+    // Free-collection mode: locks not used
+    if (!stage.puzzle?.requiredLocks?.length) {
+      showQRFeedback('QR non reconnu dans ce mode.', 'error');
+      return;
+    }
+
     if (!hasKeycard(state, color)) {
       const reqLabel = KEYCARD_COLORS[color]?.label || color;
       showQRFeedback(`Accréditation insuffisante. Carte ${reqLabel} requise.`, 'error');
@@ -409,7 +439,7 @@ function handleQRCode(data, stage, state, onSolved) {
     }
 
     const isNew = unlockStation(state, color);
-    renderLockPanel(state);
+    renderLockPanel(state, stage);
 
     if (isNew) {
       showQRFeedback('Station déverrouillée !', 'success');
@@ -435,9 +465,15 @@ function handleQRCode(data, stage, state, onSolved) {
 
 /* ───────── Lock panel (3 locks on screen) ───────── */
 
-function renderLockPanel(state) {
+function renderLockPanel(state, stage) {
   const panel = document.getElementById('qr-lock-panel');
   if (!panel) return;
+
+  // Free-collection mode: hide lock panel
+  if (!stage?.puzzle?.requiredLocks?.length) {
+    panel.innerHTML = '';
+    return;
+  }
 
   const unlocked = state.unlockedStations || [];
   const cards    = state.keycards || [];

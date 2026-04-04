@@ -21,8 +21,8 @@ const STATE_FILE = path.join(__dirname, 'data', 'server-state.json');
 /* ══════════ Team State ══════════ */
 
 const teams = {
-  'team-1': { accessTier: 1, solvedPuzzles: [], currentStage: null },
-  'team-2': { accessTier: 1, solvedPuzzles: [], currentStage: null },
+  'team-1': { accessTier: 1, solvedPuzzles: [], currentStage: null, decryptActivated: false },
+  'team-2': { accessTier: 1, solvedPuzzles: [], currentStage: null, decryptActivated: false },
 };
 
 const clients = {
@@ -64,6 +64,7 @@ function resetTeams() {
     team.accessTier = 1;
     team.solvedPuzzles = [];
     team.currentStage = null;
+    team.decryptActivated = false;
   }
   saveServerState();
 }
@@ -93,7 +94,19 @@ app.post('/api/reset', (_req, res) => {
   console.log('RESET — toutes les équipes réinitialisées.');
   res.json({ ok: true });
 });
-
+// App polling: check if terminal activated decrypt for this team
+app.get('/api/team-stage', (req, res) => {
+  const teamParam = req.query.team;
+  const teamId = teamParam ? `team-${teamParam}` : null;
+  if (!teamId || !teams[teamId]) {
+    return res.status(400).json({ error: 'Missing or invalid ?team= param' });
+  }
+  const team = teams[teamId];
+  // advancePast lists stage IDs where terminal has triggered advance
+  const advancePast = [];
+  if (team.decryptActivated) advancePast.push('scanner-reboot');
+  res.json({ advancePast, accessTier: team.accessTier });
+});
 const server = createServer(app);
 
 /* ══════════ WebSocket Server ══════════ */
@@ -175,6 +188,14 @@ function onPushToApps(ws, msg) {
   if (!teamId || !clients[teamId]) return;
 
   console.log(`[${teamId}] Terminal → Apps: ${msg.command}`);
+
+  // Track decrypt activation for polling endpoint
+  if (msg.command === 'advance-stage') {
+    teams[teamId].decryptActivated = true;
+    saveServerState();
+    console.log(`[${teamId}] DECRYPT activé — decryptActivated = true`);
+  }
+
   const payload = JSON.stringify({
     type: 'terminal-command',
     command: msg.command,

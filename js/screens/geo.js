@@ -296,7 +296,10 @@ function transitionToTracker(stage, state, onSolved) {
   const foundInstruction = document.getElementById('geo-found-instruction');
 
   if (foundEl) foundEl.classList.add('hidden');
-  if (foundInstruction) foundInstruction.textContent = puzzle.foundText || 'Cherchez l\'objet caché dans cette zone.';
+  const defaultFoundText = puzzle.waitForTerminal
+    ? 'Trouvez le code caché ici et rendez-vous à un terminal pour augmenter votre niveau d\'accès.'
+    : 'Cherchez l\'objet caché dans cette zone.';
+  if (foundInstruction) foundInstruction.textContent = puzzle.foundText || defaultFoundText;
 
   let solved      = false;
   let lastZoneCls = '';
@@ -346,9 +349,31 @@ function transitionToTracker(stage, state, onSolved) {
       playSFX(MEDIA.sfxFound);
       solvePuzzle(state, stage.id);
 
-      // If terminal must validate, stay on screen and wait for WebSocket advance.
+      // If terminal must validate, stay on screen and poll server for advance.
       // Otherwise, auto-advance after 5 seconds.
-      if (!puzzle.waitForTerminal) {
+      if (puzzle.waitForTerminal) {
+        if (zoneMsg) {
+          zoneMsg.textContent = 'En attente de validation du terminal…';
+          zoneMsg.style.color = 'var(--accent-amber)';
+        }
+        // Poll server every 2s for stage advance
+        const teamParam = new URLSearchParams(location.search).get('team') || '1';
+        const pollId = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/team-stage?team=${teamParam}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            // Server advanced past current stage
+            if (data.advancePast && data.advancePast.includes(stage.id)) {
+              clearInterval(pollId);
+              onSolved(stage);
+            }
+          } catch { /* retry next tick */ }
+        }, 2000);
+        // Store pollId so cleanup can clear it
+        if (!state._geoPolls) state._geoPolls = [];
+        state._geoPolls.push(pollId);
+      } else {
         setTimeout(() => onSolved(stage), 5000);
       }
     }

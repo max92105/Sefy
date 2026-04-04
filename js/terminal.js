@@ -88,6 +88,11 @@ const TIER_COMMANDS = {
     minTier: 2,
     desc: 'Réactiver le module de décryptage',
     action: async () => {
+      if (decryptUsed) {
+        printLine('Module de décryptage déjà activé. Signal déjà transmis.', 'warning');
+        return;
+      }
+      decryptUsed = true;
       hideInputLine();
       await typeLine('Initialisation du module de décryptage…', 'bright');
       await delay(800);
@@ -160,6 +165,7 @@ let loggedIn = false;
 let agentName = null;
 let agentTeam = null;
 let accessTier = 1;
+let decryptUsed = false;
 let currentDir = '/';
 let usedCodes = new Set();
 let commandHistory = [];
@@ -253,6 +259,7 @@ function connectSync(teamId) {
 
   on('registered', (msg) => {
     accessTier = msg.teamState.accessTier || 1;
+    decryptUsed = !!msg.teamState.decryptActivated;
     updateHeaderStatus('EN LIGNE', true);
     printLine(`[RÉSEAU] Connecté — Équipe ${TEAM_LABELS[teamId] || teamId} — Tier ${accessTier}`, 'dim');
   });
@@ -278,6 +285,24 @@ function connectSync(teamId) {
 
   on('_connected', () => {
     updateHeaderStatus('EN LIGNE', true);
+  });
+
+  on('reset', () => {
+    // Full terminal reset triggered by admin
+    loggedIn = false;
+    agentName = null;
+    agentTeam = null;
+    accessTier = 1;
+    decryptUsed = false;
+    currentDir = '/';
+    usedCodes.clear();
+    commandHistory = [];
+    historyIndex = -1;
+    disconnect();
+    updateHeaderStatus('HORS LIGNE', false);
+    output.innerHTML = '';
+    printLine('[ADMIN] Reset global reçu. Redémarrage du terminal…', 'warning');
+    setTimeout(() => { output.innerHTML = ''; boot(); }, 1500);
   });
 }
 
@@ -398,6 +423,7 @@ async function handleCommand(raw) {
       agentName = null;
       agentTeam = null;
       accessTier = 1;
+      decryptUsed = false;
       currentDir = '/';
       disconnect();
       updateHeaderStatus('HORS LIGNE', false);
@@ -453,7 +479,8 @@ function showHelp() {
     printLine('── MODULES SPÉCIAUX ──', 'bright');
     for (const [name, info] of cmds) {
       if (accessTier >= info.minTier) {
-        printLine(`  ✓ ${name} — ${info.desc}`, 'success');
+        const used = (name === 'DECRYPT' && decryptUsed) ? ' [DÉJÀ ACTIVÉ]' : '';
+        printLine(`  ✓ ${name} — ${info.desc}${used}`, 'success');
       } else {
         printLine(`  ✗ ${name} — [TIER ${info.minTier} REQUIS]`, 'dim');
       }

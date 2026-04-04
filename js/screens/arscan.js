@@ -370,11 +370,20 @@ async function transitionToScanner(stage, state, onSolved, abort) {
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
     });
-    if (cameraVideo) cameraVideo.srcObject = cameraStream;
+    if (cameraVideo) {
+      cameraVideo.srcObject = cameraStream;
+      await cameraVideo.play().catch(() => {});
+    }
   } catch {
     showFeedback('Erreur : accès caméra refusé.', 'error');
     return;
   }
+
+  // Wait for video to actually produce frames before scanning
+  await waitForVideoReady(cameraVideo);
+  if (abort.aborted) return;
+
+  console.log('[AR] Camera ready — videoWidth:', cameraVideo.videoWidth, 'videoHeight:', cameraVideo.videoHeight);
 
   // Check if already all found (resume case)
   const remaining = AR_OBJECTS.filter(o => !foundObjects.includes(o.id));
@@ -390,18 +399,24 @@ async function transitionToScanner(stage, state, onSolved, abort) {
   // QR scan loop
   scanLoop = setInterval(() => {
     if (abort.aborted || !cameraVideo || cameraVideo.readyState < 2 || cooldown) return;
+    if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
 
     canvas.width  = cameraVideo.videoWidth;
     canvas.height = cameraVideo.videoHeight;
     ctx.drawImage(cameraVideo, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+    const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
     if (!qr || !qr.data) return;
 
+    console.log('[AR] QR detected:', qr.data);
+
     // Match QR to an AR object
-    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data);
-    if (!obj) return;
+    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data.trim());
+    if (!obj) {
+      console.log('[AR] QR not matched. Expected:', AR_OBJECTS.map(o => o.qrCode));
+      return;
+    }
 
     // Already collected?
     if (foundObjects.includes(obj.id)) {
@@ -415,7 +430,26 @@ async function transitionToScanner(stage, state, onSolved, abort) {
     cooldown = true;
     playSFX('assets/audio/zone_found.wav');
     showObjectOnCamera(obj, stage, state, onSolved, abort, () => { cooldown = false; });
-  }, 300);
+  }, 250);
+}
+
+/** Wait until the camera video element has actual frame data. */
+function waitForVideoReady(video) {
+  return new Promise(resolve => {
+    if (video.readyState >= 2 && video.videoWidth > 0) {
+      resolve();
+      return;
+    }
+    const onReady = () => {
+      video.removeEventListener('loadeddata', onReady);
+      video.removeEventListener('playing', onReady);
+      resolve();
+    };
+    video.addEventListener('loadeddata', onReady);
+    video.addEventListener('playing', onReady);
+    // Safety timeout — don't wait forever
+    setTimeout(resolve, 5000);
+  });
 }
 
 /* ───────── Show object on camera feed ───────── */

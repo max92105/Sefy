@@ -31,10 +31,12 @@ import { createARScanScreen, startARScan } from './screens/arscan.js';
 // Stage intro sequences (only for stages that have one)
 import { INTRO_SEQUENCE as geoActivationIntro } from './stages/geo-activation.js';
 import { INTRO_SEQUENCE as sefyRogueIntro } from './stages/sefy-rogue.js';
+import { INTRO_SEQUENCE as scannerRebootIntro } from './stages/scanner-reboot.js';
 
 const STAGE_INTROS = {
   'geo-activation': geoActivationIntro,
   'sefy-rogue': sefyRogueIntro,
+  'scanner-reboot': scannerRebootIntro,
 };
 
 let state = null;
@@ -164,7 +166,7 @@ function enterStage(stage) {
 
   // Geo tracker puzzle type
   if (stage.puzzle?.type === 'geo') {
-    puzzleCleanup = startGeoTracker(stage, state, onPuzzleSolved);
+    puzzleCleanup = startGeoTracker(stage, state, onPuzzleSolved, STAGE_INTROS[stage.id] || null);
     lastActiveScreen = 'screen-geo';
     showScreen('screen-geo');
     showNav();

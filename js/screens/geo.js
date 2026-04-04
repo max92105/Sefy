@@ -1,71 +1,54 @@
 /**
  * Screen: Geo Tracker — two-phase proximity puzzle.
  *
- * Phase 1 — AI Intro Cinematic:
- *   SEFY video + floating text + timed audio.  At a scripted moment
- *   the browser geolocation permission prompt fires.
+ * Phase 1 — AI Intro Cinematic (optional):
+ *   SEFY video + typewriter text + geolocation permission request.
  *
  * Phase 2 — Warm/Cold Radar Tracking:
- *   GLACIAL → FROID → TIÈDE → CHAUD → BRÛLANT  with audio SFX
- *   on every zone change.
+ *   GLACIAL → FROID → TIÈDE → CHAUD → BRÛLANT with audio SFX on zone change.
+ *
+ * Usage:
+ *   startGeoTracker(stage, state, onSolved, introSequence)
+ *   - introSequence: array of events, or null to skip intro.
  *
  * Configure via stage.puzzle:
  *   { type: "geo", lat: 45.123, lng: -73.456, radiusMeters: 2, ... }
  */
 
 import { delay } from '../ui.js';
-import { solvePuzzle, saveState } from '../state.js';
 import { playSFX } from '../ui.js';
+import { solvePuzzle, saveState } from '../state.js';
 import { typewriter } from '../typewriter.js';
 import { runIntroSequence } from '../intro-runner.js';
 
-/* ───────── Media paths (easy to change) ───────── */
+/* ───────── Media (easy to change) ───────── */
 const MEDIA = {
-  video: 'assets/video/sefy_avatar.mp4',
-  audioIntro: 'assets/audio/geo_intro_sefy.wav',
-  audioConfirmed: 'assets/audio/geo_confirmed_sefy.wav',
-};
-
-/* ───────── Configurable intro sequences per stage ─────────
- *  `time` = absolute ms from segment start.
- *  The sequence resets to 0 after `requestLocation` resolves,
- *  so Audio 2 times are relative to permission being granted.
- */
-
-const GEO_INTRO_SEQUENCES = {
-  'scanner-reboot': [
-    // ── Audio 1: module activation ──
-    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
-    { time: 0,      type: 'text',  text: 'Analyse des modules en cours...' },
-    { time: 3000,   type: 'text',  text: 'Activation du module de géolocalisation.' },
-    { time: 6000,   type: 'text',  text: 'Activation réussie.' },
-    { time: 9000,   type: 'text',  text: 'Activation du module de décryptage…' },
-    { time: 12000,   type: 'text',  text: 'Accès refusé.' },
-    { time: 14000,   type: 'text',  text: 'Activation du module d\'analyse environnementale.' },
-    { time: 17000,  type: 'text',  text: 'Accès refusé.' },
-    { time: 20000,  type: 'text',  text: 'Afin de vous aider avec toutes mes capacités, nous devons réactiver mes modules partiellement opérationnels.' },
-    { time: 26000,  type: 'text',  text: 'Le module de géolocalisation est maintenant disponible.' },
-    { time: 29000,  type: 'text',  text: 'Autorisez l\'accès à votre position pour initialiser le guidage.' },
-    { time: 30000,  type: 'action', action: 'requestLocation' },
-    // — sequence pauses here until permission is granted, then time resets to 0 —
-    // ── Audio 2: post-permission confirmation ──
-    { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
-    { time: 0,   type: 'text',  text: 'Position confirmée.' },
-    { time: 2000,   type: 'text',  text: 'Navigation en cours… je vous guide.' },
-    { time: 5000,   type: 'action', action: 'startTracking' },
-  ],
+  video:        'assets/video/sefy_avatar.mp4',
+  sfxBurning:   'assets/audio/zone_burning.wav',
+  sfxHot:       'assets/audio/zone_hot.wav',
+  sfxWarm:      'assets/audio/zone_warm.wav',
+  sfxCold:      'assets/audio/zone_cold.wav',
+  sfxFound:     'assets/audio/zone_found.wav',
 };
 
 /* ───────── Distance zones ───────── */
-
 const ZONES = [
-  { maxDist: 5,        label: 'BRÛLANT',   cls: 'geo-burning',  color: 'var(--accent-red)',    msg: 'Vous y êtes presque !',                   sfx: 'assets/audio/zone_burning.wav' },
-  { maxDist: 10,       label: 'CHAUD',     cls: 'geo-hot',      color: '#ff6633',              msg: 'Très proche… cherchez bien.',             sfx: 'assets/audio/zone_hot.wav' },
-  { maxDist: 15,       label: 'TIÈDE',     cls: 'geo-warm',     color: 'var(--accent-amber)',  msg: 'Vous approchez de la zone.',              sfx: 'assets/audio/zone_warm.wav' },
-  { maxDist: 20,       label: 'FROID',     cls: 'geo-cold',     color: '#66bbff',              msg: 'Encore loin… continuez à explorer.',      sfx: 'assets/audio/zone_cold.wav' },
-  { maxDist: Infinity, label: 'GLACIAL',   cls: 'geo-freezing', color: '#4488ff',              msg: 'Aucun signal détecté dans ce secteur.',   sfx: 'assets/audio/zone_cold.wav' },
+  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !',                 sfx: MEDIA.sfxBurning },
+  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.',            sfx: MEDIA.sfxHot },
+  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.',             sfx: MEDIA.sfxWarm },
+  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.',     sfx: MEDIA.sfxCold },
+  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing',  color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.',  sfx: MEDIA.sfxCold },
 ];
 
+/* ───────── Geolocation options (max precision + refresh) ───────── */
+const GEO_OPTS = {
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 10000,
+};
+const POLL_INTERVAL_MS = 800;
+
+/* ───────── Module state ───────── */
 let watchId = null;
 let pollInterval = null;
 
@@ -78,24 +61,21 @@ export function createGeoScreen() {
   section.innerHTML = `
     <div class="geo-layout">
 
-      <!-- ── Phase 1: AI Intro Cinematic ── -->
+      <!-- Phase 1: AI Intro -->
       <div class="geo-intro" id="geo-intro">
         <div class="briefing-center" id="geo-intro-center">
           <video id="geo-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
             <source src="${MEDIA.video}" type="video/mp4">
           </video>
-
           <div class="briefing-bottom">
             <div class="briefing-terminal" id="geo-terminal">
               <span class="briefing-terminal-line" id="geo-current-line"></span>
             </div>
           </div>
         </div>
-
-
       </div>
 
-      <!-- ── Phase 2: Radar Tracking ── -->
+      <!-- Phase 2: Radar Tracking -->
       <div class="geo-tracker hidden" id="geo-tracker">
         <div class="screen-content centered">
           <div class="screen-header">
@@ -138,32 +118,31 @@ export function createGeoScreen() {
 /* ═══════════════  Public entry  ═══════════════ */
 
 /**
- * Start the geo puzzle (intro cinematic → radar tracking).
+ * Start the geo puzzle.
+ * @param {object}   stage          — stage config
+ * @param {object}   state          — app state
+ * @param {Function} onSolved       — callback
+ * @param {Array|null} introSequence — intro events, or null to skip
  * @returns cleanup function
  */
-export function startGeoTracker(stage, state, onSolved) {
-  const puzzle  = stage.puzzle;
-
-  // If briefing already watched, skip straight to tracker
-  if (state.stagePhase && state.stagePhase[stage.id] === 'tracker') {
+export function startGeoTracker(stage, state, onSolved, introSequence) {
+  // If no intro or already watched, skip to tracker
+  if (!introSequence || (state.stagePhase && state.stagePhase[stage.id] === 'tracker')) {
     return resumeGeoTracker(stage, state, onSolved);
   }
 
-  // ── Show Phase 1, hide Phase 2 ──
+  // Show Phase 1, hide Phase 2
   const introEl   = document.getElementById('geo-intro');
   const trackerEl = document.getElementById('geo-tracker');
   if (introEl)   introEl.classList.remove('hidden');
   if (trackerEl) trackerEl.classList.add('hidden');
 
-  // Video
   const video = document.getElementById('geo-avatar-video');
   if (video) video.play().catch(() => {});
 
-  // Text element
   const currentLine = document.getElementById('geo-current-line');
   if (currentLine) currentLine.textContent = '';
 
-  // ── Run intro sequence (sequential, async) ──
   const abortCtrl = { aborted: false, currentAudio: null };
 
   const actionHandlers = {
@@ -178,9 +157,8 @@ export function startGeoTracker(stage, state, onSolved) {
     },
   };
 
-  runIntroSequence(GEO_INTRO_SEQUENCES[stage.id] || GEO_INTRO_SEQUENCES['scanner-reboot'], currentLine, abortCtrl, actionHandlers);
+  runIntroSequence(introSequence, currentLine, abortCtrl, actionHandlers);
 
-  // ── Cleanup ──
   return () => {
     abortCtrl.aborted = true;
     if (video) { video.pause(); video.currentTime = 0; }
@@ -189,7 +167,7 @@ export function startGeoTracker(stage, state, onSolved) {
   };
 }
 
-/** Resume directly into tracker phase (skips briefing) */
+/** Resume directly into tracker (skips intro) */
 function resumeGeoTracker(stage, state, onSolved) {
   const introEl   = document.getElementById('geo-intro');
   const trackerEl = document.getElementById('geo-tracker');
@@ -198,23 +176,16 @@ function resumeGeoTracker(stage, state, onSolved) {
 
   transitionToTracker(stage, state, onSolved);
 
-  return () => {
-    stopWatching();
-  };
+  return () => { stopWatching(); };
 }
 
-/* ═══════════════  Phase 1 helpers  ═══════════════ */
+/* ═══════════════  Phase 1 — Permission helpers  ═══════════════ */
 
 async function typeText(el, text) {
   if (!el) return;
   await typewriter(el, text, 25);
 }
 
-/**
- * Request geolocation permission with retry.
- * Uses the Permissions API to detect if permanently blocked,
- * and guides the user to reset via browser settings.
- */
 async function requestLocationWithRetry(currentLine, abort) {
   if (!navigator.geolocation) {
     await typeText(currentLine, 'Erreur : géolocalisation non disponible sur cet appareil.');
@@ -223,14 +194,11 @@ async function requestLocationWithRetry(currentLine, abort) {
 
   let firstAttempt = true;
 
-  // Loop forever until granted or aborted
   while (!abort.aborted) {
-    // Check permission state via Permissions API (if available)
     const permState = await getPermissionState();
 
     if (permState === 'granted') {
-      // Verify with an actual position request to be sure
-      const result = await requestLocationPermission();
+      const result = await requestLocationOnce();
       if (result === 'granted') {
         await typeText(currentLine, 'Accès autorisé. Module de géolocalisation activé.');
         return true;
@@ -238,20 +206,16 @@ async function requestLocationWithRetry(currentLine, abort) {
     }
 
     if (permState === 'denied') {
-      // Permanently blocked — guide user to reset in browser
       await typeText(currentLine, '⚠ Localisation bloquée. Appuyez sur l\'icône 🔒 dans la barre d\'adresse, puis autorisez la localisation.');
-
-      // Poll every 2s until permission changes
       while (!abort.aborted) {
         await delay(2000);
-        const newState = await getPermissionState();
-        if (newState !== 'denied') break;
+        if ((await getPermissionState()) !== 'denied') break;
       }
       if (abort.aborted) return false;
       continue;
     }
 
-    // State is 'prompt' — browser will show the popup
+    // 'prompt' — browser will show the popup
     if (firstAttempt) {
       await typeText(currentLine, 'Autorisation de géolocalisation requise…');
       firstAttempt = false;
@@ -259,49 +223,34 @@ async function requestLocationWithRetry(currentLine, abort) {
       await typeText(currentLine, 'Accès refusé. Veuillez autoriser la géolocalisation pour continuer.');
     }
 
-    const result = await requestLocationPermission();
+    const result = await requestLocationOnce();
     if (abort.aborted) return false;
-
     if (result === 'granted') {
       await typeText(currentLine, 'Accès autorisé. Module de géolocalisation activé.');
       return true;
     }
 
-    // Denied — wait then loop back (infinite retry)
     await delay(2000);
   }
   return false;
 }
 
-/**
- * Check the current geolocation permission state.
- * Returns 'granted' | 'denied' | 'prompt'.
- */
 async function getPermissionState() {
   try {
     if (navigator.permissions) {
       const status = await navigator.permissions.query({ name: 'geolocation' });
-      return status.state; // 'granted' | 'denied' | 'prompt'
+      return status.state;
     }
-  } catch { /* Permissions API not available */ }
-  return 'prompt'; // fallback: assume browser will show the popup
+  } catch { /* not available */ }
+  return 'prompt';
 }
 
-/**
- * Request geolocation permission (one-shot).
- * Returns 'granted' | 'denied' | 'error'.
- * Only returns 'granted' if we actually get a position back.
- */
-function requestLocationPermission() {
+function requestLocationOnce() {
   return new Promise(resolve => {
-    if (!navigator.geolocation) { resolve('error'); return; }
     navigator.geolocation.getCurrentPosition(
-      ()    => resolve('granted'),
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) resolve('denied');
-        else resolve('error'); // timeout or unavailable — NOT granted
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
+      () => resolve('granted'),
+      (err) => resolve(err.code === err.PERMISSION_DENIED ? 'denied' : 'error'),
+      GEO_OPTS
     );
   });
 }
@@ -314,7 +263,7 @@ function transitionToTracker(stage, state, onSolved) {
   const targetLng = puzzle.lng;
   const radius    = puzzle.radiusMeters || 2;
 
-  // Save phase so we skip briefing on re-entry
+  // Save phase so intro is skipped on re-entry
   if (!state.stagePhase) state.stagePhase = {};
   state.stagePhase[stage.id] = 'tracker';
   saveState(state);
@@ -325,6 +274,10 @@ function transitionToTracker(stage, state, onSolved) {
   if (introEl)   introEl.classList.add('hidden');
   if (trackerEl) trackerEl.classList.remove('hidden');
 
+  // Stop briefing video
+  const video = document.getElementById('geo-avatar-video');
+  if (video) { video.pause(); video.currentTime = 0; }
+
   // Populate header
   const tagEl       = document.getElementById('geo-tag');
   const titleEl     = document.getElementById('geo-title');
@@ -333,6 +286,7 @@ function transitionToTracker(stage, state, onSolved) {
   if (titleEl)     titleEl.textContent = stage.title;
   if (narrativeEl) narrativeEl.innerHTML = stage.narrative?.text || '';
 
+  // DOM refs
   const zoneLabel        = document.getElementById('geo-zone-label');
   const zoneMsg          = document.getElementById('geo-zone-msg');
   const distanceEl       = document.getElementById('geo-distance');
@@ -360,19 +314,14 @@ function transitionToTracker(stage, state, onSolved) {
       pos.coords.latitude, pos.coords.longitude,
       targetLat, targetLng
     );
-
     const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
 
-    // Update display — always in meters
-    if (distanceEl) distanceEl.textContent = `${Math.round(dist)} m`;
+    // Update display
+    if (distanceEl) { distanceEl.textContent = `${Math.round(dist)} m`; distanceEl.style.color = zone.color; }
     if (zoneLabel)  zoneLabel.textContent = zone.label;
-    if (zoneMsg) {
-      zoneMsg.textContent = zone.msg;
-      zoneMsg.style.color = zone.color;
-    }
-    if (distanceEl) distanceEl.style.color = zone.color;
+    if (zoneMsg)    { zoneMsg.textContent = zone.msg; zoneMsg.style.color = zone.color; }
 
-    // Update radar color + play zone-change SFX
+    // Radar color + zone-change SFX
     if (radar && zone.cls !== lastZoneCls) {
       if (lastZoneCls) radar.classList.remove(lastZoneCls);
       radar.classList.add(zone.cls);
@@ -380,29 +329,22 @@ function transitionToTracker(stage, state, onSolved) {
       lastZoneCls = zone.cls;
     }
 
-    // Dot pulse speed
-    if (dot) {
-      const speed = Math.max(0.3, Math.min(2, dist / 10));
-      dot.style.animationDuration = `${speed}s`;
-    }
+    // Dot pulse speed (faster when closer)
+    if (dot) dot.style.animationDuration = `${Math.max(0.3, Math.min(2, dist / 10))}s`;
 
     // Solved?
-    if (dist <= radius && !solved) {
+    if (dist <= radius) {
       solved = true;
       stopWatching();
 
       if (zoneLabel) zoneLabel.textContent = 'CIBLE LOCALISÉE';
-      if (zoneMsg) {
-        zoneMsg.textContent = 'Position confirmée. Signal verrouillé.';
-        zoneMsg.style.color = 'var(--accent-green)';
-      }
+      if (zoneMsg)   { zoneMsg.textContent = 'Position confirmée. Signal verrouillé.'; zoneMsg.style.color = 'var(--accent-green)'; }
       if (distanceEl) distanceEl.style.color = 'var(--accent-green)';
       if (foundEl)   foundEl.classList.remove('hidden');
       if (radar)     radar.classList.add('geo-locked');
 
-      playSFX('assets/audio/zone_found.wav');
+      playSFX(MEDIA.sfxFound);
       solvePuzzle(state, stage.id);
-
       setTimeout(() => onSolved(stage), 5000);
     }
   }
@@ -410,33 +352,28 @@ function transitionToTracker(stage, state, onSolved) {
   function onError(err) {
     if (zoneLabel) zoneLabel.textContent = 'ERREUR';
     if (zoneMsg) {
-      switch (err.code) {
-        case err.PERMISSION_DENIED:
-          zoneMsg.textContent = 'Accès à la localisation refusé. Activez la géolocalisation dans les paramètres.';
-          break;
-        case err.POSITION_UNAVAILABLE:
-          zoneMsg.textContent = 'Position indisponible. Essayez de vous déplacer.';
-          break;
-        case err.TIMEOUT:
-          zoneMsg.textContent = 'Délai d\'attente dépassé. Réessai en cours…';
-          break;
-      }
+      const messages = {
+        [err.PERMISSION_DENIED]:    'Accès à la localisation refusé. Activez la géolocalisation dans les paramètres.',
+        [err.POSITION_UNAVAILABLE]: 'Position indisponible. Essayez de vous déplacer.',
+        [err.TIMEOUT]:              'Délai d\'attente dépassé. Réessai en cours…',
+      };
+      zoneMsg.textContent = messages[err.code] || 'Erreur de géolocalisation.';
     }
   }
 
-  const geoOpts = { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 };
+  // ── Start tracking: watchPosition + polling for maximum freshness ──
+  // watchPosition gives us updates when the OS has new data.
+  // Polling getCurrentPosition ensures we get updates even on devices
+  // where watchPosition fires slowly.
+  watchId = navigator.geolocation.watchPosition(onPosition, onError, GEO_OPTS);
 
-  // Get first position immediately
-  navigator.geolocation.getCurrentPosition(onPosition, onError, geoOpts);
-
-  // Poll every 1s for maximum freshness (more reliable than watchPosition)
+  navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
   pollInterval = setInterval(() => {
-    if (solved) return;
-    navigator.geolocation.getCurrentPosition(onPosition, onError, geoOpts);
-  }, 1000);
+    if (!solved) navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
+  }, POLL_INTERVAL_MS);
 }
 
-/* ───────── Helpers ───────── */
+/* ═══════════════  Helpers  ═══════════════ */
 
 function stopWatching() {
   if (watchId !== null) {

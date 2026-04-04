@@ -1,4 +1,13 @@
 {
+  "name": "sefy",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  },
   "devDependencies": {
     "qrcode": "^1.5.4"
   }

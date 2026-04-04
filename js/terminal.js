@@ -9,7 +9,11 @@
  * Agent codes (SHA-256 hashes):
  *   456D79 → 1c1ba6c2628afd47c9e1c57cf6ac548daedfc75a71874f0f2a10c84dbb1640fe
  *   4C6561 → 130111a9374da4888cf316006ce27b082c6dc1c90bcdd4aa2b5cae31a347808f
+ *
+ * Sync: connects to SEFY server via WebSocket for team state sync.
  */
+
+import { connect, disconnect, send, on, isConnected } from './sync.js';
 
 /* ═══════════════  Config  ═══════════════ */
 
@@ -17,6 +21,17 @@ const AGENT_HASHES = [
   '1c1ba6c2628afd47c9e1c57cf6ac548daedfc75a71874f0f2a10c84dbb1640fe',
   '130111a9374da4888cf316006ce27b082c6dc1c90bcdd4aa2b5cae31a347808f',
 ];
+
+/** Map agent codes → team IDs */
+const AGENT_TEAMS = {
+  '456D79': 'team-1',
+  '4C6561': 'team-2',
+};
+
+const TEAM_LABELS = {
+  'team-1': 'ALPHA',
+  'team-2': 'BRAVO',
+};
 
 const BOOT_LINES = [
   { text: 'SEFY FACILITY TERMINAL v2.4.1', delay: 600, cls: 'dim' },
@@ -28,26 +43,8 @@ const BOOT_LINES = [
 
 /**
  * Action codes — when an agent enters one of these, something happens.
- * Each action has:
- *   code: what the agent types
- *   response: array of lines to display
- *   giveCode: (optional) a code the terminal gives back to the agent
- *   once: (optional) can only be used once per session
  */
 const ACTION_CODES = [
-  {
-    code: 'STATUS',
-    response: [
-      '╔══════════════════════════════════════╗',
-      '║   ÉTAT DES SYSTÈMES DE L\'INSTALLATION  ║',
-      '╠══════════════════════════════════════╣',
-      '║ Réseau interne .......... EN LIGNE   ║',
-      '║ Module SEFY ............. COMPROMIS   ║',
-      '║ Protocole PURGE ......... ACTIF       ║',
-      '║ Contrôle d\'accès ........ VERROUILLÉ  ║',
-      '╚══════════════════════════════════════╝',
-    ],
-  },
   {
     code: 'AIDE',
     response: [
@@ -56,6 +53,56 @@ const ACTION_CODES = [
     alias: 'HELP',
   },
 ];
+
+/**
+ * Tier upgrade codes — SHA-256 hashes of physical codes found in the game.
+ *
+ * To generate a hash, open DevTools console and run:
+ *   crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_CODE'))
+ *     .then(h => console.log([...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')))
+ *
+ * NOTE: codes are uppercased before hashing, so 'helix' and 'HELIX' match the same hash.
+ */
+const TIER_UPGRADE_HASHES = [
+  {
+    // TODO: replace with SHA-256 hash of the physical code hidden at the geo location
+    hash: 'TODO_REPLACE_WITH_HASH',
+    tier: 2,
+    response: [
+      '╔══════════════════════════════════════╗',
+      '║       MISE À JOUR D\'ACCÈS            ║',
+      '╠══════════════════════════════════════╣',
+      '║  Tier de sécurité : 1 → 2            ║',
+      '║  Nouveaux modules déverrouillés :     ║',
+      '║  • Module de décryptage  [DECRYPT]    ║',
+      '╚══════════════════════════════════════╝',
+    ],
+  },
+];
+
+/**
+ * Tier-gated commands — only available when accessTier >= minTier.
+ */
+const TIER_COMMANDS = {
+  DECRYPT: {
+    minTier: 2,
+    desc: 'Réactiver le module de décryptage',
+    action: async () => {
+      hideInputLine();
+      await typeLine('Initialisation du module de décryptage…', 'bright');
+      await delay(800);
+      await typeLine('Calibration… ████████████████████ 100%', '');
+      await delay(600);
+      await typeLine('Module de décryptage : EN LIGNE', 'success');
+      printBlank();
+      await typeLine('Envoi du signal aux appareils de terrain…', 'bright');
+      send('push-to-apps', { command: 'advance-stage' });
+      await delay(1000);
+      await typeLine('✓ Signal transmis. Application terrain mise à jour.', 'success');
+      showInputLine();
+    },
+  },
+};
 
 /* File system for ls/cd/play */
 const FILE_SYSTEM = {
@@ -111,6 +158,8 @@ const FILE_SYSTEM = {
 
 let loggedIn = false;
 let agentName = null;
+let agentTeam = null;
+let accessTier = 1;
 let currentDir = '/';
 let usedCodes = new Set();
 let commandHistory = [];
@@ -122,6 +171,7 @@ const output = document.getElementById('term-output');
 const input = document.getElementById('term-input');
 const inputLine = document.getElementById('term-input-line');
 const promptEl = document.getElementById('term-prompt');
+const statusEl = document.getElementById('term-status');
 
 /* ═══════════════  Helpers  ═══════════════ */
 
@@ -189,6 +239,48 @@ function hideInputLine() {
   if (inputLine) inputLine.classList.add('hidden');
 }
 
+function updateHeaderStatus(text, online = false) {
+  if (statusEl) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('online', online);
+  }
+}
+
+/* ═══════════════  Sync Setup  ═══════════════ */
+
+function connectSync(teamId) {
+  connect(teamId, 'terminal');
+
+  on('registered', (msg) => {
+    accessTier = msg.teamState.accessTier || 1;
+    updateHeaderStatus('EN LIGNE', true);
+    printLine(`[RÉSEAU] Connecté — Équipe ${TEAM_LABELS[teamId] || teamId} — Tier ${accessTier}`, 'dim');
+  });
+
+  on('tier-updated', (msg) => {
+    if (msg.tier > accessTier) {
+      accessTier = msg.tier;
+      printBlank();
+      printLine(`[SYNC] Tier d'accès mis à jour : ${accessTier}`, 'success');
+      printBlank();
+    }
+  });
+
+  on('app-command', (msg) => {
+    printBlank();
+    printLine(`[APP] Signal reçu : ${msg.command}`, 'bright');
+    printBlank();
+  });
+
+  on('_disconnected', () => {
+    updateHeaderStatus('HORS LIGNE', false);
+  });
+
+  on('_connected', () => {
+    updateHeaderStatus('EN LIGNE', true);
+  });
+}
+
 /* ═══════════════  Boot Sequence  ═══════════════ */
 
 async function boot() {
@@ -224,6 +316,14 @@ async function handleLogin(code) {
     await delay(400);
     await typeLine(`Bienvenue, Agent ${agentName}.`, 'bright');
     await delay(300);
+
+    // Connect to sync server
+    agentTeam = AGENT_TEAMS[agentName] || null;
+    if (agentTeam) {
+      connectSync(agentTeam);
+      await delay(600);
+    }
+
     printBlank();
     printLines([
       '╔═══════════════════════════════════════╗',
@@ -254,6 +354,7 @@ async function handleCommand(raw) {
   historyIndex = commandHistory.length;
 
   printLine(`${agentName} >> ${trimmed}`, 'input-echo');
+  hideInputLine();
 
   const parts = trimmed.split(/\s+/);
   const cmd = parts[0].toUpperCase();
@@ -261,8 +362,6 @@ async function handleCommand(raw) {
 
   switch (cmd) {
     case 'HELP':
-      showHelp();
-      break;
     case 'AIDE':
       showHelp();
       break;
@@ -271,7 +370,7 @@ async function handleCommand(raw) {
       output.innerHTML = '';
       break;
     case 'STATUS':
-      handleActionCode('STATUS');
+      showStatus();
       break;
     case 'LS':
     case 'DIR':
@@ -291,12 +390,17 @@ async function handleCommand(raw) {
       break;
     case 'WHOAMI':
       printLine(`Agent ${agentName}`, 'bright');
+      if (agentTeam) printLine(`Équipe ${TEAM_LABELS[agentTeam] || agentTeam} — Tier ${accessTier}`, 'dim');
       break;
     case 'LOGOUT':
     case 'EXIT':
       loggedIn = false;
       agentName = null;
+      agentTeam = null;
+      accessTier = 1;
       currentDir = '/';
+      disconnect();
+      updateHeaderStatus('HORS LIGNE', false);
       printBlank();
       await typeLine('Déconnexion…', 'warning');
       await delay(500);
@@ -305,7 +409,11 @@ async function handleCommand(raw) {
       loginPrompt();
       return;
     default:
-      // Try as action code
+      // 1. Check tier upgrade codes
+      if (await handleTierCode(trimmed)) break;
+      // 2. Check tier-gated commands
+      if (await handleTierCommand(cmd)) break;
+      // 3. Try as action code
       if (!handleActionCode(cmd)) {
         printLine(`Commande inconnue: ${cmd}`, 'error');
         printLine('Tapez HELP pour la liste des commandes.', 'dim');
@@ -316,6 +424,8 @@ async function handleCommand(raw) {
   printBlank();
   showInputLine();
 }
+
+/* ═══════════════  Help  ═══════════════ */
 
 function showHelp() {
   printLines([
@@ -335,7 +445,79 @@ function showHelp() {
     '║  Entrez un CODE D\'ACTION pour agir.   ║',
     '╚═══════════════════════════════════════╝',
   ]);
+
+  // Show tier-gated commands
+  const cmds = Object.entries(TIER_COMMANDS);
+  if (cmds.length > 0) {
+    printBlank();
+    printLine('── MODULES SPÉCIAUX ──', 'bright');
+    for (const [name, info] of cmds) {
+      if (accessTier >= info.minTier) {
+        printLine(`  ✓ ${name} — ${info.desc}`, 'success');
+      } else {
+        printLine(`  ✗ ${name} — [TIER ${info.minTier} REQUIS]`, 'dim');
+      }
+    }
+  }
 }
+
+/* ═══════════════  Status  ═══════════════ */
+
+function showStatus() {
+  const teamLabel = TEAM_LABELS[agentTeam] || 'N/A';
+  const connStatus = isConnected() ? 'EN LIGNE' : 'HORS LIGNE';
+
+  printLines([
+    '╔══════════════════════════════════════╗',
+    '║   ÉTAT DES SYSTÈMES                 ║',
+    '╠══════════════════════════════════════╣',
+    `║  Agent ............. ${agentName?.padEnd(15) || 'N/A            '}║`,
+    `║  Équipe ............ ${teamLabel.padEnd(15)}║`,
+    `║  Tier d'accès ...... ${String(accessTier).padEnd(15)}║`,
+    `║  Réseau ............ ${connStatus.padEnd(15)}║`,
+    '╠══════════════════════════════════════╣',
+    '║  Module SEFY ........ COMPROMIS      ║',
+    '║  Protocole PURGE .... ACTIF          ║',
+    '║  Contrôle d\'accès ... VERROUILLÉ     ║',
+    '╚══════════════════════════════════════╝',
+  ]);
+}
+
+/* ═══════════════  Tier System  ═══════════════ */
+
+async function handleTierCode(input) {
+  const hash = await sha256(input);
+  const tierCode = TIER_UPGRADE_HASHES.find(t => t.hash === hash);
+  if (!tierCode) return false;
+
+  if (accessTier >= tierCode.tier) {
+    printLine(`Tier ${tierCode.tier} déjà actif.`, 'warning');
+    return true;
+  }
+
+  accessTier = tierCode.tier;
+  printLines(tierCode.response, '');
+
+  // Sync to server
+  send('tier-upgrade', { tier: tierCode.tier });
+
+  return true;
+}
+
+async function handleTierCommand(cmd) {
+  const tierCmd = TIER_COMMANDS[cmd];
+  if (!tierCmd) return false;
+
+  if (accessTier < tierCmd.minTier) {
+    printLine(`Accès insuffisant. Tier ${tierCmd.minTier} requis (actuel: ${accessTier}).`, 'error');
+    return true;
+  }
+
+  await tierCmd.action();
+  return true;
+}
+
+/* ═══════════════  Action Codes  ═══════════════ */
 
 function handleActionCode(code) {
   let action = ACTION_CODES.find(a => a.code === code);
@@ -448,7 +630,6 @@ function playMedia(name) {
     return;
   }
 
-  // Future: hook into actual audio/video playback
   printLine(`Lecture de ${name}…`, 'bright');
   printLine('(Fonctionnalité en développement)', 'warning');
 }

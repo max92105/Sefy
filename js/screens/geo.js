@@ -345,7 +345,12 @@ function transitionToTracker(stage, state, onSolved) {
 
       playSFX(MEDIA.sfxFound);
       solvePuzzle(state, stage.id);
-      setTimeout(() => onSolved(stage), 5000);
+
+      // If terminal must validate, stay on screen and wait for WebSocket advance.
+      // Otherwise, auto-advance after 5 seconds.
+      if (!puzzle.waitForTerminal) {
+        setTimeout(() => onSolved(stage), 5000);
+      }
     }
   }
 

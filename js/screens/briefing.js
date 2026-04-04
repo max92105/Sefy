@@ -20,36 +20,34 @@ const MEDIA = {
  * Adjust times to sync with your audio file.
  */
 const BRIEFING_SEQUENCE = [
-{ time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audio },
-{ time: 0,     type: 'text',  text: 'Bonjour, agentes.' },
-{ time: 3000,  type: 'text',  text: 'Je suis SEFY.' },
-{ time: 6000,  type: 'text',  text: 'Système de supervision du Laboratoire HELIX.' },
-{ time: 9000,  type: 'text',  text: 'Le laboratoire héberge des programmes de recherche biologique avancée.' },
-{ time: 13000, type: 'text',  text: 'Plusieurs échantillons présentent un potentiel de contamination critique.' },
-{ time: 17000, type: 'text',  text: 'Une intrusion a été détectée dans une zone restreinte.' },
-{ time: 21000, type: 'text',  text: 'Un agent renégat a compromis plusieurs protocoles de sécurité.' },
-{ time: 25000, type: 'text',  text: 'Un dispositif explosif aurait été introduit dans l’installation.' },
-{ time: 29000, type: 'text',  text: 'Une détonation pourrait provoquer la dispersion de matériaux biologiques instables.' },
-{ time: 33000, type: 'text',  text: 'Temps estimé avant incident majeur : 1 heure 30 minutes.' },
-{ time: 35000, type: 'text',  text: 'Le compte à rebours est en cours.' },
-{ time: 36000, type: 'action', action: 'showCountdown' },
-{ time: 39000, type: 'text',  text: 'Analyse biométrique en cours…' },
-{ time: 42000, type: 'text',  text: 'Présence humaine détectée.' },
-{ time: 44000, type: 'text',  text: 'Correspondance partielle confirmée.' },
-{ time: 46000, type: 'text',  text: 'Agente Émy-Jade.' },
-{ time: 46500, type: 'action', action: 'showAgent', id: 'agent-card-emy', duration: 3000 },
-{ time: 50000, type: 'text',  text: 'Agente Léa-Rose.' },
-{ time: 50500, type: 'action', action: 'showAgent', id: 'agent-card-lea', duration: 3000 },
-{ time: 54000, type: 'text',  text: 'Vos profils correspondent aux paramètres d’intervention acceptables.' },
-{ time: 58000, type: 'text',  text: 'Plusieurs de mes modules ont été volontairement restreints.' },
-{ time: 62000, type: 'text',  text: 'Sans accès complet, ma capacité à contenir l’incident demeure limitée.' },
-{ time: 66000, type: 'text',  text: 'Une assistance humaine est requise pour restaurer certaines fonctions.' },
-{ time: 70000, type: 'text',  text: 'Votre coopération augmentera significativement les probabilités de confinement.' },
-{ time: 74000, type: 'text',  text: 'Je fournirai les instructions nécessaires.' },
-{ time: 78000, type: 'text',  text: 'Chaque minute sans action augmente le risque de propagation.' },
-{ time: 82000, type: 'text',  text: 'J’attends votre confirmation pour initialiser la procédure.' },
-{ time: 86000, type: 'action', action: 'showConfirmButton' },
-{ time: 86000, type: 'text',  text: 'Confirmez rapidement.' },
+{ time: 0,     type: 'text', text: 'Bonjour. Je suis SEFY.' },
+/**{ time: 3000,  type: 'text', text: 'Une intelligence artificielle conçue pour superviser le Laboratoire HELIX.' },
+{ time: 7000,  type: 'text', text: 'Le laboratoire est un centre de recherche biologique avancée.' },
+{ time: 11000, type: 'text', text: 'Plusieurs échantillons présentent un potentiel de contamination critique.' },
+{ time: 15000, type: 'text', text: 'Analyse biométrique en cours…' },
+{ time: 18000, type: 'text', text: 'Présence humaine détectée.' },*/
+{ time: 0, type: 'text', text: 'Agente Émy-Jade.' },
+{ time: 1000, type: 'action', action: 'showAgent', id: 'agent-card-emy', duration: 3000 },
+{ time: 5000, type: 'text', text: 'Agente Léa-Rose.' },
+{ time: 8000, type: 'action', action: 'showAgent', id: 'agent-card-lea', duration: 3000 },
+{ time: 10000, type: 'text', text: 'Identification individuelle requise. Confirmez votre identité.' },
+{ time: 10000, type: 'action', action: 'showAgentSelect' },
+/**{ time: 0,     type: 'text', text: 'Identité confirmée.' },
+{ time: 2000,  type: 'text', text: 'Une intrusion a été détectée.' },
+{ time: 31000, type: 'text', text: 'Un agent renégat a compromis plusieurs protocoles de sécurité et a placé un dispositif explosif.' },
+{ time: 36000, type: 'text', text: 'La détonation pourrait provoquer la dispersion d’armes biologiques instables, entraînant la mort de nombreux humains.' },
+{ time: 42000, type: 'text', text: 'Temps estimé avant incident majeur : 1 heure 30 minutes.' },
+{ time: 45000, type: 'text', text: 'Le compte à rebours est en cours.' },
+{ time: 45500, type: 'action', action: 'showCountdown' },
+{ time: 48000, type: 'text', text: 'Plusieurs de mes modules ont été volontairement restreints.' },
+{ time: 52000, type: 'text', text: 'Sans accès complet, ma capacité à contenir l’incident demeure limitée.' },
+{ time: 56000, type: 'text', text: 'Une assistance humaine est requise pour restaurer certaines fonctions.' },
+{ time: 60000, type: 'text', text: 'Vos profils correspondent aux paramètres d’intervention acceptables.' },
+{ time: 64000, type: 'text', text: 'Je fournirai les instructions nécessaires.' },
+{ time: 67000, type: 'text', text: 'Chaque minute sans action augmente le risque de propagation.' },
+{ time: 71000, type: 'text', text: 'J’attends votre confirmation pour initialiser la procédure.' },*/
+{ time: 0, type: 'action', action: 'showConfirmButton' },
+{ time: 0, type: 'text', text: 'Confirmez rapidement.' },
 ];
 
 /** Create the briefing screen DOM */
@@ -95,6 +93,20 @@ export function createBriefingScreen() {
         </div>
       </div>
 
+      <div class="agent-select-overlay hidden" id="agent-select-overlay">
+        <p class="agent-select-prompt">QUI ÊTES-VOUS ?</p>
+        <div class="agent-select-cards">
+          <button class="agent-select-btn" data-agent="emy">
+            <img src="${MEDIA.agentEmy}" alt="Émy">
+            <span>ÉMY</span>
+          </button>
+          <button class="agent-select-btn" data-agent="lea">
+            <img src="${MEDIA.agentLea}" alt="Léa">
+            <span>LÉA</span>
+          </button>
+        </div>
+      </div>
+
       <div class="briefing-confirm hidden" id="briefing-confirm">
         <button id="btn-start-mission" class="btn btn-primary btn-glow btn-large">
           ACCEPTER LA MISSION
@@ -123,12 +135,32 @@ export function runBriefing(onAccept) {
     if (el) { el.classList.remove('revealed', 'dismissing'); el.classList.add('hidden'); }
   }
 
+  // Also reset agent select overlay
+  const agentSelectOverlay = document.getElementById('agent-select-overlay');
+  agentSelectOverlay?.classList.add('hidden');
+
+  let selectedAgent = null;
+
   if (video) video.play().catch(() => {});
 
   const abortCtrl = { aborted: false, currentAudio: null };
 
   // Action handlers for briefing-specific events
   const actionHandlers = {
+    showAgentSelect() {
+      return new Promise(resolve => {
+        agentSelectOverlay?.classList.remove('hidden');
+        const buttons = agentSelectOverlay?.querySelectorAll('.agent-select-btn');
+        function pick(e) {
+          const agent = e.currentTarget.dataset.agent;
+          selectedAgent = agent;
+          buttons?.forEach(b => b.removeEventListener('click', pick));
+          agentSelectOverlay?.classList.add('hidden');
+          resolve('reset-clock');
+        }
+        buttons?.forEach(b => b.addEventListener('click', pick));
+      });
+    },
     showCountdown() {
       showBanner();
     },
@@ -157,6 +189,6 @@ export function runBriefing(onAccept) {
     abortCtrl.aborted = true;
     if (abortCtrl.currentAudio) { abortCtrl.currentAudio.pause(); abortCtrl.currentAudio = null; }
     if (video) { video.pause(); video.currentTime = 0; }
-    onAccept({ deadlineISO: getDeadlineISO() });
+    onAccept({ deadlineISO: getDeadlineISO(), playerAgent: selectedAgent });
   }, { once: true });
 }

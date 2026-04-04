@@ -110,11 +110,12 @@ function goBriefing() {
   hideNav();
   hideBanner();
 
-  runBriefing(({ deadlineISO }) => {
+  runBriefing(({ deadlineISO, playerAgent }) => {
     const firstStage = getFirstStage();
     if (!firstStage) return;
 
     startMission(state);
+    state.playerAgent = playerAgent;
     state.timestamps.deadline = deadlineISO;
     state = setStage(state, firstStage.id);
 

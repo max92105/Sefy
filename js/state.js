@@ -8,6 +8,7 @@ const STORAGE_KEY = 'operation-raven-state';
 function createDefaultState() {
   return {
     missionStarted: false,
+    playerAgent: null,          // 'emy' or 'lea' — set during briefing
     currentStage: null,
     solvedPuzzles: [],
     hintsUsed: {},

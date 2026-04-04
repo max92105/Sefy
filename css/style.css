@@ -668,6 +668,85 @@ body.banner-active #screen-codeentry {
   background: rgba(255, 171, 0, 0.06);
 }
 
+/* ── Agent identity selection overlay ── */
+.agent-select-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.4s ease;
+}
+
+.agent-select-overlay.hidden {
+  display: none;
+}
+
+.agent-select-prompt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  color: var(--accent-green);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0;
+}
+
+.agent-select-cards {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.agent-select-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-panel);
+  border: 2px solid var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.agent-select-btn img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--text-dim);
+  transition: border-color 0.2s;
+}
+
+.agent-select-btn span {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-green);
+  letter-spacing: 0.15em;
+  font-weight: bold;
+}
+
+.agent-select-btn:hover,
+.agent-select-btn:focus {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+  transform: scale(1.05);
+}
+
+.agent-select-btn:hover img,
+.agent-select-btn:focus img {
+  border-color: var(--accent-green);
+}
+
+.agent-select-btn:active {
+  transform: scale(0.97);
+}
+
 /* Briefing terminal text (single line) */
 .briefing-terminal {
   width: 100%;

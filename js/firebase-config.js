@@ -105,6 +105,27 @@ function fbOnStateChange(agent, callback) {
   return () => ref.off('value', handler);
 }
 
+/**
+ * Atomically claim an agent for this device.
+ * Uses a Firebase transaction on the deviceId field so only one phone can win.
+ * @param {string} agent — 'emy' or 'lea'
+ * @returns {Promise<boolean>} true if this device now owns the agent
+ */
+async function fbClaimAgent(agent) {
+  const myId = getDeviceId();
+  const ref = agentRef(agent).child('deviceId');
+  const result = await ref.transaction((current) => {
+    if (!current) return myId;       // unclaimed → claim it
+    if (current === myId) return;    // already ours → abort (no change needed)
+    return;                          // someone else owns it → abort
+  });
+  // committed means we wrote our id, or it was already ours
+  if (result.committed) return true;
+  // Not committed — check if it's already ours (transaction aborts when we return undefined for "already ours")
+  const snap = await ref.once('value');
+  return snap.val() === myId;
+}
+
 // Export for ES module usage
 export {
   db,
@@ -114,4 +135,5 @@ export {
   fbSaveState,
   fbResetAgent,
   fbOnStateChange,
+  fbClaimAgent,
 };

@@ -6,6 +6,7 @@
 import { delay } from '../ui.js';
 import { showBanner, getDeadlineISO } from '../components/banner.js';
 import { runIntroSequence } from '../intro-runner.js';
+import { fbClaimAgent } from '../firebase-config.js';
 
 /* ───────── Media paths (easy to change) ───────── */
 const MEDIA = {
@@ -149,15 +150,38 @@ export function runBriefing(onAccept) {
   const actionHandlers = {
     showAgentSelect() {
       return new Promise(resolve => {
-        agentSelectOverlay?.classList.remove('hidden');
+        const promptEl = agentSelectOverlay?.querySelector('.agent-select-prompt');
         const buttons = agentSelectOverlay?.querySelectorAll('.agent-select-btn');
-        function pick(e) {
+
+        // Reset prompt text and button states
+        if (promptEl) promptEl.textContent = 'QUI ÊTES-VOUS ?';
+        buttons?.forEach(b => { b.disabled = false; b.classList.remove('taken'); });
+        agentSelectOverlay?.classList.remove('hidden');
+
+        async function pick(e) {
           const agent = e.currentTarget.dataset.agent;
+
+          // Disable buttons while checking
+          buttons?.forEach(b => { b.disabled = true; });
+
+          const claimed = await fbClaimAgent(agent);
+          if (!claimed) {
+            // Agent already taken — re-enable buttons and show warning
+            const name = agent === 'emy' ? 'ÉMY' : 'LÉA';
+            if (promptEl) promptEl.textContent = `${name} est déjà en jeu sur un autre appareil. Choisissez l'autre agent.`;
+            // Mark the taken agent button
+            const takenBtn = agentSelectOverlay?.querySelector(`.agent-select-btn[data-agent="${agent}"]`);
+            if (takenBtn) takenBtn.classList.add('taken');
+            buttons?.forEach(b => { if (!b.classList.contains('taken')) b.disabled = false; });
+            return;
+          }
+
           selectedAgent = agent;
           buttons?.forEach(b => b.removeEventListener('click', pick));
           agentSelectOverlay?.classList.add('hidden');
           resolve('reset-clock');
         }
+
         buttons?.forEach(b => b.addEventListener('click', pick));
       });
     },

@@ -113,15 +113,6 @@ function goBriefing() {
   hideBanner();
 
   runBriefing(async ({ deadlineISO, playerAgent }) => {
-    // Check if this agent is already locked to another device
-    if (playerAgent) {
-      const allowed = await checkDeviceLock(playerAgent);
-      if (!allowed) {
-        alert(`L'agent ${playerAgent.toUpperCase()} est déjà utilisé sur un autre appareil. Rechargez et choisissez l'autre agent.`);
-        return;
-      }
-    }
-
     const firstStage = getFirstStage();
     if (!firstStage) return;
 

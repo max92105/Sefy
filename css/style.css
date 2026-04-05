@@ -765,6 +765,16 @@ body.banner-active #screen-codeentry {
   transform: scale(0.97);
 }
 
+.agent-select-btn.taken {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+.agent-select-prompt {
+  transition: color 0.3s ease;
+}
+
 /* Briefing terminal text (single line) */
 .briefing-terminal {
   width: 100%;

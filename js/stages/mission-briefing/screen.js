@@ -89,7 +89,7 @@ export function createScreen() {
   `;
   layout.insertAdjacentHTML('beforeend', agentSelectHTML);
 
-  // Confirm button zone
+  // Confirm button — inside briefing-bottom so it flows under the text
   const confirmHTML = `
     <div class="briefing-confirm hidden" id="briefing-confirm">
       <button id="btn-start-mission" class="btn btn-primary btn-glow btn-large">
@@ -97,7 +97,7 @@ export function createScreen() {
       </button>
     </div>
   `;
-  layout.insertAdjacentHTML('beforeend', confirmHTML);
+  bottom.insertAdjacentHTML('beforeend', confirmHTML);
 
   section.appendChild(layout);
   return section;

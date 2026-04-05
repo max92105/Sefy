@@ -622,17 +622,10 @@ body.banner-active .arscan-layout {
   backdrop-filter: blur(8px);
 }
 
-/* Confirm button — floats over video, just below the text box */
+/* Confirm button — flows inside .briefing-bottom, under the text */
 .briefing-confirm {
-  position: absolute;
-  bottom: calc(var(--nav-h, 52px) + var(--space-xs));
-  left: 5%;
-  right: 5%;
-  max-width: 600px;
-  margin: 0 auto;
   display: flex;
   justify-content: center;
-  z-index: 16;
   pointer-events: auto;
 }
 

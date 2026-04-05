@@ -104,9 +104,11 @@ export function start(stage, state, onSolved) {
   const trackerEl = document.getElementById(`${PREFIX}-tracker`);
   if (trackerEl) trackerEl.classList.add('hidden');
 
-  const intro = startIntroCinematic(PREFIX, INTRO_SEQUENCE, {
+  const lineEl = document.getElementById(`${PREFIX}-current-line`);
+  let intro;
+  intro = startIntroCinematic(PREFIX, INTRO_SEQUENCE, {
     async requestLocation(event, abort) {
-      const granted = await requestLocationWithRetry(intro.currentLine, abort);
+      const granted = await requestLocationWithRetry(lineEl, abort);
       if (abort.aborted || !granted) return 'stop';
       return 'reset-clock';
     },

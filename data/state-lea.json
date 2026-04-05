@@ -1,0 +1,30 @@
+{
+  "missionStarted": true,
+  "playerAgent": "lea",
+  "accessTier": 1,
+  "decryptActivated": false,
+  "currentStage": "scanner-reboot",
+  "solvedPuzzles": [
+    "briefing",
+    "geo-activation"
+  ],
+  "hintsUsed": {},
+  "inventory": [],
+  "keycards": [],
+  "unlockedStations": [],
+  "stagePhase": {
+    "geo-activation": "code-entry"
+  },
+  "timestamps": {
+    "start": "2026-04-04T20:42:20.061Z",
+    "deadline": null,
+    "briefing": "2026-04-04T20:42:20.062Z",
+    "geo-activation": "2026-04-04T20:42:27.367Z",
+    "scanner-reboot": "2026-04-04T20:42:28.175Z"
+  },
+  "finalModeUnlocked": false,
+  "settings": {
+    "soundEnabled": true,
+    "musicEnabled": true
+  }
+}

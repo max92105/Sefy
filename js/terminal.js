@@ -13,10 +13,23 @@
 
 /* ═══════════════  Config  ═══════════════ */
 
-const AGENT_HASHES = [
-  '1c1ba6c2628afd47c9e1c57cf6ac548daedfc75a71874f0f2a10c84dbb1640fe',
-  '130111a9374da4888cf316006ce27b082c6dc1c90bcdd4aa2b5cae31a347808f',
-];
+const AGENT_HASHES = {
+  '1c1ba6c2628afd47c9e1c57cf6ac548daedfc75a71874f0f2a10c84dbb1640fe': 'emy',
+  '130111a9374da4888cf316006ce27b082c6dc1c90bcdd4aa2b5cae31a347808f': 'lea',
+};
+
+/* ── Firebase init ── */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBl7-2Ck4vxIQm1vI6AAFkbnnN6hCr1LHc",
+  authDomain: "sefy-c1d5f.firebaseapp.com",
+  databaseURL: "https://sefy-c1d5f-default-rtdb.firebaseio.com",
+  projectId: "sefy-c1d5f",
+  storageBucket: "sefy-c1d5f.firebasestorage.app",
+  messagingSenderId: "332667273145",
+  appId: "1:332667273145:web:0f0db32eaa2584ef964068",
+};
+if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+const fbDb = firebase.database();
 
 const BOOT_LINES = [
   { text: 'SEFY FACILITY TERMINAL v2.4.1', delay: 600, cls: 'dim' },
@@ -111,10 +124,52 @@ const FILE_SYSTEM = {
 
 let loggedIn = false;
 let agentName = null;
+let agentId = null;          // 'emy' or 'lea' — maps to server state file
+let agentState = null;       // shared state pulled from server
 let currentDir = '/';
 let usedCodes = new Set();
 let commandHistory = [];
 let historyIndex = -1;
+let inactivityTimer = null;
+const INACTIVITY_TIMEOUT = 15000; // 15 seconds
+
+function resetInactivityTimer() {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  if (!loggedIn) return;
+  inactivityTimer = setTimeout(() => doLogout(true), INACTIVITY_TIMEOUT);
+}
+
+async function doLogout(auto = false) {
+  if (!loggedIn) return;
+  if (inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
+  loggedIn = false;
+  agentName = null;
+  agentId = null;
+  currentDir = '/';
+  printBlank();
+  if (auto) {
+    await typeLine('Session expirée — inactivité détectée.', 'warning');
+  } else {
+    await typeLine('Déconnexion…', 'warning');
+  }
+  await delay(500);
+  printLine('Session terminée.', 'dim');
+  printBlank();
+  loginPrompt();
+}
+
+/* ═══════════════  Firebase State Helpers  ═══════════════ */
+
+async function fetchAgentState(id) {
+  try {
+    const snap = await fbDb.ref(`agents/${id}`).once('value');
+    return snap.val() || null;
+  } catch { return null; }
+}
+
+function pushAgentState(id, state) {
+  fbDb.ref(`agents/${id}`).set(state).catch(() => {});
+}
 
 /* ═══════════════  DOM  ═══════════════ */
 
@@ -213,16 +268,22 @@ function loginPrompt() {
 
 async function handleLogin(code) {
   const hash = await sha256(code);
-  const valid = AGENT_HASHES.includes(hash);
+  const id = AGENT_HASHES[hash];
 
-  if (valid) {
+  if (id) {
     agentName = code.trim().toUpperCase();
+    agentId = id;
     loggedIn = true;
+
+    // Pull shared state from server
+    agentState = await fetchAgentState(agentId);
+
     printLine(`> ${code}`, 'input-echo');
     printBlank();
     await typeLine('✓ AUTHENTIFICATION RÉUSSIE', 'success');
     await delay(400);
     await typeLine(`Bienvenue, Agent ${agentName}.`, 'bright');
+    resetInactivityTimer();
     await delay(300);
     printBlank();
     printLines([
@@ -292,17 +353,15 @@ async function handleCommand(raw) {
     case 'WHOAMI':
       printLine(`Agent ${agentName}`, 'bright');
       break;
+    case 'DECRYPT':
+      await handleDecrypt();
+      break;
+    case '546967232':
+      await handleTierUpgrade();
+      break;
     case 'LOGOUT':
     case 'EXIT':
-      loggedIn = false;
-      agentName = null;
-      currentDir = '/';
-      printBlank();
-      await typeLine('Déconnexion…', 'warning');
-      await delay(500);
-      printLine('Session terminée.', 'dim');
-      printBlank();
-      loginPrompt();
+      await doLogout();
       return;
     default:
       // Try as action code
@@ -318,7 +377,7 @@ async function handleCommand(raw) {
 }
 
 function showHelp() {
-  printLines([
+  const lines = [
     '╔═══════════════════════════════════════╗',
     '║          COMMANDES DISPONIBLES        ║',
     '╠═══════════════════════════════════════╣',
@@ -328,13 +387,18 @@ function showHelp() {
     '║  CD <dossier> .. Changer de dossier   ║',
     '║  CAT <fichier>  Lire un fichier       ║',
     '║  PLAY <fichier> Jouer un média        ║',
-    '║  CLEAR / CLS ... Effacer l\'écran      ║',
+    '║  CLEAR / CLS ... Effacer l\'\u00e9cran      ║',
     '║  WHOAMI ........ Identité de l\'agent  ║',
     '║  LOGOUT ........ Se déconnecter       ║',
-    '╠═══════════════════════════════════════╣',
-    '║  Entrez un CODE D\'ACTION pour agir.   ║',
-    '╚═══════════════════════════════════════╝',
-  ]);
+  ];
+  if (agentState && agentState.accessTier >= 2) {
+    lines.push('╠═══════════════════════════════════════╣');
+    lines.push('║  DECRYPT ....... Activer décryptage   ║');
+  }
+  lines.push('╠═══════════════════════════════════════╣');
+  lines.push('║  Entrez un CODE D\'ACTION pour agir.   ║');
+  lines.push('╚═══════════════════════════════════════╝');
+  printLines(lines);
 }
 
 function handleActionCode(code) {
@@ -361,6 +425,56 @@ function handleActionCode(code) {
 
   if (action.once) usedCodes.add(code);
   return true;
+}
+
+/* ═══════════════  Tier Upgrade & Decrypt  ═══════════════ */
+
+async function handleTierUpgrade() {
+  if (!agentState) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (agentState.accessTier >= 2) {
+    printLine('Niveau d\'accès déjà au maximum autorisé.', 'warning');
+    return;
+  }
+  agentState.accessTier = 2;
+  pushAgentState(agentId, agentState);
+  printBlank();
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine('║   NIVEAU D\'ACCÈS AUGMENTÉ → T2    ║', 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine('Nouvelles commandes débloquées. Tapez HELP.', 'bright');
+}
+
+async function handleDecrypt() {
+  if (!agentState) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (!agentState.accessTier || agentState.accessTier < 2) {
+    printLine('✗ ACCÈS REFUSÉ — Niveau d\'accès insuffisant.', 'error');
+    printLine('Tier 2 requis. Entrez le code d\'accès pour augmenter votre niveau.', 'dim');
+    return;
+  }
+  if (agentState.decryptActivated) {
+    printLine('Module de décryptage déjà activé.', 'warning');
+    return;
+  }
+  agentState.decryptActivated = true;
+  pushAgentState(agentId, agentState);
+  printBlank();
+  await typeLine('Initialisation du module de décryptage…', 'bright');
+  await delay(800);
+  await typeLine('Connexion aux serveurs SEFY…', '');
+  await delay(600);
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine('║  MODULE DE DÉCRYPTAGE — EN LIGNE  ║', 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine('Le module de décryptage est maintenant opérationnel.', 'bright');
+  printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
 }
 
 /* ═══════════════  File System  ═══════════════ */
@@ -458,6 +572,7 @@ function playMedia(name) {
 function onSubmit() {
   const val = input.value;
   clearInput();
+  resetInactivityTimer();
 
   if (!loggedIn) {
     handleLogin(val);

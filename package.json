@@ -1,4 +1,5 @@
 {
+  "scripts": {},
   "devDependencies": {
     "qrcode": "^1.5.4"
   }

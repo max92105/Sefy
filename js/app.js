@@ -27,6 +27,7 @@ import { createGeoScreen, startGeoTracker } from './screens/geo.js';
 import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
 import { createCodeEntryScreen, startCodeEntry } from './screens/codeentry.js';
 import { createARScanScreen, startARScan } from './screens/arscan.js';
+import { createTerminalWaitScreen, startTerminalWait } from './screens/terminal-wait.js';
 
 // Stage intro sequences (only for stages that have one)
 import { INTRO_SEQUENCE as geoActivationIntro } from './stages/geo-activation.js';
@@ -63,6 +64,7 @@ function buildDOM() {
   app.appendChild(createQRScannerScreen());
   app.appendChild(createCodeEntryScreen());
   app.appendChild(createARScanScreen());
+  app.appendChild(createTerminalWaitScreen());
   app.appendChild(createDefusalScreen());
   app.appendChild(createSuccessScreen());
   app.appendChild(createFailureScreen());
@@ -167,6 +169,11 @@ function enterStage(stage) {
 
   // Geo tracker puzzle type
   if (stage.puzzle?.type === 'geo') {
+    // If scanner-reboot is already solved but DECRYPT not done, go to wait screen
+    if (stage.id === 'scanner-reboot' && state.solvedPuzzles.includes('scanner-reboot') && !state.decryptActivated) {
+      goTerminalWait();
+      return;
+    }
     puzzleCleanup = startGeoTracker(stage, state, onPuzzleSolved, STAGE_INTROS[stage.id] || null);
     lastActiveScreen = 'screen-geo';
     showScreen('screen-geo');
@@ -218,6 +225,12 @@ function enterStage(stage) {
 }
 
 function onPuzzleSolved(stage) {
+  // scanner-reboot: after geo found, wait for terminal DECRYPT before advancing
+  if (stage.id === 'scanner-reboot') {
+    goTerminalWait();
+    return;
+  }
+
   const next = getNextStage(stage.id);
   if (next) {
     state = setStage(state, next.id);
@@ -225,6 +238,26 @@ function onPuzzleSolved(stage) {
   } else {
     missionSuccess();
   }
+}
+
+function goTerminalWait() {
+  if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
+  lastActiveScreen = 'screen-terminal-wait';
+  showScreen('screen-terminal-wait');
+  showNav();
+
+  const agent = state.playerAgent;
+  puzzleCleanup = startTerminalWait(agent, () => {
+    // DECRYPT was activated — advance to next stage
+    state.decryptActivated = true;
+    saveState(state);
+    const solvedStage = getStageById('scanner-reboot');
+    const next = solvedStage ? getNextStage(solvedStage.id) : null;
+    if (next) {
+      state = setStage(state, next.id);
+      enterStage(next);
+    }
+  });
 }
 
 // ---- Resume ----

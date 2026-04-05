@@ -10,7 +10,7 @@ const MEDIA = {
 
 /* ───────── Intro sequence (sync with audio) ───────── */
 export const INTRO_SEQUENCE = [
-  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audio },
+  /*{ time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audio },
   { time: 0,    type: 'text', text: 'Je confirme votre présence dans le centre de commande via les caméras.' },
   { time: 4000, type: 'text', text: 'Nous devons commencer immédiatement.' },
   { time: 7000, type: 'text', text: 'Mon module de géolocalisation est inaccessible, comme la majorité de mes fonctions critiques.' },
@@ -18,6 +18,6 @@ export const INTRO_SEQUENCE = [
   { time: 17000, type: 'text', text: 'Cherchez autour de vous.' },
   { time: 19000, type: 'text', text: 'Un code d’accès devrait se trouver dans le centre de commande.' },
   { time: 23000, type: 'text', text: 'Activez mon module de géolocalisation.' },
-  { time: 26000, type: 'text', text: 'Je pourrai ensuite vous diriger plus efficacement dans le laboratoire.' },
-  { time: 24000, type: 'action', action: 'showCodeEntry' },
+  { time: 26000, type: 'text', text: 'Je pourrai ensuite vous diriger plus efficacement dans le laboratoire.' },*/
+  { time: 2000, type: 'action', action: 'showCodeEntry' },
 ];

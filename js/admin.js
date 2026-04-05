@@ -2,7 +2,7 @@
  * Admin Panel Logic — debug tools for testing and day-of emergencies
  */
 
-import { loadState, saveState, resetState, setStage } from './state.js';
+import { loadState, saveState, resetState, resetAgent, setStage, fetchState } from './state.js';
 import { loadStageData, getAllStages } from './stages.js';
 
 let state = null;
@@ -17,10 +17,21 @@ async function init() {
 
 function renderState() {
   const el = document.getElementById('state-display');
-  if (el) {
-    state = loadState();
-    el.textContent = JSON.stringify(state, null, 2);
-  }
+  if (!el) return;
+  state = loadState();
+
+  // Fetch both agent states from Firebase for display
+  Promise.all([
+    fetchState('emy'),
+    fetchState('lea'),
+  ]).then(([emy, lea]) => {
+    const display = {
+      localStorage: state,
+      firebase_emy: emy || '(no state)',
+      firebase_lea: lea || '(no state)',
+    };
+    el.textContent = JSON.stringify(display, null, 2);
+  });
 }
 
 function renderStageJumps() {
@@ -99,9 +110,27 @@ function bindEvents() {
     URL.revokeObjectURL(url);
   });
 
-  document.getElementById('btn-reset-all')?.addEventListener('click', () => {
-    if (confirm('This will erase ALL mission progress. Are you sure?')) {
+  document.getElementById('btn-reset-all')?.addEventListener('click', async () => {
+    if (confirm('This will erase ALL mission progress for BOTH agents. Are you sure?')) {
+      await resetAgent('emy');
+      await resetAgent('lea');
       state = resetState();
+      renderState();
+    }
+  });
+
+  document.getElementById('btn-reset-emy')?.addEventListener('click', async () => {
+    if (confirm('Reset all progress for Émy?')) {
+      await resetAgent('emy');
+      state = loadState();
+      renderState();
+    }
+  });
+
+  document.getElementById('btn-reset-lea')?.addEventListener('click', async () => {
+    if (confirm('Reset all progress for Léa?')) {
+      await resetAgent('lea');
+      state = loadState();
       renderState();
     }
   });

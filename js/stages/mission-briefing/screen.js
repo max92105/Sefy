@@ -25,10 +25,10 @@ const PREFIX = 'briefing';
 export function createScreen() {
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
-  section.className = 'screen';
+  section.className = 'screen stage-screen';
 
   const layout = document.createElement('div');
-  layout.className = 'briefing-layout';
+  layout.className = 'stage-layout briefing-layout';
 
   // Intro cinematic (video + typewriter)
   const introEl = createIntroCinematicDOM(PREFIX);

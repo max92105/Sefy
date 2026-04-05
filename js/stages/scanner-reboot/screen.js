@@ -42,10 +42,10 @@ let pollInterval = null;
 export function createScreen() {
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
-  section.className = 'screen';
+  section.className = 'screen stage-screen';
 
   const layout = document.createElement('div');
-  layout.className = 'geo-layout';
+  layout.className = 'stage-layout geo-layout';
 
   // Phase 1: Intro cinematic
   layout.appendChild(createIntroCinematicDOM(PREFIX));

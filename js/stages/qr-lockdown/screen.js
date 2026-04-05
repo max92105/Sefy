@@ -17,10 +17,10 @@ const PREFIX = 'qr-lockdown';
 export function createScreen() {
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
-  section.className = 'screen';
+  section.className = 'screen stage-screen';
 
   const layout = document.createElement('div');
-  layout.className = 'qr-layout';
+  layout.className = 'stage-layout qr-layout';
 
   layout.appendChild(createIntroCinematicDOM(PREFIX));
   layout.appendChild(createQRScannerDOM(PREFIX));

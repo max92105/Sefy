@@ -14,7 +14,7 @@ const PREFIX = 'deactivate-sefy';
 export function createScreen() {
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
-  section.className = 'screen';
+  section.className = 'screen stage-screen';
 
   const form = createCodeEntryFormDOM(PREFIX, {
     backButton: true,

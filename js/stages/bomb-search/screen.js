@@ -43,10 +43,10 @@ let currentOrientation = { alpha: null, beta: null, gamma: null };
 export function createScreen() {
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
-  section.className = 'screen';
+  section.className = 'screen stage-screen';
 
   const layout = document.createElement('div');
-  layout.className = 'arscan-layout';
+  layout.className = 'stage-layout arscan-layout';
 
   // Phase 1: Intro cinematic
   layout.appendChild(createIntroCinematicDOM(PREFIX));

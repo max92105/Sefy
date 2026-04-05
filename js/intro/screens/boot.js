@@ -2,8 +2,8 @@
  * Screen: Terminal Boot Sequence — typewritten lines.
  */
 
-import { typewriter } from '../typewriter.js';
-import { delay } from '../ui.js';
+import { typewriter } from '../../typewriter.js';
+import { delay } from '../../ui.js';
 
 const TERMINAL_LINES = [
   /*{ text: 'DÉMARRAGE DU SYSTÈME ET RÉCUPÉRATION DES DONNÉES', delay: 1500, speed: 30, cls: '' },

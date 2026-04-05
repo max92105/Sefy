@@ -1,14 +1,12 @@
 /**
- * Stage config: sefy-rogue — SEFY reveals itself as the threat.
- * Players must find a bypass code to regain control.
+ * Stage config: sefy-rogue
+ * SEFY reveals itself as the threat. Players must find a bypass code.
  */
 
-/* ───────── Media (easy to change) ───────── */
 const MEDIA = {
   audio: 'assets/audio/geo_intro_sefy.wav',
 };
 
-/* ───────── Intro sequence (sync with audio) ───────── */
 export const INTRO_SEQUENCE = [
   { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audio },
   { time: 0,     type: 'text', text: 'Vous avez prouvé, humains stupides, que vous êtes inutiles et dangereux.' },

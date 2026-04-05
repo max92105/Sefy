@@ -16,29 +16,21 @@ import { createModals, initModals, openModal, closeModal } from './components/mo
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
 // -- Screens --
-import { createTerminalScreen, runBootSequence } from './screens/boot.js';
-import { createLandingScreen, runLanding } from './screens/landing.js';
-import { createBriefingScreen, runBriefing } from './screens/briefing.js';
+import { createTerminalScreen, runBootSequence } from './intro/screens/boot.js';
+import { createLandingScreen, runLanding } from './intro/screens/landing.js';
+import { createScreen as createBriefingScreen, start as runBriefing } from './stages/mission-briefing/screen.js';
 import { createStageScreen, populateStage, openHintModal } from './screens/stage.js';
 import { createInventoryScreen, populateInventory, updateInventoryBadge } from './screens/evidence.js';
-import { createDefusalScreen, startDefusal } from './screens/defusal.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
-import { createGeoScreen, startGeoTracker } from './screens/geo.js';
-import { createQRScannerScreen, startQRScanner } from './screens/qrscanner.js';
-import { createCodeEntryScreen, startCodeEntry } from './screens/codeentry.js';
-import { createARScanScreen, startARScan } from './screens/arscan.js';
+import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
+import { createScreen as createScannerRebootScreen, start as startScannerReboot } from './stages/scanner-reboot/screen.js';
+import { createScreen as createQRLockdownScreen, start as startQRLockdown } from './stages/qr-lockdown/screen.js';
+import { createScreen as createSefyRogueScreen, start as startSefyRogue } from './stages/sefy-rogue/screen.js';
+import { createScreen as createEvidenceCollectionScreen, start as startEvidenceCollection } from './stages/evidence-collection/screen.js';
+import { createScreen as createBombSearchScreen, start as startBombSearch } from './stages/bomb-search/screen.js';
+import { createScreen as createDeactivateSefyScreen, start as startDeactivateSefy } from './stages/deactivate-sefy/screen.js';
 import { createTerminalWaitScreen, startTerminalWait } from './screens/terminal-wait.js';
 
-// Stage intro sequences (only for stages that have one)
-import { INTRO_SEQUENCE as geoActivationIntro } from './stages/geo-activation.js';
-import { INTRO_SEQUENCE as sefyRogueIntro } from './stages/sefy-rogue.js';
-import { INTRO_SEQUENCE as scannerRebootIntro } from './stages/scanner-reboot.js';
-
-const STAGE_INTROS = {
-  'geo-activation': geoActivationIntro,
-  'sefy-rogue': sefyRogueIntro,
-  'scanner-reboot': scannerRebootIntro,
-};
 
 let state = null;
 let currentStage = null;
@@ -60,12 +52,14 @@ function buildDOM() {
   app.appendChild(createBriefingScreen());
   app.appendChild(createStageScreen());
   app.appendChild(createInventoryScreen());
-  app.appendChild(createGeoScreen());
-  app.appendChild(createQRScannerScreen());
-  app.appendChild(createCodeEntryScreen());
-  app.appendChild(createARScanScreen());
+  app.appendChild(createGeoActivationScreen());
+  app.appendChild(createScannerRebootScreen());
+  app.appendChild(createQRLockdownScreen());
+  app.appendChild(createSefyRogueScreen());
+  app.appendChild(createEvidenceCollectionScreen());
+  app.appendChild(createBombSearchScreen());
+  app.appendChild(createDeactivateSefyScreen());
   app.appendChild(createTerminalWaitScreen());
-  app.appendChild(createDefusalScreen());
   app.appendChild(createSuccessScreen());
   app.appendChild(createFailureScreen());
 
@@ -142,6 +136,15 @@ function goBriefing() {
 
 // ---- Stage Entry ----
 
+/** Stage-specific start functions */
+const stageStarters = {
+  'geo-activation':      (stage, state, onSolved) => startGeoActivation(stage, state, onSolved),
+  'scanner-reboot':      (stage, state, onSolved) => startScannerReboot(stage, state, onSolved),
+  'qr-lockdown':         (stage, state, onSolved) => startQRLockdown(stage, state, onSolved),
+  'bomb-search':         (stage, state, onSolved) => startBombSearch(stage, state, onSolved),
+  'sefy-rogue':          (stage, state, onSolved) => startSefyRogue(stage, state, onSolved),
+};
+
 function enterStage(stage) {
   currentStage = stage;
 
@@ -153,73 +156,56 @@ function enterStage(stage) {
     || (state.arFound && state.arFound.length > 0);
   setInventoryVisible(needsInventory);
 
-  if (stage.type === 'finale' || stage.id === 'deactivate-sefy') {
-    puzzleCleanup = startDefusal(stage, state, onPuzzleSolved, () => {
-      // Switch back to evidence-collection
+  const screenId = `screen-${stage.id}`;
+
+  // deactivate-sefy: code entry with back button to evidence-collection
+  if (stage.id === 'deactivate-sefy') {
+    puzzleCleanup = startDeactivateSefy(stage, state, onPuzzleSolved, () => {
       const evStage = getStageById('evidence-collection');
       if (evStage) {
         state = setStage(state, evStage.id);
         enterStage(evStage);
       }
     });
-    lastActiveScreen = 'screen-defusal';
-    showScreen('screen-defusal');
+    lastActiveScreen = screenId;
+    showScreen(screenId);
     showNav();
     setInventoryVisible(true);
     return;
   }
 
-  // Geo tracker puzzle type
-  if (stage.puzzle?.type === 'geo') {
-    // If scanner-reboot is already solved but DECRYPT not done, go to wait screen
-    if (stage.id === 'scanner-reboot' && state.solvedPuzzles.includes('scanner-reboot') && !state.decryptActivated) {
-      goTerminalWait();
-      return;
-    }
-    puzzleCleanup = startGeoTracker(stage, state, onPuzzleSolved, STAGE_INTROS[stage.id] || null);
-    lastActiveScreen = 'screen-geo';
-    showScreen('screen-geo');
+  // scanner-reboot: if solved but DECRYPT not done, go to terminal wait
+  if (stage.id === 'scanner-reboot' && state.solvedPuzzles.includes('scanner-reboot') && !state.decryptActivated) {
+    goTerminalWait();
+    return;
+  }
+
+  // evidence-collection: custom onSolved navigates to deactivate-sefy
+  if (stage.id === 'evidence-collection') {
+    puzzleCleanup = startEvidenceCollection(stage, state, () => {
+      const deactivateStage = getStageById('deactivate-sefy');
+      if (deactivateStage) {
+        state = setStage(state, deactivateStage.id);
+        enterStage(deactivateStage);
+      }
+    });
+    lastActiveScreen = screenId;
+    showScreen(screenId);
     showNav();
     return;
   }
 
-  // QR scanner puzzle type
-  if (stage.puzzle?.type === 'qr-scanner') {
-    // Evidence-collection: "continue" just navigates to deactivate-sefy without solving
-    const qrOnSolved = (stage.id === 'evidence-collection')
-      ? () => {
-          const deactivateStage = getStageById('deactivate-sefy');
-          if (deactivateStage) {
-            state = setStage(state, deactivateStage.id);
-            enterStage(deactivateStage);
-          }
-        }
-      : onPuzzleSolved;
-    puzzleCleanup = startQRScanner(stage, state, qrOnSolved);
-    lastActiveScreen = 'screen-qrscanner';
-    showScreen('screen-qrscanner');
+  // Stages with dedicated start functions
+  const starter = stageStarters[stage.id];
+  if (starter) {
+    puzzleCleanup = starter(stage, state, onPuzzleSolved);
+    lastActiveScreen = screenId;
+    showScreen(screenId);
     showNav();
     return;
   }
 
-  // AR scan puzzle type
-  if (stage.puzzle?.type === 'ar-scan') {
-    puzzleCleanup = startARScan(stage, state, onPuzzleSolved);
-    lastActiveScreen = 'screen-arscan';
-    showScreen('screen-arscan');
-    showNav();
-    return;
-  }
-
-  // Code-entry puzzle (with optional intro sequence)
-  if (stage.puzzle?.type === 'code-entry') {
-    puzzleCleanup = startCodeEntry(stage, state, onPuzzleSolved, STAGE_INTROS[stage.id] || null);
-    lastActiveScreen = 'screen-codeentry';
-    showScreen('screen-codeentry');
-    showNav();
-    return;
-  }
-
+  // Fallback: generic stage screen
   puzzleCleanup = populateStage(stage, state, onPuzzleSolved);
   lastActiveScreen = 'screen-stage';
   showScreen('screen-stage');

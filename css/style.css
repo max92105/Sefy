@@ -529,6 +529,7 @@ body.banner-active .stage-screen {
   overflow: hidden;
   padding: 0;
   padding-top: var(--banner-h);
+  position: relative;
 }
 
 body.banner-active .stage-layout {
@@ -550,6 +551,7 @@ body.banner-active .stage-layout {
   overflow: hidden;
   padding: 0;
   padding-top: var(--banner-h);
+  position: relative;
 }
 
 body.banner-active .briefing-layout,
@@ -620,15 +622,18 @@ body.banner-active .arscan-layout {
   backdrop-filter: blur(8px);
 }
 
-/* Confirm button — sits at the bottom of the layout, above nav */
+/* Confirm button — floats over video, just below the text box */
 .briefing-confirm {
-  width: 100%;
+  position: absolute;
+  bottom: calc(var(--nav-h, 52px) + var(--space-xs));
+  left: 5%;
+  right: 5%;
+  max-width: 600px;
+  margin: 0 auto;
   display: flex;
   justify-content: center;
-  padding: var(--space-sm) var(--space-md);
-  padding-bottom: calc(var(--nav-h, 52px) + var(--space-sm));
-  flex-shrink: 0;
   z-index: 16;
+  pointer-events: auto;
 }
 
 /* Agent card overlay — sits on top of the video */

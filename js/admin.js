@@ -2,8 +2,9 @@
  * Admin Panel Logic — debug tools for testing and day-of emergencies
  */
 
-import { loadState, saveState, resetState, resetAgent, setStage, fetchState } from './state.js';
+import { loadState, saveState, resetState, resetAgent, setStage, fetchState, getDeviceId } from './state.js';
 import { loadStageData, getAllStages } from './stages.js';
+import { fbSaveState } from './firebase-config.js';
 
 let state = null;
 
@@ -44,16 +45,27 @@ function renderStageJumps() {
     return;
   }
 
-  grid.innerHTML = '';
+  // Agent selector at top
+  grid.innerHTML = `
+    <div class="admin-agent-pick" style="display:flex;gap:8px;margin-bottom:8px;">
+      <label style="font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--text-secondary);display:flex;align-items:center;gap:4px;">
+        <input type="radio" name="jump-agent" value="emy" checked> ÉMY
+      </label>
+      <label style="font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--text-secondary);display:flex;align-items:center;gap:4px;">
+        <input type="radio" name="jump-agent" value="lea"> LÉA
+      </label>
+    </div>
+  `;
+
   for (const stage of stages) {
-    // Main jump button (starts at briefing intro)
+    // Main jump button
     const btn = document.createElement('button');
     btn.className = 'stage-jump-btn';
     btn.textContent = `${stage.order}. ${stage.title} [${stage.id}]`;
     btn.addEventListener('click', () => jumpToStage(stages, stage));
     grid.appendChild(btn);
 
-    // "After briefing" button for stages that have a two-phase intro
+    // Skip-briefing button for stages with two-phase intros
     const phaseMap = { geo: 'tracker', 'qr-scanner': 'scanner', 'ar-scan': 'scanner' };
     let phase = phaseMap[stage.puzzle?.type];
     if (!phase && stage.briefingIntro) phase = 'code-entry';
@@ -67,33 +79,66 @@ function renderStageJumps() {
       grid.appendChild(skipBtn);
     }
 
-
+    // Terminal-wait button for scanner-reboot
+    if (stage.id === 'scanner-reboot') {
+      const twBtn = document.createElement('button');
+      twBtn.className = 'stage-jump-btn';
+      twBtn.style.borderLeftColor = 'var(--accent-amber)';
+      twBtn.style.borderLeftWidth = '3px';
+      twBtn.textContent = '  ↳ Terminal Wait (waiting for DECRYPT)';
+      twBtn.addEventListener('click', () => jumpToStage(stages, stage, 'terminal-wait'));
+      grid.appendChild(twBtn);
+    }
   }
 }
 
-function jumpToStage(stages, stage, phase) {
+function getSelectedAgent() {
+  const radio = document.querySelector('input[name="jump-agent"]:checked');
+  return radio ? radio.value : 'emy';
+}
+
+async function jumpToStage(stages, stage, phase) {
+  const agent = getSelectedAgent();
+
   state.missionStarted = true;
+  state.playerAgent = agent;
+  state.deviceId = getDeviceId();
+
   if (!state.timestamps?.start) {
     state.timestamps = state.timestamps || {};
     state.timestamps.start = new Date().toISOString();
-    // Set a deadline 90 min from now
     state.timestamps.deadline = new Date(Date.now() + 90 * 60 * 1000).toISOString();
   }
+
   // Mark all previous stages as solved
   for (const s of stages) {
     if (s.order < stage.order && !state.solvedPuzzles.includes(s.id)) {
       state.solvedPuzzles.push(s.id);
     }
   }
+
+  // Handle terminal-wait: mark scanner-reboot solved but decryptActivated false
+  if (phase === 'terminal-wait') {
+    if (!state.solvedPuzzles.includes(stage.id)) {
+      state.solvedPuzzles.push(stage.id);
+    }
+    state.decryptActivated = false;
+    // Keep currentStage as scanner-reboot so app detects the wait state
+  }
+
   // Set phase to skip briefing if requested
-  if (phase) {
+  if (phase && phase !== 'terminal-wait') {
     if (!state.stagePhase) state.stagePhase = {};
     state.stagePhase[stage.id] = phase;
-  } else {
-    // Clear any saved phase so briefing plays
+  } else if (phase !== 'terminal-wait') {
     if (state.stagePhase) delete state.stagePhase[stage.id];
   }
+
   state = setStage(state, stage.id);
+
+  // Also push to Firebase so the agent state is consistent
+  try { await fbSaveState(agent, state); } catch { /* best effort */ }
+
   window.location.href = 'index.html';
 }
 

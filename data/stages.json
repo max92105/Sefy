@@ -2,7 +2,7 @@
   "meta": {
     "title": "Operation Raven",
     "version": "0.1.0",
-    "totalStages": 9,
+    "totalStages": 8,
     "timerMinutes": 60,
     "description": "Un agent renégat a placé un dispositif dans cette installation. Récupérez les codes de neutralisation avant la fin du temps imparti."
   },
@@ -59,41 +59,18 @@
         "lat": 48.41326437917094,
         "lng": -71.10586537835142, 
         "radiusMeters": 3,
-        "foundText": "Point de réactivation localisé ! Cherchez le code caché dans cette zone et entrez-le à l'étape suivante pour réactiver mon module de décryptage."
+        "foundText": "Point de réactivation localisé ! Cherchez le code caché dans cette zone et entrez-le dans le terminal pour réactiver le module de décryptage."
       },
       "hints": [
         { "tier": 1, "text": "[À COMPLÉTER — Indice vague sur la direction]" },
         { "tier": 2, "text": "[À COMPLÉTER — Indice sur la pièce]" },
         { "tier": 3, "text": "[À COMPLÉTER — Emplacement exact]" }
       ],
-      "nextStage": "scanner-reactivation"
-    },
-    {
-      "id": "scanner-reactivation",
-      "order": 4,
-      "title": "R\u00e9activation du Module de D\u00e9cryptage",
-      "type": "code-entry",
-      "narrative": {
-        "text": "Vous avez localis\u00e9 le point de r\u00e9activation. Entrez le code trouv\u00e9 sur place pour restaurer le module de d\u00e9cryptage de SEFY. Une fois r\u00e9activ\u00e9, le module de d\u00e9cryptage pourra analyser l'environnement et d\u00e9coder les donn\u00e9es de terrain.",
-        "media": null
-      },
-      "puzzle": {
-        "type": "code-entry",
-        "prompt": "Entrez le code de r\u00e9activation du module de d\u00e9cryptage :",
-        "answerHash": "f5638cb90af8621df810a20068285b9fba01ca72229848abc088b96a6676fd97",
-        "inputType": "text",
-        "maxLength": 20
-      },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
       "nextStage": "qr-lockdown"
     },
     {
       "id": "qr-lockdown",
-      "order": 5,
+      "order": 4,
       "title": "Confinement de Sécurité",
       "type": "qr-scanner",
       "narrative": {
@@ -114,7 +91,7 @@
     },
     {
       "id": "bomb-search",
-      "order": 6,
+      "order": 5,
       "title": "Analyse Environnementale",
       "type": "ar-scan",
       "narrative": {
@@ -134,7 +111,7 @@
     },
     {
       "id": "sefy-rogue",
-      "order": 7,
+      "order": 6,
       "title": "Protocole PURGE",
       "type": "code-entry",
       "briefingIntro": true,
@@ -158,7 +135,7 @@
     },
     {
       "id": "evidence-collection",
-      "order": 8,
+      "order": 7,
       "title": "Collecte de Preuves",
       "type": "qr-scanner",
       "narrative": {
@@ -179,7 +156,7 @@
     },
     {
       "id": "deactivate-sefy",
-      "order": 9,
+      "order": 8,
       "title": "Désactivation de SEFY",
       "type": "code-entry",
       "narrative": {

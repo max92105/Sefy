@@ -13,7 +13,7 @@ export function createDefusalScreen() {
   section.innerHTML = `
     <div class="screen-content centered">
       <div class="screen-header">
-        <span class="header-tag">ÉTAPE 9</span>
+        <span class="header-tag">ÉTAPE 8</span>
         <span class="header-title">DÉSACTIVATION DE SEFY</span>
       </div>
 

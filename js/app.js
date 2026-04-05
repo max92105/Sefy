@@ -3,7 +3,7 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId } from './state.js';
+import { loadState, saveState, resetState, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
@@ -266,6 +266,16 @@ function goTerminalWait() {
 
 async function resumeMission() {
   const agent = state.playerAgent;
+
+  // Check if admin wiped Firebase — if so, wipe local state too
+  if (agent) {
+    const remote = await fetchState(agent);
+    if (!remote || !remote.missionStarted) {
+      state = resetState();
+      goTerminal();
+      return;
+    }
+  }
 
   // Verify this device owns the agent — prevent state swap
   if (agent) {

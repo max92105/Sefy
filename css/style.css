@@ -599,7 +599,7 @@ body.banner-active .arscan-layout {
 /* Dialogue text — pinned at the bottom of the video area, above the nav */
 .briefing-bottom {
   position: absolute;
-  bottom: calc(var(--nav-h, 52px) + var(--space-sm));
+  bottom: calc(var(--nav-h, 52px) + var(--space-md));
   left: 5%;
   right: 5%;
   max-width: 600px;
@@ -620,7 +620,7 @@ body.banner-active .arscan-layout {
   backdrop-filter: blur(8px);
 }
 
-/* Confirm button — pinned at the bottom, above nav */
+/* Confirm button — sits at the bottom of the layout, above nav */
 .briefing-confirm {
   width: 100%;
   display: flex;
@@ -628,10 +628,6 @@ body.banner-active .arscan-layout {
   padding: var(--space-sm) var(--space-md);
   padding-bottom: calc(var(--nav-h, 52px) + var(--space-sm));
   flex-shrink: 0;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
   z-index: 16;
 }
 

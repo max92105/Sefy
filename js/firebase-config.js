@@ -20,6 +20,18 @@ if (!firebase.apps.length) {
 
 const db = firebase.database();
 
+const DEVICE_ID_KEY = 'sefy-device-id';
+
+/** Get or create a persistent device identifier */
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 /** Get a reference to an agent's state node */
 function agentRef(agent) {
   return db.ref(`agents/${agent}`);
@@ -30,6 +42,7 @@ function createDefaultState() {
   return {
     missionStarted: false,
     playerAgent: null,
+    deviceId: null,
     accessTier: 1,
     decryptActivated: false,
     currentStage: null,
@@ -96,6 +109,7 @@ function fbOnStateChange(agent, callback) {
 export {
   db,
   createDefaultState,
+  getDeviceId,
   fbLoadState,
   fbSaveState,
   fbResetAgent,

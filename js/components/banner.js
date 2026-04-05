@@ -13,10 +13,23 @@ export function createBanner() {
   banner.id = 'mission-banner';
   banner.className = 'mission-banner hidden';
   banner.innerHTML = `
+    <span class="mission-banner-agent hidden" id="mission-banner-agent"></span>
     <span class="mission-banner-label">TEMPS RESTANT</span>
     <span class="mission-banner-value" id="mission-banner-value">01:30:00</span>
   `;
   document.body.prepend(banner);
+}
+
+/** Show the agent name badge in the banner */
+export function setAgentBadge(agent) {
+  const el = document.getElementById('mission-banner-agent');
+  if (!el) return;
+  if (agent) {
+    el.textContent = agent.toUpperCase();
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
 }
 
 /** Show the banner and start counting down from now */

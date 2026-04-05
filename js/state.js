@@ -13,9 +13,11 @@ import {
   fbResetAgent,
   fbOnStateChange,
   createDefaultState,
+  getDeviceId,
 } from './firebase-config.js';
 
 export { fbOnStateChange } from './firebase-config.js';
+export { getDeviceId } from './firebase-config.js';
 
 const STORAGE_KEY = 'operation-raven-state';
 
@@ -47,6 +49,8 @@ export async function fetchState(agent) {
 
 /** Save state to localStorage AND push to Firebase if agent is known */
 export function saveState(state) {
+  // Stamp this device's ID on every save
+  state.deviceId = getDeviceId();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch { /* storage issue */ }
@@ -195,5 +199,21 @@ export function restoreFromResumeCode(code) {
     return state;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Check whether this device is allowed to use the given agent.
+ * Returns true if OK, false if another device owns that agent.
+ * @param {string} agent — 'emy' or 'lea'
+ */
+export async function checkDeviceLock(agent) {
+  if (!agent) return true;
+  try {
+    const remote = await fbLoadState(agent);
+    if (!remote || !remote.deviceId) return true;          // no owner yet
+    return remote.deviceId === getDeviceId();               // same device?
+  } catch {
+    return true; // offline — allow
   }
 }

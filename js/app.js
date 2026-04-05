@@ -3,14 +3,14 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, startMission, setStage, getTotalHints, getElapsedMs } from './state.js';
+import { loadState, saveState, resetState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
 import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
-import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO } from './components/banner.js';
+import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
 import { createNav, showNav, hideNav, bindNav, setInventoryVisible } from './components/nav.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
@@ -112,13 +112,24 @@ function goBriefing() {
   hideNav();
   hideBanner();
 
-  runBriefing(({ deadlineISO, playerAgent }) => {
+  runBriefing(async ({ deadlineISO, playerAgent }) => {
+    // Check if this agent is already locked to another device
+    if (playerAgent) {
+      const allowed = await checkDeviceLock(playerAgent);
+      if (!allowed) {
+        alert(`L'agent ${playerAgent.toUpperCase()} est déjà utilisé sur un autre appareil. Rechargez et choisissez l'autre agent.`);
+        return;
+      }
+    }
+
     const firstStage = getFirstStage();
     if (!firstStage) return;
 
     startMission(state);
     state.playerAgent = playerAgent;
+    state.deviceId = getDeviceId();
     state.timestamps.deadline = deadlineISO;
+    setAgentBadge(playerAgent);
     state = setStage(state, firstStage.id);
 
     // If briefing stage has no puzzle, auto-advance
@@ -262,10 +273,24 @@ function goTerminalWait() {
 
 // ---- Resume ----
 
-function resumeMission() {
+async function resumeMission() {
+  const agent = state.playerAgent;
+
+  // Verify this device owns the agent — prevent state swap
+  if (agent) {
+    const allowed = await checkDeviceLock(agent);
+    if (!allowed) {
+      alert(`L'agent ${agent.toUpperCase()} est associé à un autre appareil. Sélectionnez votre agent.`);
+      state = resetState();
+      goTerminal();
+      return;
+    }
+  }
+
   const stage = getStageById(state.currentStage);
   if (stage) {
     if (state.timestamps.deadline) resumeBanner(state.timestamps.deadline);
+    if (state.playerAgent) setAgentBadge(state.playerAgent);
     enterStage(stage);
   } else {
     goTerminal();

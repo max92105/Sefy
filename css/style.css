@@ -469,6 +469,24 @@ body::after {
   text-transform: uppercase;
 }
 
+.mission-banner-agent {
+  position: absolute;
+  left: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--accent-green-dim);
+  border-radius: 3px;
+  color: var(--accent-green);
+  background: rgba(0, 255, 65, 0.08);
+}
+
+.mission-banner-agent.hidden {
+  display: none;
+}
+
 .mission-banner-value {
   font-family: var(--font-mono);
   font-size: var(--font-size-lg);

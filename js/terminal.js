@@ -131,7 +131,7 @@ let usedCodes = new Set();
 let commandHistory = [];
 let historyIndex = -1;
 let inactivityTimer = null;
-const INACTIVITY_TIMEOUT = 15000; // 15 seconds
+const INACTIVITY_TIMEOUT = 25000; // 25 seconds
 
 function resetInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
@@ -267,6 +267,7 @@ function loginPrompt() {
 }
 
 async function handleLogin(code) {
+  resetInactivityTimer();
   const hash = await sha256(code);
   const id = AGENT_HASHES[hash];
 
@@ -311,6 +312,7 @@ async function handleCommand(raw) {
   const trimmed = raw.trim();
   if (!trimmed) return;
 
+  resetInactivityTimer();
   commandHistory.push(trimmed);
   historyIndex = commandHistory.length;
 

@@ -12,6 +12,7 @@ let loggedIn    = false;
 let agentName   = null;   // display code the agent typed (e.g. '456D79')
 let agentId     = null;   // 'emy' | 'lea'
 let agentState  = null;   // object pulled from Firebase
+let staffMode   = false;  // true when logged in as staff (Victor / Élodie)
 let currentDir  = '/';
 let usedCodes   = new Set();
 let commandHistory = [];
@@ -25,6 +26,7 @@ export function onLogout(fn) { onLogoutCallback = fn; }
 /* ── Getters / setters (used by other modules) ── */
 
 export function isLoggedIn()  { return loggedIn; }
+export function isStaff()     { return staffMode; }
 export function getAgentName() { return agentName; }
 export function getAgentId()   { return agentId; }
 export function getAgentState() { return agentState; }
@@ -39,8 +41,9 @@ export function markCodeUsed(code) { usedCodes.add(code); }
 export function isCodeUsed(code)   { return usedCodes.has(code); }
 
 /* Called after successful login */
-export function setSession(name, id, state) {
+export function setSession(name, id, state, staff = false) {
   loggedIn  = true;
+  staffMode = staff;
   agentName = name;
   agentId   = id;
   agentState = state;
@@ -67,6 +70,7 @@ export async function doLogout(auto = false) {
   if (inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
 
   loggedIn   = false;
+  staffMode  = false;
   agentName  = null;
   agentId    = null;
   agentState = null;

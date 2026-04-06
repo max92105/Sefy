@@ -2,12 +2,13 @@
  * Terminal command dispatch — HELP, action codes, tier upgrade, decrypt.
  */
 
-import { ACTION_CODES } from './config.js';
-import { pushAgentState } from './firebase.js';
+import { ACTION_CODES, AGENT_HASHES } from './config.js';
+import { fetchAgentState, pushAgentState } from './firebase.js';
 import { printLine, printLines, printBlank, typeLine, delay, clearScreen } from './io.js';
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
   isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
+  isStaff,
 } from './state.js';
 import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
 
@@ -26,6 +27,29 @@ export async function handleCommand(raw) {
   const parts = trimmed.split(/\s+/);
   const cmd = parts[0].toUpperCase();
   const args = parts.slice(1);
+
+  /* ── Staff-restricted commands ── */
+  const AGENT_ONLY = ['DECRYPT', 'ACTIVATEAR', 'STATUS'];
+  if (isStaff()) {
+    // Staff can only use: HELP, CLEAR, LS, CD, CAT, PLAY, WHOAMI, PROMOTE, LOGOUT
+    if (AGENT_ONLY.includes(cmd) || cmd === '546967232' || cmd === '843937233') {
+      printLine('✗ ACCÈS REFUSÉ — Commande réservée aux agents terrain.', 'error');
+      printLine('Ce terminal de supervision n\'est pas lié au protocole agent SEFY.', 'dim');
+      printBlank();
+      return;
+    }
+    if (cmd === 'PROMOTE') {
+      await handlePromote(args);
+      printBlank();
+      return;
+    }
+    // Check action codes — staff can't use them
+    if (ACTION_CODES.find(a => a.code === cmd)) {
+      printLine('✗ ACCÈS REFUSÉ — Codes d\'action réservés aux agents terrain.', 'error');
+      printBlank();
+      return;
+    }
+  }
 
   switch (cmd) {
     case 'HELP':
@@ -64,6 +88,10 @@ export async function handleCommand(raw) {
     case 'ACTIVATEAR':
       await handleActivateAR();
       break;
+    case 'PROMOTE':
+      printLine('✗ ACCÈS REFUSÉ — Seul le personnel autorisé peut promouvoir un agent.', 'error');
+      printLine('Demandez à un responsable de se connecter au terminal.', 'dim');
+      break;
     case '546967232':
       await handleTierUpgrade(2);
       break;
@@ -88,6 +116,28 @@ export async function handleCommand(raw) {
 /* ═══════════════  Help  ═══════════════ */
 
 function showHelp() {
+  if (isStaff()) {
+    printLines([
+      '╔═══════════════════════════════════════╗',
+      '║     COMMANDES — SUPERVISION FACILITY  ║',
+      '╠═══════════════════════════════════════╣',
+      '║  HELP / AIDE ... Afficher cette aide  ║',
+      '║  LS / DIR ...... Lister les fichiers  ║',
+      '║  CD <dossier> .. Changer de dossier   ║',
+      '║  CAT <fichier>  Lire un fichier       ║',
+      '║  PLAY <fichier> Jouer un média        ║',
+      '║  CLEAR / CLS ... Effacer l\'écran      ║',
+      '║  WHOAMI ........ Identité courante    ║',
+      '╠═══════════════════════════════════════╣',
+      '║  PROMOTE <agent> Promouvoir un agent  ║',
+      '║                  au niveau Tier 3     ║',
+      '╠═══════════════════════════════════════╣',
+      '║  LOGOUT ........ Se déconnecter       ║',
+      '╚═══════════════════════════════════════╝',
+    ]);
+    return;
+  }
+
   const state = getAgentState();
   const lines = [
     '╔═══════════════════════════════════════╗',
@@ -234,4 +284,53 @@ async function handleActivateAR() {
   printBlank();
   printLine('Le scanner AR est maintenant disponible sur le terrain.', 'bright');
   printLine('Vos agents peuvent accéder à l\'onglet AR.', 'dim');
+}
+
+/* ═══════════════  Promote (Staff only)  ═══════════════ */
+
+async function handlePromote(args) {
+  const target = (args[0] || '').toUpperCase();
+  if (!target) {
+    printLine('Usage: PROMOTE <EMY|LEA>', 'warning');
+    printLine('Spécifiez l\'identifiant de l\'agent à promouvoir.', 'dim');
+    return;
+  }
+
+  // Resolve agent id from name
+  const idMap = {};
+  for (const [, id] of Object.entries(AGENT_HASHES)) {
+    idMap[id.toUpperCase()] = id;
+  }
+  const agentId = idMap[target];
+
+  if (!agentId) {
+    printLine(`✗ Agent "${target}" introuvable.`, 'error');
+    printLine('Agents disponibles: ' + Object.values(idMap).join(', ').toUpperCase(), 'dim');
+    return;
+  }
+
+  const state = await fetchAgentState(agentId);
+  if (!state) {
+    printLine(`✗ Impossible de récupérer l'état de l'agent ${target}.`, 'error');
+    return;
+  }
+
+  if (state.accessTier >= 3) {
+    printLine(`Agent ${target} est déjà Tier ${state.accessTier}.`, 'warning');
+    return;
+  }
+
+  state.accessTier = 3;
+  pushAgentState(agentId, state);
+
+  printBlank();
+  await typeLine('Autorisation de promotion en cours…', 'bright');
+  await delay(600);
+  await typeLine(`Mise à jour des accréditations de ${target}…`, '');
+  await delay(500);
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine(`║  AGENT ${target.padEnd(4)} PROMU → TIER 3       ║`, 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine(`L'agent ${target} dispose maintenant d'un accès Tier 3.`, 'bright');
 }

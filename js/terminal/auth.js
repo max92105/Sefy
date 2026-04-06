@@ -2,7 +2,7 @@
  * Terminal boot sequence + login authentication.
  */
 
-import { AGENT_HASHES, BOOT_LINES } from './config.js';
+import { AGENT_HASHES, STAFF_HASHES, BOOT_LINES } from './config.js';
 import { fetchAgentState } from './firebase.js';
 import { sha256, delay, printLine, printLines, printBlank, typeLine, setPrompt, setStatus, showInputLine, hideInputLine, clearScreen } from './io.js';
 import { setSession, resetInactivityTimer } from './state.js';
@@ -24,33 +24,35 @@ export async function boot() {
 /* ═══════════════  Login  ═══════════════ */
 
 export function loginPrompt() {
-  setPrompt('CODE AGENT >');
+  setPrompt('CODE ACCÈS >');
   setStatus('EN ATTENTE', false);
   showInputLine();
-  printLine('Entrez votre code agent pour vous authentifier:', 'bright');
+  printLine('Entrez votre code d\'accès pour vous authentifier:', 'bright');
 }
 
 export async function handleLogin(code) {
   const hash = await sha256(code);
-  const id = AGENT_HASHES[hash];
+  const agentId = AGENT_HASHES[hash];
+  const staffEntry = STAFF_HASHES[hash];
 
-  if (!id) {
+  if (!agentId && !staffEntry) {
     printLine(`> ${code}`, 'input-echo');
-    printLine('✗ CODE AGENT INVALIDE. Accès refusé.', 'error');
+    printLine('✗ CODE INVALIDE. Accès refusé.', 'error');
     printBlank();
     showInputLine();
     return;
   }
 
+  if (staffEntry) {
+    return handleStaffLogin(staffEntry);
+  }
+
+  // Agent login
   const agentName = code.trim().toUpperCase();
+  const agentState = await fetchAgentState(agentId);
 
-  // Pull shared state from Firebase (includes accessTier)
-  const agentState = await fetchAgentState(id);
-
-  setSession(agentName, id, agentState);
+  setSession(agentName, agentId, agentState, false);
   resetInactivityTimer();
-
-  // Clear any leftover boot / previous-session lines
   clearScreen();
 
   await typeLine('✓ AUTHENTIFICATION RÉUSSIE', 'success');
@@ -73,6 +75,43 @@ export async function handleLogin(code) {
   printBlank();
 
   setPrompt(`${agentName} >>`);
-  setStatus('EN LIGNE', true);
+  setStatus(`Agent ${agentName} — Tier ${tier}`, true);
+  showInputLine();
+}
+
+/* ═══════════════  Staff Login  ═══════════════ */
+
+async function handleStaffLogin(staff) {
+  setSession(staff.name, null, null, true);
+  resetInactivityTimer();
+  clearScreen();
+
+  await typeLine('✓ AUTHENTIFICATION PERSONNEL', 'success');
+  await delay(400);
+  await typeLine(`${staff.name} — ${staff.role}`, 'bright');
+  resetInactivityTimer();
+  await delay(300);
+
+  printBlank();
+  printLines([
+    '╔═══════════════════════════════════════╗',
+    '║       ACCÈS SUPERVISION FACILITY      ║',
+    '╠═══════════════════════════════════════╣',
+    '║  Compte de monitoring — accès limité  ║',
+    '║  Ce terminal n\'est pas lié au         ║',
+    '║  protocole agent SEFY.                ║',
+    '║                                       ║',
+    '║  Commandes opérationnelles désactivées║',
+    '║  Seule la commande PROMOTE est        ║',
+    '║  disponible pour autoriser un accès   ║',
+    '║  Tier supérieur aux agents terrain.   ║',
+    '╠═══════════════════════════════════════╣',
+    '║  Tapez HELP pour les commandes        ║',
+    '╚═══════════════════════════════════════╝',
+  ], 'dim');
+  printBlank();
+
+  setPrompt(`${staff.name} >>`);
+  setStatus(`Staff — ${staff.name}`, true);
   showInputLine();
 }

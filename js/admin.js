@@ -2,9 +2,9 @@
  * Admin Panel Logic — debug tools for testing and day-of emergencies
  */
 
-import { loadState, saveState, resetState, resetAgent, setStage, fetchState, getDeviceId } from './state.js';
+import { loadState, saveState, resetState, resetAgent, setStage, getDeviceId } from './state.js';
 import { loadStageData, getAllStages } from './stages.js';
-import { fbSaveState } from './firebase-config.js';
+import { fbSaveState, fbLoadState } from './firebase-config.js';
 
 let state = null;
 
@@ -21,10 +21,10 @@ function renderState() {
   if (!el) return;
   state = loadState();
 
-  // Fetch both agent states from Firebase for display
+  // Fetch both agent states from Firebase for display (read-only, no localStorage side-effect)
   Promise.all([
-    fetchState('emy'),
-    fetchState('lea'),
+    fbLoadState('emy'),
+    fbLoadState('lea'),
   ]).then(([emy, lea]) => {
     const display = {
       localStorage: state,

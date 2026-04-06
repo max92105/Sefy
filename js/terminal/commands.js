@@ -145,8 +145,7 @@ function showHelp() {
       '║  CLEAR / CLS ... Effacer l\'écran     ║',
       '║  WHOAMI ........ Identité courante    ║',
       '╠═══════════════════════════════════════╣',
-      '║  PROMOTE <code>  Promouvoir un agent ║',
-      '║                  (code agent requis)  ║',
+      '║  PROMOTE <code>  Promouvoir un agent  ║',
       '╠═══════════════════════════════════════╣',
       '║  LOGOUT ........ Se déconnecter       ║',
       '╚═══════════════════════════════════════╝',
@@ -338,49 +337,26 @@ async function handlePromote(args) {
 
   const agentLabel = agentId.toUpperCase();
 
-  // Step 1: promote to tier 3
-  if (state.accessTier < 3) {
-    state.accessTier = 3;
-    appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
-    appendLog(state, 'SEFY - Escalade de privilèges détectée.');
-    appendLog(state, 'PROTOCOLE 3 ACTIVÉ');
-    updateAgentFields(agentId, { accessTier: 3, systemLog: state.systemLog });
-
-    printBlank();
-    await typeLine('Autorisation de promotion en cours…', 'bright');
-    await delay(600);
-    await typeLine(`Mise à jour des accréditations de ${agentLabel}…`, '');
-    await delay(500);
-    await typeLine('╔═══════════════════════════════════╗', 'success');
-    await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 3       ║`, 'success');
-    await typeLine('╚═══════════════════════════════════╝', 'success');
-    printBlank();
-    printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 3.`, 'bright');
-    printLine('Utilisez à nouveau PROMOTE pour accorder le Tier 4.', 'dim');
+  // Staff can only promote up to tier 3
+  if (state.accessTier >= 3) {
+    printLine(`Agent ${agentLabel} est déjà Tier ${state.accessTier}.`, 'warning');
     return;
   }
 
-  // Step 2: promote to tier 4
-  if (state.accessTier < 4) {
-    state.accessTier = 4;
-    appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 4 par ${getAgentName()}.`);
-    appendLog(state, 'SEFY - Escalade de privilèges critique.');
-    appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
-    updateAgentFields(agentId, { accessTier: 4, systemLog: state.systemLog });
+  state.accessTier = 3;
+  appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
+  appendLog(state, 'SEFY - Escalade de privilèges détectée.');
+  appendLog(state, 'PROTOCOLE 3 ACTIVÉ');
+  updateAgentFields(agentId, { accessTier: 3, systemLog: state.systemLog });
 
-    printBlank();
-    await typeLine('Autorisation de promotion avancée…', 'bright');
-    await delay(600);
-    await typeLine(`Élévation maximale de ${agentLabel}…`, '');
-    await delay(500);
-    await typeLine('╔═══════════════════════════════════╗', 'success');
-    await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 4       ║`, 'success');
-    await typeLine('╚═══════════════════════════════════╝', 'success');
-    printBlank();
-    printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 4.`, 'bright');
-    return;
-  }
-
-  // Already tier 4+
-  printLine(`Agent ${agentLabel} est déjà Tier ${state.accessTier}.`, 'warning');
+  printBlank();
+  await typeLine('Autorisation de promotion en cours…', 'bright');
+  await delay(600);
+  await typeLine(`Mise à jour des accréditations de ${agentLabel}…`, '');
+  await delay(500);
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 3       ║`, 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 3.`, 'bright');
 }

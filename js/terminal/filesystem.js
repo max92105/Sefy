@@ -1,11 +1,53 @@
 /**
  * Terminal virtual file system — ls, cd, cat, play.
  * Files can have a `tier` property; agent needs at least that accessTier.
+ * The /logs directory includes a dynamic SYSTEM_{date}.log built from the agent's systemLog.
  */
 
 import { FILE_SYSTEM } from './config.js';
 import { printLine, printLines, printBlank } from './io.js';
 import { getCurrentDir, setCurrentDir, getAgentState } from './state.js';
+
+/* ═══════════════  Dynamic log file  ═══════════════ */
+
+function getTodayLogName() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `SYSTEM_${y}-${m}-${day}.log`;
+}
+
+function buildDynamicLog() {
+  const state = getAgentState();
+  const entries = state?.systemLog;
+  if (!entries || entries.length === 0) return null;
+  return {
+    type: 'file',
+    content: entries,
+  };
+}
+
+/** Resolve a FS entry — checks dynamic files on top of static FILE_SYSTEM */
+function getEntry(path) {
+  // Dynamic: /logs/<today>.log
+  const logName = getTodayLogName();
+  if (path === `/logs/${logName}`) return buildDynamicLog();
+
+  return FILE_SYSTEM[path] || null;
+}
+
+/** Get the effective children for a dir path (injects dynamic file names) */
+function getDirChildren(path, dir) {
+  const children = [...dir.children];
+  if (path === '/logs') {
+    const logName = getTodayLogName();
+    if (!children.includes(logName) && buildDynamicLog()) {
+      children.push(logName);
+    }
+  }
+  return children;
+}
 
 /* ═══════════════  Path resolution  ═══════════════ */
 
@@ -26,25 +68,26 @@ function resolvePath(name) {
 
 export function listDir() {
   const cwd = getCurrentDir();
-  const dir = FILE_SYSTEM[cwd];
+  const dir = getEntry(cwd);
   if (!dir || dir.type !== 'dir') {
     printLine('Erreur: répertoire non trouvé.', 'error');
     return;
   }
 
   const tier = getAgentState()?.accessTier || 1;
+  const children = getDirChildren(cwd, dir);
 
   printLine(`Contenu de ${cwd}:`, 'bright');
   printBlank();
 
-  if (!dir.children.length) {
+  if (!children.length) {
     printLine('  (vide)', 'dim');
     return;
   }
 
-  for (const child of dir.children) {
+  for (const child of children) {
     const childPath = resolvePath(child);
-    const entry = FILE_SYSTEM[childPath];
+    const entry = getEntry(childPath);
     if (entry?.type === 'dir') {
       printLine(`  📁 ${child}/`, 'folder');
     } else if (entry?.type === 'file') {
@@ -63,7 +106,7 @@ export function changeDir(name) {
   }
 
   const target = resolvePath(name);
-  const entry = FILE_SYSTEM[target];
+  const entry = getEntry(target);
 
   if (!entry || entry.type !== 'dir') {
     printLine(`Dossier non trouvé: ${name}`, 'error');
@@ -81,7 +124,7 @@ export function readFile(name) {
   }
 
   const target = resolvePath(name);
-  const entry = FILE_SYSTEM[target];
+  const entry = getEntry(target);
 
   if (!entry || entry.type !== 'file') {
     printLine(`Fichier non trouvé: ${name}`, 'error');

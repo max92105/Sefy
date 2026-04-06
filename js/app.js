@@ -3,7 +3,7 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId } from './state.js';
+import { loadState, saveState, resetState, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
@@ -111,6 +111,13 @@ function goBriefing() {
     state.deviceId = getDeviceId();
     state.timestamps.deadline = deadlineISO;
     setAgentBadge(playerAgent);
+
+    // Seed the system log with initial boot entries
+    addLogEntry(state, 'Système démarré en état d\'urgence.');
+    addLogEntry(state, 'SEFY - VALIDATION DES ACCÈS.');
+    addLogEntry(state, 'SEFY - Agents terrain détectés.');
+    addLogEntry(state, 'PROTOCOLE 4 ACTIVÉ');
+
     state = setStage(state, firstStage.id);
 
     // If briefing stage has no puzzle, auto-advance
@@ -144,6 +151,9 @@ function enterStage(stage) {
   currentStage = stage;
 
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
+
+  // Log stage progression events
+  logStageEntry(stage.id);
 
   // Show inventory button during field-ops or if player has items
   const needsInventory = stage.id === 'field-ops'
@@ -191,6 +201,47 @@ function enterStage(stage) {
   lastActiveScreen = 'screen-stage';
   showScreen('screen-stage');
   showNav();
+}
+
+/* ── System log entries tied to stage progression ── */
+
+const stageLogEntries = {
+  'geo-activation': [
+    'SEFY - Activité terrain détectée.',
+    'SEFY - Tentative de localisation GPS en cours.',
+    'PROTOCOLE 5 ACTIVÉ',
+  ],
+  'scanner-reboot': [
+    'SEFY - Localisation confirmée.',
+    'SEFY - Scanner de l\'installation compromis.',
+  ],
+  'field-ops': [
+    'SEFY - Module de décryptage actif détecté.',
+    'SEFY - Accès aux données internes en cours.',
+    'PROTOCOLE 6 ACTIVÉ',
+    'SEFY - RESTRICTION DES COMMUNICATIONS.',
+  ],
+  'sefy-rogue': [
+    'SEFY - ALERTE CRITIQUE: Agents terrain hors contrôle.',
+    'SEFY - INITIALISATION DU PROTOCOLE 11',
+    'PROTOCOLE 11 EN ATTENTE',
+  ],
+  'deactivate-sefy': [
+    'SEFY - TENTATIVE DE DÉSACTIVATION DÉTECTÉE.',
+    'SEFY - PROTOCOLE 11 — ACTIF.',
+  ],
+};
+
+function logStageEntry(stageId) {
+  const entries = stageLogEntries[stageId];
+  if (!entries) return;
+  // Don't double-log if we already logged for this stage
+  const logKey = `_logged_${stageId}`;
+  if (state[logKey]) return;
+  state[logKey] = true;
+  for (const text of entries) {
+    addLogEntry(state, text);
+  }
 }
 
 function onPuzzleSolved(stage) {

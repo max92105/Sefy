@@ -52,6 +52,7 @@ function createDefaultState() {
     inventory: [],
     keycards: [],
     arFound: [],
+    systemLog: [],
     stagePhase: {},
     timestamps: {},
     finalModeUnlocked: false,

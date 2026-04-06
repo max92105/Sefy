@@ -12,6 +12,17 @@ import {
 } from './state.js';
 import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
 
+/* ═══════════════  Log helper  ═══════════════ */
+
+function appendLog(state, text) {
+  if (!state) return;
+  if (!state.systemLog) state.systemLog = [];
+  const now = new Date();
+  const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `
+    + `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  state.systemLog.push(`[${ts}] ${text}`);
+}
+
 /* ═══════════════  Main dispatcher  ═══════════════ */
 
 export async function handleCommand(raw) {
@@ -131,7 +142,7 @@ function showHelp() {
       '║  CD <dossier> .. Changer de dossier   ║',
       '║  CAT <fichier>  Lire un fichier       ║',
       '║  PLAY <fichier> Jouer un média        ║',
-      '║  CLEAR / CLS ... Effacer l\'écran      ║',
+      '║  CLEAR / CLS ... Effacer l\'écran     ║',
       '║  WHOAMI ........ Identité courante    ║',
       '╠═══════════════════════════════════════╣',
       '║  PROMOTE <agent> Promouvoir un agent  ║',
@@ -154,8 +165,8 @@ function showHelp() {
     '║  CD <dossier> .. Changer de dossier   ║',
     '║  CAT <fichier>  Lire un fichier       ║',
     '║  PLAY <fichier> Jouer un média        ║',
-    '║  CLEAR / CLS ... Effacer l\'écran      ║',
-    '║  WHOAMI ........ Identité de l\'agent  ║',
+    '║  CLEAR / CLS ... Effacer l\'écran     ║',
+    '║  WHOAMI ........ Identité de l\'agent ║',
     '║  LOGOUT ........ Se déconnecter       ║',
   ];
   if (state && state.accessTier >= 2) {
@@ -166,7 +177,7 @@ function showHelp() {
     lines.push('║  ACTIVATEAR .... Activer scanner AR   ║');
   }
   lines.push('╠═══════════════════════════════════════╣');
-  lines.push('║  Entrez un CODE D\'ACTION pour agir.   ║');
+  lines.push('║  Entrez un CODE D\'ACTION pour agir.  ║');
   lines.push('╚═══════════════════════════════════════╝');
   printLines(lines);
 }
@@ -213,6 +224,8 @@ async function handleTierUpgrade(targetTier) {
     return;
   }
   state.accessTier = targetTier;
+  appendLog(state, `ACCÈS TIER ${targetTier} AUTORISÉ — Agent ${getAgentName()}.`);
+  if (targetTier === 2) appendLog(state, 'SEFY - Tentative de décryptage anticipée.');
   setAgentState(state);
   pushAgentState(id, state);
   printBlank();
@@ -242,6 +255,8 @@ async function handleDecrypt() {
     return;
   }
   state.decryptActivated = true;
+  appendLog(state, 'MODULE DE DÉCRYPTAGE ACTIVÉ.');
+  appendLog(state, 'SEFY - Accès aux données internes détecté.');
   setAgentState(state);
   pushAgentState(id, state);
   printBlank();
@@ -276,6 +291,10 @@ async function handleActivateAR() {
     return;
   }
   state.arActivated = true;
+  appendLog(state, 'MODULE AR ACTIVÉ.');
+  appendLog(state, 'SEFY - Scanner environnemental en ligne.');
+  appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
+  appendLog(state, 'SEFY - VERROUILLAGE DES ACCÈS.');
   setAgentState(state);
   pushAgentState(id, state);
   printBlank();
@@ -326,6 +345,9 @@ async function handlePromote(args) {
   }
 
   state.accessTier = 3;
+  appendLog(state, `PROMOTE — Agent ${target} promu Tier 3 par ${getAgentName()}.`);
+  appendLog(state, 'SEFY - Escalade de privilèges détectée.');
+  appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
   pushAgentState(agentId, state);
 
   printBlank();

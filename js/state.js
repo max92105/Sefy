@@ -93,6 +93,17 @@ export function solvePuzzle(state, puzzleId) {
   return state;
 }
 
+/** Append an entry to the agent's live system log */
+export function addLogEntry(state, text) {
+  if (!state.systemLog) state.systemLog = [];
+  const now = new Date();
+  const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `
+    + `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  state.systemLog.push(`[${ts}] ${text}`);
+  saveState(state);
+  return state;
+}
+
 /** Record a hint used for a puzzle */
 export function useHint(state, puzzleId) {
   if (!state.hintsUsed[puzzleId]) {

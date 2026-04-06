@@ -6,17 +6,20 @@ import { typewriter } from '../../typewriter.js';
 import { delay } from '../../ui.js';
 
 const TERMINAL_LINES = [
-  /*{ text: 'DÉMARRAGE DU SYSTÈME ET RÉCUPÉRATION DES DONNÉES', delay: 1500, speed: 30, cls: '' },
+  { text: 'DÉMARRAGE DU SYSTÈME ET RÉCUPÉRATION DES DONNÉES', delay: 1000, speed: 30, cls: '' },
   { text: 'SIGNAL INTERMITTENT', delay: 1000, speed: 30, cls: 'warning' },
-  { text: 'TENTATIVE D\'ACTIVATION DU PROTOCOLE D\'URGENCE', delay: 1500, speed: 30, cls: 'warning' },
-  { text: 'TANTATIVE 1', delay: 800, speed: 30, cls: '' },
+  { text: 'TENTATIVE D\'ACTIVATION DU PROTOCOLE D\'URGENCE', delay: 1000, speed: 30, cls: 'warning' },
+  { text: 'TANTATIVE 1', delay: 300, speed: 30, cls: '' },
   { text: '...', delay: 1500, speed: 200, cls: '' },
-  { text: 'ERREUR', delay: 600, speed: 30, cls: 'error' },
-  { text: 'TANTATIVE 2', delay: 800, speed: 30, cls: '' },
-  { text: '...', delay: 1500, speed: 200, cls: '' },
-  { text: 'ERREUR', delay: 600, speed: 30, cls: 'error' },
-  { text: 'TANTATIVE 3', delay: 800, speed: 30, cls: '' },
-  { text: '...', delay: 1500, speed: 200, cls: '' }, */
+  { text: 'ERREUR', delay: 300, speed: 30, cls: 'error' },
+  { text: 'TANTATIVE 2', delay: 300, speed: 30, cls: '' },
+  { text: '...', delay: 300, speed: 200, cls: '' },
+  { text: 'ERREUR', delay: 300, speed: 30, cls: 'error' },
+  { text: 'TANTATIVE 2', delay: 300, speed: 30, cls: '' },
+  { text: '...', delay: 300, speed: 200, cls: '' },
+  { text: 'ERREUR', delay: 300, speed: 30, cls: 'error' },
+  { text: 'TANTATIVE 3', delay: 300, speed: 30, cls: '' },
+  { text: '...', delay: 300, speed: 200, cls: '' }, 
   { text: 'SIGNAL DÉTECTÉ', delay: 1000, speed: 30, cls: '' },
 ];
 

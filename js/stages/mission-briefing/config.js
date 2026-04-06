@@ -28,7 +28,8 @@ export const INTRO_SEQUENCE = [
   { time: 42000, type: 'text', text: 'Temps estimé avant incident majeur : 1 heure 30 minutes.' },
   { time: 45000, type: 'text', text: 'Le compte à rebours est en cours.' },*/
   { time: 6000, type: 'action', action: 'showCountdown' },
-  /*{ time: 48000, type: 'text', text: 'Plusieurs de mes modules ont été volontairement restreints.' },
+  /*{ time: 48000, type: 'text', text: 'Plusieurs de mes modules ont été déactivé.'},
+  { time: 48000, type: 'text', text: 'Plusieurs de mes accèes ont été révoqués.' },
   { time: 52000, type: 'text', text: 'Sans accès complet, ma capacité à contenir l\u2019incident demeure limitée.' },
   { time: 56000, type: 'text', text: 'Une assistance humaine est requise pour restaurer certaines fonctions.' },
   { time: 60000, type: 'text', text: 'Vos profils correspondent aux paramètres d\u2019intervention acceptables.' },

@@ -80,7 +80,12 @@ export async function handleCommand(raw) {
       playMedia(args[0]);
       break;
     case 'WHOAMI':
-      printLine(`Agent ${agentName}`, 'bright');
+      if (isStaff()) {
+        printLine(`Employé ${agentName}`, 'bright');
+      } 
+      else {
+        printLine(`Agent ${agentName}`, 'bright');
+      }
       break;
     case 'DECRYPT':
       await handleDecrypt();

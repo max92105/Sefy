@@ -1,0 +1,194 @@
+/**
+ * Terminal command dispatch — HELP, action codes, tier upgrade, decrypt.
+ */
+
+import { ACTION_CODES } from './config.js';
+import { pushAgentState } from './firebase.js';
+import { printLine, printLines, printBlank, typeLine, delay, clearScreen } from './io.js';
+import {
+  getAgentName, getAgentId, getAgentState, setAgentState,
+  isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
+} from './state.js';
+import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
+
+/* ═══════════════  Main dispatcher  ═══════════════ */
+
+export async function handleCommand(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return;
+
+  resetInactivityTimer();
+  pushHistoryEntry(trimmed);
+
+  const agentName = getAgentName();
+  printLine(`${agentName} >> ${trimmed}`, 'input-echo');
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0].toUpperCase();
+  const args = parts.slice(1);
+
+  switch (cmd) {
+    case 'HELP':
+    case 'AIDE':
+      showHelp();
+      break;
+    case 'CLEAR':
+    case 'CLS':
+      clearScreen();
+      break;
+    case 'STATUS':
+      handleActionCode('STATUS');
+      break;
+    case 'LS':
+    case 'DIR':
+      listDir();
+      break;
+    case 'CD':
+      changeDir(args[0]);
+      break;
+    case 'CAT':
+    case 'READ':
+    case 'LIRE':
+      readFile(args[0]);
+      break;
+    case 'PLAY':
+    case 'JOUER':
+      playMedia(args[0]);
+      break;
+    case 'WHOAMI':
+      printLine(`Agent ${agentName}`, 'bright');
+      break;
+    case 'DECRYPT':
+      await handleDecrypt();
+      break;
+    case '546967232':
+      await handleTierUpgrade();
+      break;
+    case 'LOGOUT':
+    case 'EXIT':
+      await doLogout();
+      return; // don't print blank / show input — doLogout does loginPrompt
+    default:
+      if (!handleActionCode(cmd)) {
+        printLine(`Commande inconnue: ${cmd}`, 'error');
+        printLine('Tapez HELP pour la liste des commandes.', 'dim');
+      }
+      break;
+  }
+
+  printBlank();
+}
+
+/* ═══════════════  Help  ═══════════════ */
+
+function showHelp() {
+  const state = getAgentState();
+  const lines = [
+    '╔═══════════════════════════════════════╗',
+    '║          COMMANDES DISPONIBLES        ║',
+    '╠═══════════════════════════════════════╣',
+    '║  HELP / AIDE ... Afficher cette aide  ║',
+    '║  STATUS ........ État des systèmes    ║',
+    '║  LS / DIR ...... Lister les fichiers  ║',
+    '║  CD <dossier> .. Changer de dossier   ║',
+    '║  CAT <fichier>  Lire un fichier       ║',
+    '║  PLAY <fichier> Jouer un média        ║',
+    '║  CLEAR / CLS ... Effacer l\'écran      ║',
+    '║  WHOAMI ........ Identité de l\'agent  ║',
+    '║  LOGOUT ........ Se déconnecter       ║',
+  ];
+  if (state && state.accessTier >= 2) {
+    lines.push('╠═══════════════════════════════════════╣');
+    lines.push('║  DECRYPT ....... Activer décryptage   ║');
+  }
+  lines.push('╠═══════════════════════════════════════╣');
+  lines.push('║  Entrez un CODE D\'ACTION pour agir.   ║');
+  lines.push('╚═══════════════════════════════════════╝');
+  printLines(lines);
+}
+
+/* ═══════════════  Action Codes  ═══════════════ */
+
+function handleActionCode(code) {
+  let action = ACTION_CODES.find(a => a.code === code);
+  if (action?.alias) {
+    action = ACTION_CODES.find(a => a.code === action.alias) || action;
+  }
+  if (!action) return false;
+
+  if (action.once && isCodeUsed(code)) {
+    printLine('Ce code a déjà été utilisé.', 'warning');
+    return true;
+  }
+
+  printLines(action.response);
+
+  if (action.giveCode) {
+    printBlank();
+    printLine('╔═══════════════════════════════════╗', 'success');
+    printLine(`║  CODE OBTENU: ${action.giveCode.padEnd(19)}║`, 'success');
+    printLine('╚═══════════════════════════════════╝', 'success');
+    printLine('Transmettez ce code à votre équipe.', 'bright');
+  }
+
+  if (action.once) markCodeUsed(code);
+  return true;
+}
+
+/* ═══════════════  Tier Upgrade  ═══════════════ */
+
+async function handleTierUpgrade() {
+  const state = getAgentState();
+  const id = getAgentId();
+  if (!state) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (state.accessTier >= 2) {
+    printLine('Niveau d\'accès déjà au maximum autorisé.', 'warning');
+    return;
+  }
+  state.accessTier = 2;
+  setAgentState(state);
+  pushAgentState(id, state);
+  printBlank();
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine('║   NIVEAU D\'ACCÈS AUGMENTÉ → T2    ║', 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine('Nouvelles commandes débloquées. Tapez HELP.', 'bright');
+}
+
+/* ═══════════════  Decrypt  ═══════════════ */
+
+async function handleDecrypt() {
+  const state = getAgentState();
+  const id = getAgentId();
+  if (!state) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (!state.accessTier || state.accessTier < 2) {
+    printLine('✗ ACCÈS REFUSÉ — Niveau d\'accès insuffisant.', 'error');
+    printLine('Tier 2 requis. Entrez le code d\'accès pour augmenter votre niveau.', 'dim');
+    return;
+  }
+  if (state.decryptActivated) {
+    printLine('Module de décryptage déjà activé.', 'warning');
+    return;
+  }
+  state.decryptActivated = true;
+  setAgentState(state);
+  pushAgentState(id, state);
+  printBlank();
+  await typeLine('Initialisation du module de décryptage…', 'bright');
+  await delay(800);
+  await typeLine('Connexion aux serveurs SEFY…', '');
+  await delay(600);
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine('║  MODULE DE DÉCRYPTAGE — EN LIGNE  ║', 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine('Le module de décryptage est maintenant opérationnel.', 'bright');
+  printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
+}

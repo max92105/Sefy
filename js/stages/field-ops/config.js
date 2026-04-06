@@ -7,6 +7,7 @@
 const MEDIA = {
   audioIntro:     'assets/audio/qr_intro_sefy.wav',
   audioConfirmed: 'assets/audio/qr_confirmed_sefy.wav',
+  audioAR:        'assets/audio/qr_intro_sefy.wav',   // reuse for AR briefing
 };
 
 export const INTRO_SEQUENCE = [
@@ -47,4 +48,22 @@ export const AR_OBJECTS = [
     seekTolerance: 25,
     seekHint: 'Tournez à gauche et regardez vers le bas…',
   },
+];
+
+/* ═══════════════  AR Briefing  ═══════════════
+   Played when arriving on field-ops and AR is NOT yet activated.
+   Explains how to unlock the AR module.
+   ════════════════════════════════════════════════════ */
+
+export const AR_BRIEFING_SEQUENCE = [
+  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audioAR },
+  { time: 0,     type: 'text',  text: 'Le scanner QR est opérationnel. Mais ce n\'est pas suffisant.' },
+  { time: 4000,  type: 'text',  text: 'L\'installation contient des éléments invisibles à l\'œil nu.' },
+  { time: 8000,  type: 'text',  text: 'Le module d\'analyse environnementale AR peut les révéler…' },
+  { time: 11000, type: 'text',  text: '…mais il nécessite un accès Tier 3.' },
+  { time: 14000, type: 'text',  text: 'Trouvez un membre du personnel autorisé.' },
+  { time: 17000, type: 'text',  text: 'Il devra se connecter au terminal et utiliser la commande PROMOTE pour élever votre niveau d\'accès.' },
+  { time: 22000, type: 'text',  text: 'Ensuite, la commande ACTIVATEAR déverrouillera le scanner.' },
+  { time: 26000, type: 'text',  text: 'En attendant, utilisez le scanner QR pour collecter les cartes d\'accès.' },
+  { time: 30000, type: 'action', action: 'endBriefing' },
 ];

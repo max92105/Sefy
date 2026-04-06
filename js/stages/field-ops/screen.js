@@ -12,12 +12,12 @@
  */
 
 import { playSFX } from '../../ui.js';
-import { solvePuzzle, addKeycard, saveState } from '../../state.js';
+import { solvePuzzle, addKeycard, saveState, fetchState } from '../../state.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE } from './config.js';
 
 const PREFIX = 'field-ops';
 
@@ -197,13 +197,43 @@ function resumeScanner(stage, state, onSolved) {
   return () => cleanup();
 }
 
-function transitionToPanel(stage, state, onSolved) {
+async function transitionToPanel(stage, state, onSolved) {
   if (!state.stagePhase) state.stagePhase = {};
   state.stagePhase[stage.id] = 'scanner';
   saveState(state);
 
+  // Sync AR state from Firebase before showing anything
+  if (state.playerAgent) {
+    const remote = await fetchState(state.playerAgent);
+    if (remote && remote.arActivated && !state.arActivated) {
+      state.arActivated = true;
+      state.accessTier = remote.accessTier || state.accessTier;
+      saveState(state);
+    }
+  }
+
   const introEl = document.getElementById(`${PREFIX}-intro`);
   const panelEl = document.getElementById(`${PREFIX}-panel`);
+
+  // If AR not activated and briefing not yet shown, play AR briefing
+  if (!state.arActivated && !state.arBriefingDone) {
+    if (panelEl) panelEl.classList.add('hidden');
+    if (introEl) introEl.classList.remove('hidden');
+
+    await new Promise((resolve) => {
+      const briefing = startIntroCinematic(PREFIX, AR_BRIEFING_SEQUENCE, {
+        endBriefing() {
+          briefing.hide();
+          resolve();
+          return 'stop';
+        },
+      });
+    });
+
+    state.arBriefingDone = true;
+    saveState(state);
+  }
+
   if (introEl) introEl.classList.add('hidden');
   if (panelEl) panelEl.classList.remove('hidden');
 

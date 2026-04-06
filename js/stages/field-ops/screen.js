@@ -589,6 +589,7 @@ function startSeeking(obj, stage, state, onSolved) {
       // No orientation sensor — reveal immediately
       if (seekingEl) seekingEl.classList.add('hidden');
       objectRevealed = true;
+      stopOrientationTracking();
       playSFX('assets/audio/zone_found.wav');
       showObjectOnCamera(obj, stage, state, onSolved, abort);
       return;
@@ -609,6 +610,7 @@ function startSeeking(obj, stage, state, onSolved) {
         objectRevealed = true;
         if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
         if (seekingEl) seekingEl.classList.add('hidden');
+        stopOrientationTracking();
         playSFX('assets/audio/zone_found.wav');
         showObjectOnCamera(obj, stage, state, onSolved, abort);
       }
@@ -620,6 +622,7 @@ function startSeeking(obj, stage, state, onSolved) {
     if (abort.aborted || objectRevealed) return;
     abort.aborted = true;
     if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+    stopOrientationTracking();
     if (seekingEl) seekingEl.classList.add('hidden');
     updateARSearchingVisibility();
     showARFeedback('Signal perdu. Scannez à nouveau le QR code…', 'info');
@@ -649,6 +652,7 @@ function showObjectOnCamera(obj, stage, state, onSolved, abort) {
 
   setTimeout(() => {
     if (abort.aborted || foundObjects.includes(obj.id)) return;
+    abort.aborted = true;
     if (markersEl) { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
     updateARSearchingVisibility();
     showARFeedback('Signal perdu. Scannez à nouveau le QR code…', 'info');
@@ -658,6 +662,7 @@ function showObjectOnCamera(obj, stage, state, onSolved, abort) {
 
 function collectARObject(obj, stage, state, onSolved, abort) {
   if (foundObjects.includes(obj.id)) return;
+  abort.aborted = true; // cancel lingering seek/marker timeouts
   foundObjects.push(obj.id);
   if (!state.arFound) state.arFound = [];
   state.arFound.push(obj.id);
@@ -692,10 +697,18 @@ function completeARScan(stage, state, onSolved) {
 }
 
 function resumeARQRScanning(stage, state, onSolved) {
+  // Stop any leftover loops before starting fresh
+  if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+
   const video  = document.getElementById(`${PREFIX}-ar-camera`);
   const canvas = document.getElementById(`${PREFIX}-ar-canvas`);
   const ctx    = canvas?.getContext('2d', { willReadFrequently: true });
   if (!video || !canvas || !ctx) return;
+
+  // Ensure camera stream is attached
+  if (cameraStream && !video.srcObject) {
+    video.srcObject = cameraStream;
+  }
 
   let cooldown = false;
   arScanLoop = setInterval(() => {

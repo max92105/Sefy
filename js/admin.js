@@ -89,6 +89,17 @@ function renderStageJumps() {
       twBtn.addEventListener('click', () => jumpToStage(stages, stage, 'terminal-wait'));
       grid.appendChild(twBtn);
     }
+
+    // Field-ops with AR activated (skip to scanner, T3, AR ready)
+    if (stage.id === 'field-ops') {
+      const arBtn = document.createElement('button');
+      arBtn.className = 'stage-jump-btn';
+      arBtn.style.borderLeftColor = '#ff40ff';
+      arBtn.style.borderLeftWidth = '3px';
+      arBtn.textContent = '  ↳ Scanner + AR activated (T3)';
+      arBtn.addEventListener('click', () => jumpToStage(stages, stage, 'scanner-ar'));
+      grid.appendChild(arBtn);
+    }
   }
 }
 
@@ -146,6 +157,15 @@ async function jumpToStage(stages, stage, phase) {
     state.decryptActivated = false;
     state.accessTier = 1;
     // Keep currentStage as scanner-reboot so app detects the wait state
+  }
+
+  // Handle scanner-ar: field-ops with T3 + AR activated, skip briefing
+  if (phase === 'scanner-ar') {
+    state.accessTier = 3;
+    state.arActivated = true;
+    state.arBriefingDone = true;
+    if (!state.stagePhase) state.stagePhase = {};
+    state.stagePhase[stage.id] = 'scanner';
   }
 
   // Set phase to skip briefing if requested

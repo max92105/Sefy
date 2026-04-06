@@ -48,8 +48,8 @@ export function listDir() {
     if (entry?.type === 'dir') {
       printLine(`  📁 ${child}/`, 'folder');
     } else if (entry?.type === 'file') {
-      const locked = entry.tier && entry.tier > tier;
-      printLine(`  📄 ${child}${locked ? '  🔒' : ''}`, locked ? 'dim' : '');
+      if (entry.tier && entry.tier > tier) continue; // hide files above agent tier
+      printLine(`  📄 ${child}`, '');
     } else {
       printLine(`  📄 ${child}`, '');
     }

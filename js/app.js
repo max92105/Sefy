@@ -145,8 +145,9 @@ function enterStage(stage) {
 
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
 
-  // Show inventory button if player has any collected items
-  const needsInventory = (state.keycards && state.keycards.length > 0)
+  // Show inventory button during field-ops or if player has items
+  const needsInventory = stage.id === 'field-ops'
+    || (state.keycards && state.keycards.length > 0)
     || (state.arFound && state.arFound.length > 0)
     || (state.inventory && state.inventory.length > 0);
   setInventoryVisible(needsInventory);

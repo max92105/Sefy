@@ -91,9 +91,6 @@ export function createScreen() {
         <canvas id="${PREFIX}-canvas" class="hidden"></canvas>
         <div class="qr-crosshair"></div>
       </div>
-      <div class="qr-feedback" id="${PREFIX}-qr-feedback">
-        <span id="${PREFIX}-qr-feedback-text">Scannez un QR code…</span>
-      </div>
     </div>
 
     <!-- AR tab -->
@@ -245,8 +242,7 @@ function switchTab(tab, stage, state, onSolved) {
   const tabQR = document.getElementById(`${PREFIX}-tab-qr`);
   const tabAR = document.getElementById(`${PREFIX}-tab-ar`);
 
-  // If trying to switch to AR but it's locked, do nothing
-  if (tab === 'ar' && !state.arActivated) return;
+  // If trying to switch to AR but it's locked, still show the locked page
 
   // Stop current scanner
   if (activeTab === 'qr') stopQRScanner();
@@ -265,7 +261,8 @@ function switchTab(tab, stage, state, onSolved) {
     arContent?.classList.remove('hidden');
     tabQR?.classList.remove('active');
     tabAR?.classList.add('active');
-    startARScanner(stage, state, onSolved);
+    // Only start AR camera if module is activated
+    if (state.arActivated) startARScanner(stage, state, onSolved);
   }
 }
 

@@ -123,22 +123,6 @@ export function addKeycard(state, cardId) {
   return false; // already had it
 }
 
-/** Unlock a lock station */
-export function unlockStation(state, stationId) {
-  if (!state.unlockedStations) state.unlockedStations = [];
-  if (!state.unlockedStations.includes(stationId)) {
-    state.unlockedStations.push(stationId);
-    saveState(state);
-    return true;
-  }
-  return false;
-}
-
-/** Check if player has a specific keycard */
-export function hasKeycard(state, cardId) {
-  return (state.keycards || []).includes(cardId);
-}
-
 /** Advance to a specific stage */
 export function setStage(state, stageId) {
   state.currentStage = stageId;

@@ -161,7 +161,7 @@ export const FILE_SYSTEM = {
   },
   '/documents/employees': {
     type: 'dir',
-    children: ['employe_accesses.txt', 
+    children: ['employee_accesses.txt', 
       'berger_thomas.txt', 
       'bouchard_karim.txt', 
       'delaney_marc.txt', 
@@ -177,7 +177,7 @@ export const FILE_SYSTEM = {
       'rivera_alex.txt', 
       'voss_adrian.txt'],
   },
-  '/documents/employees/employe_accesses.txt': {
+  '/documents/employees/employee_accesses.txt': {
     type: 'file',
     content: [
       'Berger, Thomas - Agent logistique - Tier 1',

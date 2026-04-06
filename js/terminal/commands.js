@@ -4,7 +4,7 @@
 
 import { ACTION_CODES, AGENT_HASHES } from './config.js';
 import { fetchAgentState, pushAgentState } from './firebase.js';
-import { printLine, printLines, printBlank, typeLine, delay, clearScreen } from './io.js';
+import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256 } from './io.js';
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
   isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
@@ -145,8 +145,8 @@ function showHelp() {
       '║  CLEAR / CLS ... Effacer l\'écran     ║',
       '║  WHOAMI ........ Identité courante    ║',
       '╠═══════════════════════════════════════╣',
-      '║  PROMOTE <agent> Promouvoir un agent  ║',
-      '║                  au niveau Tier 3     ║',
+      '║  PROMOTE <code>  Promouvoir un agent ║',
+      '║                  (code agent requis)  ║',
       '╠═══════════════════════════════════════╣',
       '║  LOGOUT ........ Se déconnecter       ║',
       '╚═══════════════════════════════════════╝',
@@ -293,7 +293,7 @@ async function handleActivateAR() {
   state.arActivated = true;
   appendLog(state, 'MODULE AR ACTIVÉ.');
   appendLog(state, 'SEFY - Scanner environnemental en ligne.');
-  appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
+  appendLog(state, 'PROTOCOLE 5 ACTIVÉ');
   appendLog(state, 'SEFY - VERROUILLAGE DES ACCÈS.');
   setAgentState(state);
   pushAgentState(id, state);
@@ -313,51 +313,74 @@ async function handleActivateAR() {
 /* ═══════════════  Promote (Staff only)  ═══════════════ */
 
 async function handlePromote(args) {
-  const target = (args[0] || '').toUpperCase();
-  if (!target) {
-    printLine('Usage: PROMOTE <EMY|LEA>', 'warning');
-    printLine('Spécifiez l\'identifiant de l\'agent à promouvoir.', 'dim');
+  const code = (args[0] || '').trim().toUpperCase();
+  if (!code) {
+    printLine('Usage: PROMOTE <code_agent>', 'warning');
+    printLine('Entrez le code d\'identification de l\'agent à promouvoir.', 'dim');
     return;
   }
 
-  // Resolve agent id from name
-  const idMap = {};
-  for (const [, id] of Object.entries(AGENT_HASHES)) {
-    idMap[id.toUpperCase()] = id;
-  }
-  const agentId = idMap[target];
+  // Resolve agent code → agent id via hash
+  const hash = await sha256(code);
+  const agentId = AGENT_HASHES[hash];
 
   if (!agentId) {
-    printLine(`✗ Agent "${target}" introuvable.`, 'error');
-    printLine('Agents disponibles: ' + Object.values(idMap).join(', ').toUpperCase(), 'dim');
+    printLine(`✗ Code agent "${code}" non reconnu.`, 'error');
+    printLine('Vérifiez le code d\'identification de l\'agent.', 'dim');
     return;
   }
 
   const state = await fetchAgentState(agentId);
   if (!state) {
-    printLine(`✗ Impossible de récupérer l'état de l'agent ${target}.`, 'error');
+    printLine(`✗ Impossible de récupérer l'état de l'agent.`, 'error');
     return;
   }
 
-  if (state.accessTier >= 3) {
-    printLine(`Agent ${target} est déjà Tier ${state.accessTier}.`, 'warning');
+  const agentLabel = agentId.toUpperCase();
+
+  // Step 1: promote to tier 3
+  if (state.accessTier < 3) {
+    state.accessTier = 3;
+    appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
+    appendLog(state, 'SEFY - Escalade de privilèges détectée.');
+    appendLog(state, 'PROTOCOLE 3 ACTIVÉ');
+    pushAgentState(agentId, state);
+
+    printBlank();
+    await typeLine('Autorisation de promotion en cours…', 'bright');
+    await delay(600);
+    await typeLine(`Mise à jour des accréditations de ${agentLabel}…`, '');
+    await delay(500);
+    await typeLine('╔═══════════════════════════════════╗', 'success');
+    await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 3       ║`, 'success');
+    await typeLine('╚═══════════════════════════════════╝', 'success');
+    printBlank();
+    printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 3.`, 'bright');
+    printLine('Utilisez à nouveau PROMOTE pour accorder le Tier 4.', 'dim');
     return;
   }
 
-  state.accessTier = 3;
-  appendLog(state, `PROMOTE — Agent ${target} promu Tier 3 par ${getAgentName()}.`);
-  appendLog(state, 'SEFY - Escalade de privilèges détectée.');
-  appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
-  pushAgentState(agentId, state);
+  // Step 2: promote to tier 4
+  if (state.accessTier < 4) {
+    state.accessTier = 4;
+    appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 4 par ${getAgentName()}.`);
+    appendLog(state, 'SEFY - Escalade de privilèges critique.');
+    appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
+    pushAgentState(agentId, state);
 
-  printBlank();
-  await typeLine('Autorisation de promotion en cours…', 'bright');
-  await delay(600);
-  await typeLine(`Mise à jour des accréditations de ${target}…`, '');
-  await delay(500);
-  await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine(`║  AGENT ${target.padEnd(4)} PROMU → TIER 3       ║`, 'success');
-  await typeLine('╚═══════════════════════════════════╝', 'success');
-  printBlank();
-  printLine(`L'agent ${target} dispose maintenant d'un accès Tier 3.`, 'bright');
+    printBlank();
+    await typeLine('Autorisation de promotion avancée…', 'bright');
+    await delay(600);
+    await typeLine(`Élévation maximale de ${agentLabel}…`, '');
+    await delay(500);
+    await typeLine('╔═══════════════════════════════════╗', 'success');
+    await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 4       ║`, 'success');
+    await typeLine('╚═══════════════════════════════════╝', 'success');
+    printBlank();
+    printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 4.`, 'bright');
+    return;
+  }
+
+  // Already tier 4+
+  printLine(`Agent ${agentLabel} est déjà Tier ${state.accessTier}.`, 'warning');
 }

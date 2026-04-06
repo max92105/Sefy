@@ -75,11 +75,30 @@ async function fbLoadState(agent) {
 }
 
 /**
- * Write an agent's full state to Firebase.
+ * Write an agent's state to Firebase.
+ * Fetches remote first and merges terminal-managed fields so the app
+ * never downgrades values set by the terminal (accessTier, decrypt, AR, logs).
  * @param {string} agent
  * @param {object} state
  */
 async function fbSaveState(agent, state) {
+  const snap = await agentRef(agent).once('value');
+  const remote = snap.val();
+
+  if (remote) {
+    // Keep the higher accessTier (terminal can only raise it)
+    if ((remote.accessTier || 1) > (state.accessTier || 1)) {
+      state.accessTier = remote.accessTier;
+    }
+    // Never revert terminal-activated flags
+    if (remote.decryptActivated) state.decryptActivated = true;
+    if (remote.arActivated) state.arActivated = true;
+    // Keep the longer systemLog (both sides only append)
+    if (remote.systemLog && (!state.systemLog || remote.systemLog.length > state.systemLog.length)) {
+      state.systemLog = remote.systemLog;
+    }
+  }
+
   await agentRef(agent).set(state);
 }
 

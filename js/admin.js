@@ -138,11 +138,13 @@ async function jumpToStage(stages, stage, phase) {
   }
 
   // Handle terminal-wait: mark scanner-reboot solved but decryptActivated false
+  // Agent should still be tier 1 — they need to find the code and type it in the terminal
   if (phase === 'terminal-wait') {
     if (!state.solvedPuzzles.includes(stage.id)) {
       state.solvedPuzzles.push(stage.id);
     }
     state.decryptActivated = false;
+    state.accessTier = 1;
     // Keep currentStage as scanner-reboot so app detects the wait state
   }
 

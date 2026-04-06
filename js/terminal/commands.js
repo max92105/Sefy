@@ -61,8 +61,14 @@ export async function handleCommand(raw) {
     case 'DECRYPT':
       await handleDecrypt();
       break;
+    case 'ACTIVATEAR':
+      await handleActivateAR();
+      break;
     case '546967232':
-      await handleTierUpgrade();
+      await handleTierUpgrade(2);
+      break;
+    case '843937233':
+      await handleTierUpgrade(3);
       break;
     case 'LOGOUT':
     case 'EXIT':
@@ -101,6 +107,9 @@ function showHelp() {
     lines.push('╠═══════════════════════════════════════╣');
     lines.push('║  DECRYPT ....... Activer décryptage   ║');
   }
+  if (state && state.accessTier >= 3) {
+    lines.push('║  ACTIVATEAR .... Activer scanner AR   ║');
+  }
   lines.push('╠═══════════════════════════════════════╣');
   lines.push('║  Entrez un CODE D\'ACTION pour agir.   ║');
   lines.push('╚═══════════════════════════════════════╝');
@@ -137,23 +146,23 @@ function handleActionCode(code) {
 
 /* ═══════════════  Tier Upgrade  ═══════════════ */
 
-async function handleTierUpgrade() {
+async function handleTierUpgrade(targetTier) {
   const state = getAgentState();
   const id = getAgentId();
   if (!state) {
     printLine('Erreur: état de l\'agent non disponible.', 'error');
     return;
   }
-  if (state.accessTier >= 2) {
-    printLine('Niveau d\'accès déjà au maximum autorisé.', 'warning');
+  if (state.accessTier >= targetTier) {
+    printLine(`Niveau d'accès déjà ≥ Tier ${targetTier}.`, 'warning');
     return;
   }
-  state.accessTier = 2;
+  state.accessTier = targetTier;
   setAgentState(state);
   pushAgentState(id, state);
   printBlank();
   await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine('║   NIVEAU D\'ACCÈS AUGMENTÉ → T2    ║', 'success');
+  await typeLine(`║   NIVEAU D'ACCÈS AUGMENTÉ → T${targetTier}    ║`, 'success');
   await typeLine('╚═══════════════════════════════════╝', 'success');
   printBlank();
   printLine('Nouvelles commandes débloquées. Tapez HELP.', 'bright');
@@ -191,4 +200,38 @@ async function handleDecrypt() {
   printBlank();
   printLine('Le module de décryptage est maintenant opérationnel.', 'bright');
   printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
+}
+
+/* ═══════════════  Activate AR  ═══════════════ */
+
+async function handleActivateAR() {
+  const state = getAgentState();
+  const id = getAgentId();
+  if (!state) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (!state.accessTier || state.accessTier < 3) {
+    printLine('✗ ACCÈS REFUSÉ — Niveau d\'accès insuffisant.', 'error');
+    printLine('Tier 3 requis pour activer le module AR.', 'dim');
+    return;
+  }
+  if (state.arActivated) {
+    printLine('Module AR déjà activé.', 'warning');
+    return;
+  }
+  state.arActivated = true;
+  setAgentState(state);
+  pushAgentState(id, state);
+  printBlank();
+  await typeLine('Initialisation du scanner environnemental…', 'bright');
+  await delay(800);
+  await typeLine('Calibration des capteurs AR…', '');
+  await delay(600);
+  await typeLine('╔═══════════════════════════════════╗', 'success');
+  await typeLine('║   MODULE AR — EN LIGNE            ║', 'success');
+  await typeLine('╚═══════════════════════════════════╝', 'success');
+  printBlank();
+  printLine('Le scanner AR est maintenant disponible sur le terrain.', 'bright');
+  printLine('Vos agents peuvent accéder à l\'onglet AR.', 'dim');
 }

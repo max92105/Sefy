@@ -24,10 +24,8 @@ import { createInventoryScreen, populateInventory, updateInventoryBadge } from '
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
 import { createScreen as createScannerRebootScreen, start as startScannerReboot } from './stages/scanner-reboot/screen.js';
-import { createScreen as createQRLockdownScreen, start as startQRLockdown } from './stages/qr-lockdown/screen.js';
+import { createScreen as createFieldOpsScreen, start as startFieldOps } from './stages/field-ops/screen.js';
 import { createScreen as createSefyRogueScreen, start as startSefyRogue } from './stages/sefy-rogue/screen.js';
-import { createScreen as createEvidenceCollectionScreen, start as startEvidenceCollection } from './stages/evidence-collection/screen.js';
-import { createScreen as createBombSearchScreen, start as startBombSearch } from './stages/bomb-search/screen.js';
 import { createScreen as createDeactivateSefyScreen, start as startDeactivateSefy } from './stages/deactivate-sefy/screen.js';
 import { createTerminalWaitScreen, startTerminalWait } from './screens/terminal-wait.js';
 
@@ -54,10 +52,8 @@ function buildDOM() {
   app.appendChild(createInventoryScreen());
   app.appendChild(createGeoActivationScreen());
   app.appendChild(createScannerRebootScreen());
-  app.appendChild(createQRLockdownScreen());
+  app.appendChild(createFieldOpsScreen());
   app.appendChild(createSefyRogueScreen());
-  app.appendChild(createEvidenceCollectionScreen());
-  app.appendChild(createBombSearchScreen());
   app.appendChild(createDeactivateSefyScreen());
   app.appendChild(createTerminalWaitScreen());
   app.appendChild(createSuccessScreen());
@@ -140,8 +136,7 @@ function goBriefing() {
 const stageStarters = {
   'geo-activation':      (stage, state, onSolved) => startGeoActivation(stage, state, onSolved),
   'scanner-reboot':      (stage, state, onSolved) => startScannerReboot(stage, state, onSolved),
-  'qr-lockdown':         (stage, state, onSolved) => startQRLockdown(stage, state, onSolved),
-  'bomb-search':         (stage, state, onSolved) => startBombSearch(stage, state, onSolved),
+  'field-ops':           (stage, state, onSolved) => startFieldOps(stage, state, onSolved),
   'sefy-rogue':          (stage, state, onSolved) => startSefyRogue(stage, state, onSolved),
 };
 
@@ -150,21 +145,21 @@ function enterStage(stage) {
 
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
 
-  // Show inventory button during/after QR scanner stages or if player has items
-  const needsInventory = stage.puzzle?.type === 'qr-scanner'
-    || (state.keycards && state.keycards.length > 0)
-    || (state.arFound && state.arFound.length > 0);
+  // Show inventory button if player has any collected items
+  const needsInventory = (state.keycards && state.keycards.length > 0)
+    || (state.arFound && state.arFound.length > 0)
+    || (state.inventory && state.inventory.length > 0);
   setInventoryVisible(needsInventory);
 
   const screenId = `screen-${stage.id}`;
 
-  // deactivate-sefy: code entry with back button to evidence-collection
+  // deactivate-sefy: code entry with back button to field-ops
   if (stage.id === 'deactivate-sefy') {
     puzzleCleanup = startDeactivateSefy(stage, state, onPuzzleSolved, () => {
-      const evStage = getStageById('evidence-collection');
-      if (evStage) {
-        state = setStage(state, evStage.id);
-        enterStage(evStage);
+      const fieldStage = getStageById('field-ops');
+      if (fieldStage) {
+        state = setStage(state, fieldStage.id);
+        enterStage(fieldStage);
       }
     });
     lastActiveScreen = screenId;
@@ -177,21 +172,6 @@ function enterStage(stage) {
   // scanner-reboot: if solved but DECRYPT not done, go to terminal wait
   if (stage.id === 'scanner-reboot' && state.solvedPuzzles.includes('scanner-reboot') && !state.decryptActivated) {
     goTerminalWait();
-    return;
-  }
-
-  // evidence-collection: custom onSolved navigates to deactivate-sefy
-  if (stage.id === 'evidence-collection') {
-    puzzleCleanup = startEvidenceCollection(stage, state, () => {
-      const deactivateStage = getStageById('deactivate-sefy');
-      if (deactivateStage) {
-        state = setStage(state, deactivateStage.id);
-        enterStage(deactivateStage);
-      }
-    });
-    lastActiveScreen = screenId;
-    showScreen(screenId);
-    showNav();
     return;
   }
 

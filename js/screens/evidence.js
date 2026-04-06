@@ -1,20 +1,19 @@
 /**
- * Screen: Inventory — shows collected keycards and lock station status.
+ * Screen: Inventory — shows all collected items (keycards, AR objects, misc).
  */
 
 const KEYCARD_COLORS = {
-  RED:    { label: 'ROUGE',  css: '#ff3040', name: 'Carte d\'accès Rouge — Niveau Alpha' },
-  BLUE:   { label: 'BLEUE',  css: '#4488ff', name: 'Carte d\'accès Bleue — Niveau Bravo' },
-  YELLOW: { label: 'JAUNE',  css: '#f5c542', name: 'Carte d\'accès Jaune — Niveau Charlie' },
+  RED:    { label: 'ROUGE',  css: '#ff3040', icon: '🔑' },
+  BLUE:   { label: 'BLEUE',  css: '#4488ff', icon: '🔑' },
+  YELLOW: { label: 'JAUNE',  css: '#f5c542', icon: '🔑' },
 };
 
-const LOCK_STATIONS = [
-  { id: 'RED',    label: 'Station Alpha',   requires: 'RED' },
-  { id: 'BLUE',   label: 'Station Bravo',   requires: 'BLUE' },
-  { id: 'YELLOW', label: 'Station Charlie',  requires: 'YELLOW' },
-];
+const AR_ITEM_INFO = {
+  bomb:        { label: 'BOMBE',           icon: '💣', css: '#ff0040' },
+  'tier3-card': { label: 'CARTE TIER 3',  icon: '🪪', css: '#00ff41' },
+};
 
-export { KEYCARD_COLORS, LOCK_STATIONS };
+export { KEYCARD_COLORS };
 
 /** Create the inventory screen DOM */
 export function createInventoryScreen() {
@@ -25,19 +24,12 @@ export function createInventoryScreen() {
     <div class="screen-content">
       <div class="screen-header">
         <span class="header-tag">INVENTAIRE</span>
-        <span class="header-title">CARTES D'ACCÈS</span>
+        <span class="header-title">OBJETS COLLECTÉS</span>
       </div>
 
-      <div class="inv-keycards" id="inv-keycards">
-        <p class="empty-state">Aucune carte d'accès collectée.</p>
+      <div class="inv-items" id="inv-items">
+        <p class="empty-state">Aucun objet collecté.</p>
       </div>
-
-      <div class="screen-header" style="margin-top: var(--space-md);">
-        <span class="header-tag">STATIONS</span>
-        <span class="header-title">VERROUILLAGE</span>
-      </div>
-
-      <div class="inv-locks" id="inv-locks"></div>
 
       <button id="btn-inventory-back" class="btn btn-outline" style="margin-top: var(--space-lg);">RETOUR À LA MISSION</button>
     </div>
@@ -47,47 +39,47 @@ export function createInventoryScreen() {
 
 /** Populate the inventory from state */
 export function populateInventory(state) {
-  const keycardGrid = document.getElementById('inv-keycards');
-  const lockGrid    = document.getElementById('inv-locks');
-  if (!keycardGrid || !lockGrid) return;
+  const grid = document.getElementById('inv-items');
+  if (!grid) return;
 
-  const cards = state.keycards || [];
-  const unlocked = state.unlockedStations || [];
+  const items = [];
 
-  // ── Keycards ──
-  if (cards.length === 0) {
-    keycardGrid.innerHTML = '<p class="empty-state">Aucune carte d\'accès collectée.</p>';
-  } else {
-    keycardGrid.innerHTML = cards.map(id => {
-      const c = KEYCARD_COLORS[id] || { label: id, css: '#888', name: id };
-      return `
-        <div class="inv-keycard" data-card="${id}" style="--card-color: ${c.css}">
-          <div class="inv-keycard-icon">🔑</div>
-          <div class="inv-keycard-label">${c.label}</div>
-        </div>`;
-    }).join('');
+  // Keycards
+  for (const id of (state.keycards || [])) {
+    const c = KEYCARD_COLORS[id] || { label: id, css: '#888', icon: '🔑' };
+    items.push({ label: `Carte ${c.label}`, icon: c.icon, css: c.css });
   }
 
-  // ── Lock stations ──
-  lockGrid.innerHTML = LOCK_STATIONS.map(lock => {
-    const isOpen = unlocked.includes(lock.id);
-    const hasKey = cards.includes(lock.requires);
-    const cls = isOpen ? 'inv-lock unlocked' : 'inv-lock locked';
-    const icon = isOpen ? '🔓' : '🔒';
-    const reqColor = KEYCARD_COLORS[lock.requires]?.css || '#888';
-    return `
-      <div class="${cls}" style="--lock-color: ${reqColor}">
-        <span class="inv-lock-icon">${icon}</span>
-        <span class="inv-lock-label">${lock.label}</span>
-        <span class="inv-lock-status">${isOpen ? 'DÉVERROUILLÉE' : hasKey ? 'CLÉ EN POSSESSION' : 'VERROUILLÉE'}</span>
-      </div>`;
-  }).join('');
+  // AR objects
+  for (const id of (state.arFound || [])) {
+    const info = AR_ITEM_INFO[id] || { label: id, icon: '📦', css: '#888' };
+    items.push({ label: info.label, icon: info.icon, css: info.css });
+  }
+
+  // Generic inventory items
+  for (const id of (state.inventory || [])) {
+    items.push({ label: id, icon: '📦', css: '#888' });
+  }
+
+  if (items.length === 0) {
+    grid.innerHTML = '<p class="empty-state">Aucun objet collecté.</p>';
+    return;
+  }
+
+  grid.innerHTML = items.map(item => `
+    <div class="inv-item" style="--item-color: ${item.css}">
+      <div class="inv-item-icon">${item.icon}</div>
+      <div class="inv-item-label">${item.label}</div>
+    </div>
+  `).join('');
 }
 
 /** Update the nav badge count */
 export function updateInventoryBadge(state) {
   const badge = document.getElementById('inv-badge');
-  const count = (state.keycards || []).length;
+  const count = (state.keycards || []).length
+              + (state.arFound || []).length
+              + (state.inventory || []).length;
   if (badge) {
     badge.textContent = count;
     badge.classList.toggle('hidden', count === 0);

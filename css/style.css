@@ -1755,6 +1755,154 @@ body.banner-active .arscan-layout {
   }
 }
 
+/* --- Field Ops — Tabbed Scanner Screen --- */
+
+.field-ops-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: var(--nav-h, 52px);
+}
+
+.fo-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.fo-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fo-tab.active {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
+.fo-tab.locked {
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fo-tab-icon {
+  font-size: 1rem;
+}
+
+.fo-tab-lock {
+  font-size: var(--font-size-xs);
+  color: var(--accent-amber);
+  background: rgba(255, 171, 0, 0.1);
+  border: 1px solid var(--accent-amber);
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.1em;
+}
+
+.fo-tab-lock:empty {
+  display: none;
+}
+
+.fo-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* AR locked state */
+.fo-ar-locked {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.fo-ar-locked-icon {
+  font-size: 3rem;
+  opacity: 0.4;
+}
+
+.fo-ar-locked-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  color: var(--accent-amber);
+  letter-spacing: 0.15em;
+  font-weight: bold;
+}
+
+.fo-ar-locked-msg {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.fo-ar-active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* --- Inventory Items (generic) --- */
+
+.inv-items {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.inv-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-panel);
+  border: 1px solid var(--item-color, var(--border));
+  border-left: 3px solid var(--item-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--item-color) 20%, transparent);
+  min-width: 90px;
+  cursor: default;
+  transition: box-shadow 0.3s ease;
+}
+
+.inv-item-icon {
+  font-size: 1.8rem;
+}
+
+.inv-item-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--item-color);
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
 /* --- QR Scanner Screen --- */
 
 /* Camera wrapper */

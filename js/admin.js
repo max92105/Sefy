@@ -66,7 +66,7 @@ function renderStageJumps() {
     grid.appendChild(btn);
 
     // Skip-briefing button for stages with two-phase intros
-    const phaseMap = { geo: 'tracker', 'qr-scanner': 'scanner', 'ar-scan': 'scanner' };
+    const phaseMap = { geo: 'tracker', 'field-ops': 'scanner' };
     let phase = phaseMap[stage.puzzle?.type];
     if (!phase && stage.briefingIntro) phase = 'code-entry';
     if (phase) {
@@ -114,6 +114,26 @@ async function jumpToStage(stages, stage, phase) {
   for (const s of stages) {
     if (s.order < stage.order && !state.solvedPuzzles.includes(s.id)) {
       state.solvedPuzzles.push(s.id);
+    }
+  }
+
+  // Set accessTier + flags based on how far we're skipping
+  const order = stage.order;
+  if (order >= 3) {
+    // Past geo-activation → at least tier 2
+    state.accessTier = Math.max(state.accessTier || 1, 2);
+  }
+  if (order >= 4) {
+    // Past scanner-reboot → decrypt activated
+    state.decryptActivated = true;
+  }
+  if (order >= 5) {
+    // Past field-ops → tier 4, AR done
+    state.accessTier = Math.max(state.accessTier || 1, 4);
+    state.arActivated = true;
+    // Populate arFound with all AR objects so field-ops counts as complete
+    if (!state.arFound || state.arFound.length === 0) {
+      state.arFound = ['bomb', 'tier3-card'];
     }
   }
 

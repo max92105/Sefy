@@ -3,7 +3,7 @@
  */
 
 import { ACTION_CODES, AGENT_HASHES } from './config.js';
-import { fetchAgentState, pushAgentState } from './firebase.js';
+import { fetchAgentState, pushAgentState, updateAgentFields } from './firebase.js';
 import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256 } from './io.js';
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
@@ -227,7 +227,7 @@ async function handleTierUpgrade(targetTier) {
   appendLog(state, `ACCÈS TIER ${targetTier} AUTORISÉ — Agent ${getAgentName()}.`);
   if (targetTier === 2) appendLog(state, 'SEFY - Tentative de décryptage anticipée.');
   setAgentState(state);
-  pushAgentState(id, state);
+  updateAgentFields(id, { accessTier: state.accessTier, systemLog: state.systemLog });
   printBlank();
   await typeLine('╔═══════════════════════════════════╗', 'success');
   await typeLine(`║   NIVEAU D'ACCÈS AUGMENTÉ → T${targetTier}    ║`, 'success');
@@ -258,7 +258,7 @@ async function handleDecrypt() {
   appendLog(state, 'MODULE DE DÉCRYPTAGE ACTIVÉ.');
   appendLog(state, 'SEFY - Accès aux données internes détecté.');
   setAgentState(state);
-  pushAgentState(id, state);
+  updateAgentFields(id, { decryptActivated: true, systemLog: state.systemLog });
   printBlank();
   await typeLine('Initialisation du module de décryptage…', 'bright');
   await delay(800);
@@ -296,7 +296,7 @@ async function handleActivateAR() {
   appendLog(state, 'PROTOCOLE 5 ACTIVÉ');
   appendLog(state, 'SEFY - VERROUILLAGE DES ACCÈS.');
   setAgentState(state);
-  pushAgentState(id, state);
+  updateAgentFields(id, { arActivated: true, systemLog: state.systemLog });
   printBlank();
   await typeLine('Initialisation du scanner environnemental…', 'bright');
   await delay(800);
@@ -344,7 +344,7 @@ async function handlePromote(args) {
     appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
     appendLog(state, 'SEFY - Escalade de privilèges détectée.');
     appendLog(state, 'PROTOCOLE 3 ACTIVÉ');
-    pushAgentState(agentId, state);
+    updateAgentFields(agentId, { accessTier: 3, systemLog: state.systemLog });
 
     printBlank();
     await typeLine('Autorisation de promotion en cours…', 'bright');
@@ -366,7 +366,7 @@ async function handlePromote(args) {
     appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 4 par ${getAgentName()}.`);
     appendLog(state, 'SEFY - Escalade de privilèges critique.');
     appendLog(state, 'PROTOCOLE 7 ACTIVÉ');
-    pushAgentState(agentId, state);
+    updateAgentFields(agentId, { accessTier: 4, systemLog: state.systemLog });
 
     printBlank();
     await typeLine('Autorisation de promotion avancée…', 'bright');

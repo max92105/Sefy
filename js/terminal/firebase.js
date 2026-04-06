@@ -25,3 +25,8 @@ export async function fetchAgentState(id) {
 export function pushAgentState(id, state) {
   fbDb.ref(`agents/${id}`).set(state).catch(() => {});
 }
+
+/** Update only specific fields on an agent's state (shallow merge, won't overwrite other fields). */
+export function updateAgentFields(id, fields) {
+  fbDb.ref(`agents/${id}`).update(fields).catch(() => {});
+}

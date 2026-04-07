@@ -6,6 +6,7 @@ import { input, focusInput, clearInput, showInputLine } from './io.js';
 import {
   isLoggedIn, resetInactivityTimer, onLogout,
   getCommandHistory, getHistoryIndex, setHistoryIndex,
+  getPendingConfirm, clearPendingConfirm,
 } from './state.js';
 import { boot, handleLogin, loginPrompt } from './auth.js';
 import { handleCommand } from './commands.js';
@@ -22,11 +23,19 @@ async function onSubmit() {
 
   if (!isLoggedIn()) {
     await handleLogin(val);
+    return;
+  }
+
+  // If a command is awaiting confirmation input, route there
+  const pending = getPendingConfirm();
+  if (pending) {
+    clearPendingConfirm();
+    await pending(val);
   } else {
     await handleCommand(val);
-    // Only re-show input if still logged in (logout hides it)
-    if (isLoggedIn()) showInputLine();
   }
+  // Only re-show input if still logged in (logout hides it)
+  if (isLoggedIn()) showInputLine();
 }
 
 /* ═══════════════  Keyboard  ═══════════════ */

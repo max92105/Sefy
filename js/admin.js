@@ -68,7 +68,7 @@ function renderStageJumps() {
     // Skip-briefing button for stages with two-phase intros
     const phaseMap = { geo: 'tracker', 'field-ops': 'scanner' };
     let phase = phaseMap[stage.puzzle?.type];
-    if (!phase && stage.briefingIntro) phase = 'code-entry';
+    if (!phase && stage.briefingIntro && stage.id !== 'geo-activation') phase = 'code-entry';
     if (phase) {
       const skipBtn = document.createElement('button');
       skipBtn.className = 'stage-jump-btn';
@@ -77,6 +77,17 @@ function renderStageJumps() {
       skipBtn.textContent = `  ↳ Skip briefing → ${phase}`;
       skipBtn.addEventListener('click', () => jumpToStage(stages, stage, phase));
       grid.appendChild(skipBtn);
+    }
+
+    // Terminal-wait button for geo-activation (waiting for GEO command)
+    if (stage.id === 'geo-activation') {
+      const geoTwBtn = document.createElement('button');
+      geoTwBtn.className = 'stage-jump-btn';
+      geoTwBtn.style.borderLeftColor = 'var(--accent-amber)';
+      geoTwBtn.style.borderLeftWidth = '3px';
+      geoTwBtn.textContent = '  ↳ Terminal Wait (waiting for GEO)';
+      geoTwBtn.addEventListener('click', () => jumpToStage(stages, stage, 'terminal-wait-geo'));
+      grid.appendChild(geoTwBtn);
     }
 
     // Terminal-wait button for scanner-reboot
@@ -131,7 +142,8 @@ async function jumpToStage(stages, stage, phase) {
   // Set accessTier + flags based on how far we're skipping
   const order = stage.order;
   if (order >= 3) {
-    // Past geo-activation → at least tier 2
+    // Past geo-activation → geo done, at least tier 2
+    state.geoActivated = true;
     state.accessTier = Math.max(state.accessTier || 1, 2);
   }
   if (order >= 4) {
@@ -146,6 +158,12 @@ async function jumpToStage(stages, stage, phase) {
     if (!state.arFound || state.arFound.length === 0) {
       state.arFound = ['bomb', 'tier3-card'];
     }
+  }
+
+  // Handle terminal-wait-geo: at geo-activation stage, waiting for GEO command
+  if (phase === 'terminal-wait-geo') {
+    state.geoActivated = false;
+    // Keep currentStage as geo-activation so app detects the wait state
   }
 
   // Handle terminal-wait: mark scanner-reboot solved but decryptActivated false
@@ -169,10 +187,10 @@ async function jumpToStage(stages, stage, phase) {
   }
 
   // Set phase to skip briefing if requested
-  if (phase && phase !== 'terminal-wait') {
+  if (phase && phase !== 'terminal-wait' && phase !== 'terminal-wait-geo') {
     if (!state.stagePhase) state.stagePhase = {};
     state.stagePhase[stage.id] = phase;
-  } else if (phase !== 'terminal-wait') {
+  } else if (phase !== 'terminal-wait' && phase !== 'terminal-wait-geo') {
     if (state.stagePhase) delete state.stagePhase[stage.id];
   }
 

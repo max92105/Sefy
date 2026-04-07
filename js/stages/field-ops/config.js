@@ -1,7 +1,7 @@
 /**
  * Stage config: field-ops
  * Tabbed screen combining QR scanner and AR scanner.
- * AR tab is locked until tier 3 + ACTIVATEAR terminal command.
+ * AR tab is locked until tier 3 + AR terminal command.
  */
 
 const MEDIA = {
@@ -63,7 +63,7 @@ export const AR_BRIEFING_SEQUENCE = [
   { time: 11000, type: 'text',  text: '…mais il nécessite un accès Tier 3.' },
   { time: 14000, type: 'text',  text: 'Trouvez un membre du personnel autorisé.' },
   { time: 17000, type: 'text',  text: 'Il devra se connecter au terminal et utiliser la commande PROMOTE pour élever votre niveau d\'accès.' },
-  { time: 22000, type: 'text',  text: 'Ensuite, la commande ACTIVATEAR déverrouillera le scanner.' },
+  { time: 22000, type: 'text',  text: 'Ensuite, la commande AR déverrouillera le scanner.' },
   { time: 26000, type: 'text',  text: 'En attendant, utilisez le scanner QR pour collecter les cartes d\'accès.' },
   { time: 30000, type: 'action', action: 'endBriefing' },
 ];

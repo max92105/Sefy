@@ -15,5 +15,5 @@ export const INTRO_SEQUENCE = [
   { time: 12000, type: 'text', text: 'Nous avons les authorisation nécéssaire pour le réactiver a distance.' },
   { time: 19000, type: 'text', text: 'Un code d'accès devrait être proche.' },
   { time: 17000, type: 'text', text: 'Cherchez autour de vous, puis entrez le code directement dans mon interface.' },*/
-  { time: 2000, type: 'action', action: 'showCodeEntry' },
+  { time: 2000, type: 'action', action: 'complete' },
 ];

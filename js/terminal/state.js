@@ -19,6 +19,7 @@ let commandHistory = [];
 let historyIndex   = -1;
 let inactivityTimer = null;
 let onLogoutCallback = null;
+let pendingConfirm  = null; // { handler: async fn(input), label: string }
 
 /** Register a callback invoked after logout completes (to show login prompt). */
 export function onLogout(fn) { onLogoutCallback = fn; }
@@ -39,6 +40,10 @@ export function setHistoryIndex(i)  { historyIndex = i; }
 
 export function markCodeUsed(code) { usedCodes.add(code); }
 export function isCodeUsed(code)   { return usedCodes.has(code); }
+
+export function setPendingConfirm(handler) { pendingConfirm = handler; }
+export function getPendingConfirm()  { return pendingConfirm; }
+export function clearPendingConfirm() { pendingConfirm = null; }
 
 /* Called after successful login */
 export function setSession(name, id, state, staff = false) {
@@ -75,6 +80,7 @@ export async function doLogout(auto = false) {
   agentId    = null;
   agentState = null;
   currentDir = '/';
+  pendingConfirm = null;
 
   // Wipe screen so next user can't see previous session
   hideInputLine();

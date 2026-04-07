@@ -180,9 +180,33 @@ function enterStage(stage) {
     return;
   }
 
+  // geo-activation: wait for terminal GEO command, then play briefing & advance
+  if (stage.id === 'geo-activation') {
+    if (state.geoActivated) {
+      // Already activated — skip straight to briefing/next
+      geoActivatedFlow(stage);
+    } else {
+      goTerminalWait('geo', () => {
+        state.geoActivated = true;
+        saveState(state);
+        geoActivatedFlow(stage);
+      });
+    }
+    return;
+  }
+
   // scanner-reboot: if solved but DECRYPT not done, go to terminal wait
   if (stage.id === 'scanner-reboot' && state.solvedPuzzles.includes('scanner-reboot') && !state.decryptActivated) {
-    goTerminalWait();
+    goTerminalWait('decrypt', () => {
+      state.decryptActivated = true;
+      saveState(state);
+      const solvedStage = getStageById('scanner-reboot');
+      const next = solvedStage ? getNextStage(solvedStage.id) : null;
+      if (next) {
+        state = setStage(state, next.id);
+        enterStage(next);
+      }
+    });
     return;
   }
 
@@ -247,7 +271,16 @@ function logStageEntry(stageId) {
 function onPuzzleSolved(stage) {
   // scanner-reboot: after geo found, wait for terminal DECRYPT before advancing
   if (stage.id === 'scanner-reboot') {
-    goTerminalWait();
+    goTerminalWait('decrypt', () => {
+      state.decryptActivated = true;
+      saveState(state);
+      const solvedStage = getStageById('scanner-reboot');
+      const next = solvedStage ? getNextStage(solvedStage.id) : null;
+      if (next) {
+        state = setStage(state, next.id);
+        enterStage(next);
+      }
+    });
     return;
   }
 
@@ -260,24 +293,47 @@ function onPuzzleSolved(stage) {
   }
 }
 
-function goTerminalWait() {
+function goTerminalWait(waitType, onDone) {
   if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
   lastActiveScreen = 'screen-terminal-wait';
   showScreen('screen-terminal-wait');
   showNav();
 
   const agent = state.playerAgent;
-  puzzleCleanup = startTerminalWait(agent, () => {
-    // DECRYPT was activated — advance to next stage
-    state.decryptActivated = true;
-    saveState(state);
-    const solvedStage = getStageById('scanner-reboot');
-    const next = solvedStage ? getNextStage(solvedStage.id) : null;
-    if (next) {
-      state = setStage(state, next.id);
-      enterStage(next);
-    }
+  puzzleCleanup = startTerminalWait(agent, waitType, onDone);
+}
+
+/** After GEO activated: play the geo-activation intro/briefing, then advance */
+function geoActivatedFlow(stage) {
+  // If briefing already played, just advance
+  if (state.stagePhase && state.stagePhase[stage.id] === 'done') {
+    advancePastGeo(stage);
+    return;
+  }
+
+  // Show geo-activation screen and run its intro cinematic
+  const screenId = `screen-${stage.id}`;
+  puzzleCleanup = startGeoActivation(stage, state, () => {
+    // Intro done → mark and advance
+    advancePastGeo(stage);
   });
+  lastActiveScreen = screenId;
+  showScreen(screenId);
+  showNav();
+}
+
+function advancePastGeo(stage) {
+  if (!state.solvedPuzzles.includes(stage.id)) {
+    state.solvedPuzzles.push(stage.id);
+  }
+  if (!state.stagePhase) state.stagePhase = {};
+  state.stagePhase[stage.id] = 'done';
+  saveState(state);
+  const next = getNextStage(stage.id);
+  if (next) {
+    state = setStage(state, next.id);
+    enterStage(next);
+  }
 }
 
 // ---- Resume ----

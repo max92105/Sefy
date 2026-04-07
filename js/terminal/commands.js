@@ -8,7 +8,7 @@ import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
   isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
-  isStaff,
+  isStaff, setPendingConfirm,
 } from './state.js';
 import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
 
@@ -40,7 +40,7 @@ export async function handleCommand(raw) {
   const args = parts.slice(1);
 
   /* ── Staff-restricted commands ── */
-  const AGENT_ONLY = ['DECRYPT', 'ACTIVATEAR', 'STATUS'];
+  const AGENT_ONLY = ['GEO', 'DECRYPT', 'AR', 'STATUS'];
   if (isStaff()) {
     // Staff can only use: HELP, CLEAR, LS, CD, CAT, PLAY, WHOAMI, PROMOTE, LOGOUT
     if (AGENT_ONLY.includes(cmd) || cmd === '546967232' || cmd === '843937233') {
@@ -98,10 +98,13 @@ export async function handleCommand(raw) {
         printLine(`Agent ${agentName}`, 'bright');
       }
       break;
+    case 'GEO':
+      await handleGeo();
+      break;
     case 'DECRYPT':
       await handleDecrypt();
       break;
-    case 'ACTIVATEAR':
+    case 'AR':
       await handleActivateAR();
       break;
     case 'PROMOTE':
@@ -168,12 +171,13 @@ function showHelp() {
     '║  WHOAMI ........ Identité de l\'agent ║',
     '║  LOGOUT ........ Se déconnecter       ║',
   ];
+  lines.push('╠═══════════════════════════════════════╣');
+  lines.push('║  GEO .......... Activer géolocalisation║');
   if (state && state.accessTier >= 2) {
-    lines.push('╠═══════════════════════════════════════╣');
     lines.push('║  DECRYPT ....... Activer décryptage   ║');
   }
   if (state && state.accessTier >= 3) {
-    lines.push('║  ACTIVATEAR .... Activer scanner AR   ║');
+    lines.push('║  AR ............ Activer scanner AR   ║');
   }
   lines.push('╠═══════════════════════════════════════╣');
   lines.push('║  Entrez un CODE D\'ACTION pour agir.  ║');
@@ -235,6 +239,60 @@ async function handleTierUpgrade(targetTier) {
   printLine('Nouvelles commandes débloquées. Tapez HELP.', 'bright');
 }
 
+/* ═══════════════  Confirmation prompt helper  ═══════════════ */
+
+function askConfirmCode(expectedCode, onSuccess) {
+  printLine('Entrez le code de confirmation:', 'bright');
+  setPendingConfirm(async (input) => {
+    const trimmed = input.trim();
+    printLine(`> ${trimmed}`, 'input-echo');
+    if (trimmed === expectedCode) {
+      await onSuccess();
+    } else {
+      printLine('✗ CODE INCORRECT. Opération annulée.', 'error');
+    }
+    printBlank();
+  });
+}
+
+/* ═══════════════  Geo Activation  ═══════════════ */
+
+async function handleGeo() {
+  const state = getAgentState();
+  const id = getAgentId();
+  if (!state) {
+    printLine('Erreur: état de l\'agent non disponible.', 'error');
+    return;
+  }
+  if (state.geoActivated) {
+    printLine('Module de géolocalisation déjà activé.', 'warning');
+    return;
+  }
+  printBlank();
+  await typeLine('MODULE DE GÉOLOCALISATION', 'bright');
+  await delay(400);
+  printLine('Activation requise — code de confirmation nécessaire.', 'dim');
+  printBlank();
+  askConfirmCode('1054', async () => {
+    state.geoActivated = true;
+    appendLog(state, 'MODULE DE GÉOLOCALISATION ACTIVÉ.');
+    appendLog(state, 'SEFY - Balise GPS terrain en ligne.');
+    setAgentState(state);
+    updateAgentFields(id, { geoActivated: true, systemLog: state.systemLog });
+    printBlank();
+    await typeLine('Initialisation du module de géolocalisation…', 'bright');
+    await delay(800);
+    await typeLine('Connexion aux satellites…', '');
+    await delay(600);
+    await typeLine('╔═══════════════════════════════════╗', 'success');
+    await typeLine('║  MODULE GEO — EN LIGNE            ║', 'success');
+    await typeLine('╚═══════════════════════════════════╝', 'success');
+    printBlank();
+    printLine('Le module de géolocalisation est maintenant opérationnel.', 'bright');
+    printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
+  });
+}
+
 /* ═══════════════  Decrypt  ═══════════════ */
 
 async function handleDecrypt() {
@@ -253,22 +311,29 @@ async function handleDecrypt() {
     printLine('Module de décryptage déjà activé.', 'warning');
     return;
   }
-  state.decryptActivated = true;
-  appendLog(state, 'MODULE DE DÉCRYPTAGE ACTIVÉ.');
-  appendLog(state, 'SEFY - Accès aux données internes détecté.');
-  setAgentState(state);
-  updateAgentFields(id, { decryptActivated: true, systemLog: state.systemLog });
   printBlank();
-  await typeLine('Initialisation du module de décryptage…', 'bright');
-  await delay(800);
-  await typeLine('Connexion aux serveurs SEFY…', '');
-  await delay(600);
-  await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine('║  MODULE DE DÉCRYPTAGE — EN LIGNE  ║', 'success');
-  await typeLine('╚═══════════════════════════════════╝', 'success');
+  await typeLine('MODULE DE DÉCRYPTAGE', 'bright');
+  await delay(400);
+  printLine('Activation requise — code de confirmation nécessaire.', 'dim');
   printBlank();
-  printLine('Le module de décryptage est maintenant opérationnel.', 'bright');
-  printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
+  askConfirmCode('5715', async () => {
+    state.decryptActivated = true;
+    appendLog(state, 'MODULE DE DÉCRYPTAGE ACTIVÉ.');
+    appendLog(state, 'SEFY - Accès aux données internes détecté.');
+    setAgentState(state);
+    updateAgentFields(id, { decryptActivated: true, systemLog: state.systemLog });
+    printBlank();
+    await typeLine('Initialisation du module de décryptage…', 'bright');
+    await delay(800);
+    await typeLine('Connexion aux serveurs SEFY…', '');
+    await delay(600);
+    await typeLine('╔═══════════════════════════════════╗', 'success');
+    await typeLine('║  MODULE DE DÉCRYPTAGE — EN LIGNE  ║', 'success');
+    await typeLine('╚═══════════════════════════════════╝', 'success');
+    printBlank();
+    printLine('Le module de décryptage est maintenant opérationnel.', 'bright');
+    printLine('Confirmez avec votre équipe sur le terrain.', 'dim');
+  });
 }
 
 /* ═══════════════  Activate AR  ═══════════════ */
@@ -289,24 +354,29 @@ async function handleActivateAR() {
     printLine('Module AR déjà activé.', 'warning');
     return;
   }
-  state.arActivated = true;
-  appendLog(state, 'MODULE AR ACTIVÉ.');
-  appendLog(state, 'SEFY - Scanner environnemental en ligne.');
-  appendLog(state, 'PROTOCOLE 5 ACTIVÉ');
-  appendLog(state, 'SEFY - VERROUILLAGE DES ACCÈS.');
-  setAgentState(state);
-  updateAgentFields(id, { arActivated: true, systemLog: state.systemLog });
   printBlank();
-  await typeLine('Initialisation du scanner environnemental…', 'bright');
-  await delay(800);
-  await typeLine('Calibration des capteurs AR…', '');
-  await delay(600);
-  await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine('║   MODULE AR — EN LIGNE            ║', 'success');
-  await typeLine('╚═══════════════════════════════════╝', 'success');
+  await typeLine('MODULE AR — SCANNER ENVIRONNEMENTAL', 'bright');
+  await delay(400);
+  printLine('Activation requise — code de confirmation nécessaire.', 'dim');
   printBlank();
-  printLine('Le scanner AR est maintenant disponible sur le terrain.', 'bright');
-  printLine('Vos agents peuvent accéder à l\'onglet AR.', 'dim');
+  askConfirmCode('1619', async () => {
+    state.arActivated = true;
+    appendLog(state, 'MODULE AR ACTIVÉ.');
+    appendLog(state, 'SEFY - Scanner environnemental en ligne.');
+    setAgentState(state);
+    updateAgentFields(id, { arActivated: true, systemLog: state.systemLog });
+    printBlank();
+    await typeLine('Initialisation du scanner environnemental…', 'bright');
+    await delay(800);
+    await typeLine('Calibration des capteurs AR…', '');
+    await delay(600);
+    await typeLine('╔═══════════════════════════════════╗', 'success');
+    await typeLine('║   MODULE AR — EN LIGNE            ║', 'success');
+    await typeLine('╚═══════════════════════════════════╝', 'success');
+    printBlank();
+    printLine('Le scanner AR est maintenant disponible sur le terrain.', 'bright');
+    printLine('Vos agents peuvent accéder à l\'onglet AR.', 'dim');
+  });
 }
 
 /* ═══════════════  Promote (Staff only)  ═══════════════ */
@@ -346,7 +416,6 @@ async function handlePromote(args) {
   state.accessTier = 3;
   appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
   appendLog(state, 'SEFY - Escalade de privilèges détectée.');
-  appendLog(state, 'PROTOCOLE 3 ACTIVÉ');
   updateAgentFields(agentId, { accessTier: 3, systemLog: state.systemLog });
 
   printBlank();

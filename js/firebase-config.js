@@ -44,6 +44,7 @@ function createDefaultState() {
     playerAgent: null,
     deviceId: null,
     accessTier: 1,
+    geoActivated: false,
     decryptActivated: false,
     arActivated: false,
     currentStage: null,
@@ -91,6 +92,7 @@ async function fbSaveState(agent, state) {
       state.accessTier = remote.accessTier;
     }
     // Never revert terminal-activated flags
+    if (remote.geoActivated) state.geoActivated = true;
     if (remote.decryptActivated) state.decryptActivated = true;
     if (remote.arActivated) state.arActivated = true;
     // Keep the longer systemLog (both sides only append)

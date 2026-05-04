@@ -12,14 +12,20 @@ export const AGENT_HASHES = {
   '130111a9374da4888cf316006ce27b082c6dc1c90bcdd4aa2b5cae31a347808f': 'lea',
 };
 
-/* ═══════════════  Staff Hashes (SHA-256)  ═══════════════
-   566963 → Victor   (Responsable biosécurité)
-   C96C6F → Élodie   (Directrice scientifique)
+/* ═══════════════  Admin Hash (SHA-256)  ═══════════════
+   61646D → Security Admin
    ════════════════════════════════════════════════════════ */
 
 export const STAFF_HASHES = {
-  'a17616e2e0fc45879be59d54cf9395735bc2c81c644448c34eeb7c79f59a62b4': { name: 'Victor', role: 'Responsable biosécurité' },
-  '4f4de0735a2fdc92bb766985bc3b7bb045bb2361b0f937febda3cba01acdc17c': { name: 'Élodie', role: 'Directrice scientifique' },
+  'c6d898f8cd695542b595cef666337f2a42b012b5b163227679c89bbcb180ea27': { name: 'ADMIN', role: 'Administration Sécurité' },
+};
+
+/* ═══════════════  Promote Tier Codes  ═══════════════ */
+
+export const PROMOTE_CODES = {
+  '546967232':  2,
+  '110819805':  3,
+  '999999999':  4,
 };
 
 export const INACTIVITY_TIMEOUT = 60000; // 25 seconds

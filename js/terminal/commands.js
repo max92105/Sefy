@@ -2,7 +2,7 @@
  * Terminal command dispatch — HELP, action codes, tier upgrade, decrypt.
  */
 
-import { ACTION_CODES, AGENT_HASHES } from './config.js';
+import { ACTION_CODES, AGENT_HASHES, PROMOTE_CODES } from './config.js';
 import { fetchAgentState, pushAgentState, updateAgentFields } from './firebase.js';
 import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256 } from './io.js';
 import {
@@ -40,23 +40,17 @@ export async function handleCommand(raw) {
   const args = parts.slice(1);
 
   /* ── Staff-restricted commands ── */
-  const AGENT_ONLY = ['GEO', 'DECRYPT', 'AR', 'STATUS'];
   if (isStaff()) {
-    // Staff can only use: HELP, CLEAR, LS, CD, CAT, PLAY, WHOAMI, PROMOTE, LOGOUT
-    if (AGENT_ONLY.includes(cmd) || cmd === '546967232' || cmd === '843937233') {
-      printLine('✗ ACCÈS REFUSÉ — Commande réservée aux agents terrain.', 'error');
-      printLine('Ce terminal de supervision n\'est pas lié au protocole agent SEFY.', 'dim');
-      printBlank();
-      return;
-    }
+    // Admin can only use: HELP, CLEAR, WHOAMI, PROMOTE, LOGOUT
     if (cmd === 'PROMOTE') {
       await handlePromote(args);
       printBlank();
       return;
     }
-    // Check action codes — staff can't use them
-    if (ACTION_CODES.find(a => a.code === cmd)) {
-      printLine('✗ ACCÈS REFUSÉ — Codes d\'action réservés aux agents terrain.', 'error');
+    if (['HELP', 'AIDE', 'CLEAR', 'CLS', 'WHOAMI', 'LOGOUT', 'EXIT'].includes(cmd)) {
+      // Allow — falls through to normal switch
+    } else {
+      printLine('✗ ACCÈS REFUSÉ — Commande réservée aux agents terrain.', 'error');
       printBlank();
       return;
     }
@@ -111,12 +105,6 @@ export async function handleCommand(raw) {
       printLine('✗ ACCÈS REFUSÉ — Seul le personnel autorisé peut promouvoir un agent.', 'error');
       printLine('Demandez à un responsable de se connecter au terminal.', 'dim');
       break;
-    case '546967232':
-      await handleTierUpgrade(2);
-      break;
-    case '843937233':
-      await handleTierUpgrade(3);
-      break;
     case 'LOGOUT':
     case 'EXIT':
       await doLogout();
@@ -148,7 +136,8 @@ function showHelp() {
       '║  CLEAR / CLS ... Effacer l\'écran     ║',
       '║  WHOAMI ........ Identité courante    ║',
       '╠═══════════════════════════════════════╣',
-      '║  PROMOTE <code>  Promouvoir un agent  ║',
+      '║  PROMOTE <agent> <code>                ║',
+      '║  Promouvoir un agent au tier associé  ║',
       '╠═══════════════════════════════════════╣',
       '║  LOGOUT ........ Se déconnecter       ║',
       '╚═══════════════════════════════════════╝',
@@ -211,32 +200,6 @@ function handleActionCode(code) {
 
   if (action.once) markCodeUsed(code);
   return true;
-}
-
-/* ═══════════════  Tier Upgrade  ═══════════════ */
-
-async function handleTierUpgrade(targetTier) {
-  const state = getAgentState();
-  const id = getAgentId();
-  if (!state) {
-    printLine('Erreur: état de l\'agent non disponible.', 'error');
-    return;
-  }
-  if (state.accessTier >= targetTier) {
-    printLine(`Niveau d'accès déjà ≥ Tier ${targetTier}.`, 'warning');
-    return;
-  }
-  state.accessTier = targetTier;
-  appendLog(state, `ACCÈS TIER ${targetTier} AUTORISÉ — Agent ${getAgentName()}.`);
-  if (targetTier === 2) appendLog(state, 'SEFY - Tentative de décryptage anticipée.');
-  setAgentState(state);
-  updateAgentFields(id, { accessTier: state.accessTier, systemLog: state.systemLog });
-  printBlank();
-  await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine(`║   NIVEAU D'ACCÈS AUGMENTÉ → T${targetTier}    ║`, 'success');
-  await typeLine('╚═══════════════════════════════════╝', 'success');
-  printBlank();
-  printLine('Nouvelles commandes débloquées. Tapez HELP.', 'bright');
 }
 
 /* ═══════════════  Confirmation prompt helper  ═══════════════ */
@@ -382,20 +345,30 @@ async function handleActivateAR() {
 /* ═══════════════  Promote (Staff only)  ═══════════════ */
 
 async function handlePromote(args) {
-  const code = (args[0] || '').trim().toUpperCase();
-  if (!code) {
-    printLine('Usage: PROMOTE <code_agent>', 'warning');
-    printLine('Entrez le code d\'identification de l\'agent à promouvoir.', 'dim');
+  const agentCode = (args[0] || '').trim().toUpperCase();
+  const tierCode  = (args[1] || '').trim();
+
+  if (!agentCode || !tierCode) {
+    printLine('Usage: PROMOTE <code_agent> <code_tier>', 'warning');
+    printLine('Ex: PROMOTE 456D79 546967232', 'dim');
     return;
   }
 
   // Resolve agent code → agent id via hash
-  const hash = await sha256(code);
+  const hash = await sha256(agentCode);
   const agentId = AGENT_HASHES[hash];
 
   if (!agentId) {
-    printLine(`✗ Code agent "${code}" non reconnu.`, 'error');
+    printLine(`✗ Code agent "${agentCode}" non reconnu.`, 'error');
     printLine('Vérifiez le code d\'identification de l\'agent.', 'dim');
+    return;
+  }
+
+  // Resolve tier code
+  const targetTier = PROMOTE_CODES[tierCode];
+  if (!targetTier) {
+    printLine('✗ Code de promotion invalide.', 'error');
+    printLine('Vérifiez le code de tier fourni.', 'dim');
     return;
   }
 
@@ -407,16 +380,15 @@ async function handlePromote(args) {
 
   const agentLabel = agentId.toUpperCase();
 
-  // Staff can only promote up to tier 3
-  if (state.accessTier >= 3) {
+  if (state.accessTier >= targetTier) {
     printLine(`Agent ${agentLabel} est déjà Tier ${state.accessTier}.`, 'warning');
     return;
   }
 
-  state.accessTier = 3;
-  appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier 3 par ${getAgentName()}.`);
+  state.accessTier = targetTier;
+  appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier ${targetTier} par ${getAgentName()}.`);
   appendLog(state, 'SEFY - Escalade de privilèges détectée.');
-  updateAgentFields(agentId, { accessTier: 3, systemLog: state.systemLog });
+  updateAgentFields(agentId, { accessTier: targetTier, systemLog: state.systemLog });
 
   printBlank();
   await typeLine('Autorisation de promotion en cours…', 'bright');
@@ -424,8 +396,8 @@ async function handlePromote(args) {
   await typeLine(`Mise à jour des accréditations de ${agentLabel}…`, '');
   await delay(500);
   await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER 3       ║`, 'success');
+  await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER ${targetTier}       ║`, 'success');
   await typeLine('╚═══════════════════════════════════╝', 'success');
   printBlank();
-  printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier 3.`, 'bright');
+  printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier ${targetTier}.`, 'bright');
 }

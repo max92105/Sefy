@@ -86,25 +86,22 @@ async function handleStaffLogin(staff) {
   resetInactivityTimer();
   clearScreen();
 
-  await typeLine('✓ AUTHENTIFICATION PERSONNEL', 'success');
+  await typeLine('✓ AUTHENTIFICATION SÉCURITÉ', 'success');
   await delay(400);
-  await typeLine(`${staff.name} — ${staff.role}`, 'bright');
+  await typeLine(`${staff.role}`, 'bright');
   resetInactivityTimer();
   await delay(300);
 
   printBlank();
   printLines([
     '╔═══════════════════════════════════════╗',
-    '║       ACCÈS SUPERVISION FACILITY      ║',
+    '║       ADMINISTRATION SÉCURITÉ         ║',
     '╠═══════════════════════════════════════╣',
-    '║  Compte de monitoring — accès limité  ║',
-    '║  Ce terminal n\'est pas lié au         ║',
-    '║  protocole agent SEFY.                ║',
+    '║  Accès limité — promotion agents      ║',
     '║                                       ║',
-    '║  Commandes opérationnelles désactivées║',
-    '║  Seule la commande PROMOTE est        ║',
-    '║  disponible pour autoriser un accès   ║',
-    '║  Tier supérieur aux agents terrain.   ║',
+    '║  PROMOTE <agent> <code_tier>           ║',
+    '║  Promouvoit un agent au tier associé  ║',
+    '║  au code fourni.                      ║',
     '╠═══════════════════════════════════════╣',
     '║  Tapez HELP pour les commandes        ║',
     '╚═══════════════════════════════════════╝',
@@ -112,6 +109,6 @@ async function handleStaffLogin(staff) {
   printBlank();
 
   setPrompt(`${staff.name} >>`);
-  setStatus(`Staff — ${staff.name}`, true);
+  setStatus(`Admin Sécurité`, true);
   showInputLine();
 }

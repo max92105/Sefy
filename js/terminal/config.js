@@ -28,6 +28,28 @@ export const PROMOTE_CODES = {
   '999999999':  4,
 };
 
+/* ═══════════════  Terminal Colors  ═══════════════
+   Each physical terminal uses ?t=1, ?t=2, ?t=3 in the URL.
+   The COLOR command (Tier 4) reveals which color this terminal is.
+   ════════════════════════════════════════════════════════ */
+
+export const TERMINAL_COLORS = {
+  '1': { color: 'RED',    label: 'ROUGE',  css: '#ff3040' },
+  '2': { color: 'BLUE',   label: 'BLEU',   css: '#4488ff' },
+  '3': { color: 'YELLOW', label: 'JAUNE',  css: '#f5c542' },
+};
+
+/* ═══════════════  Override Codes  ═══════════════
+   The right keycard code must be entered on the matching-color terminal.
+   OVERRIDE <code> checks: code → expected color, terminal color must match.
+   ════════════════════════════════════════════════════════ */
+
+export const OVERRIDE_CODES = {
+  '524544':       'RED',     // Carte Rouge
+  '424C5545':     'BLUE',    // Carte Bleue
+  '59454C4C4F57': 'YELLOW',  // Carte Jaune
+};
+
 export const INACTIVITY_TIMEOUT = 60000; // 25 seconds
 
 /* ═══════════════  Boot Sequence  ═══════════════ */
@@ -71,6 +93,18 @@ export const FILE_SYSTEM = {
   '/': {
     type: 'dir',
     children: ['logs', 'audio', 'documents'],
+  },
+  '/admin_login.txt': {
+    type: 'file',
+    hidden: true,
+    password: { question: 'Nom de mon chien ?', answer: 'RUFUS' },
+    content: [
+      '╔══════════════════════════════════════╗',
+      '║         ADMIN LOGIN                  ║',
+      '╠══════════════════════════════════════╣',
+      '║  Code d\'accès: 61646D               ║',
+      '╚══════════════════════════════════════╝',
+    ],
   },
   '/logs': {
     type: 'dir',

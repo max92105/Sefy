@@ -6,7 +6,7 @@
 
 import { FILE_SYSTEM } from './config.js';
 import { printLine, printLines, printBlank } from './io.js';
-import { getCurrentDir, setCurrentDir, getAgentState } from './state.js';
+import { getCurrentDir, setCurrentDir, getAgentState, setPendingConfirm, clearPendingConfirm } from './state.js';
 
 /* ═══════════════  Dynamic log file  ═══════════════ */
 
@@ -88,6 +88,7 @@ export function listDir() {
   for (const child of children) {
     const childPath = resolvePath(child);
     const entry = getEntry(childPath);
+    if (entry?.hidden) continue; // skip hidden files
     if (entry?.type === 'dir') {
       printLine(`  📁 ${child}/`, 'folder');
     } else if (entry?.type === 'file') {
@@ -136,6 +137,23 @@ export function readFile(name) {
   if (entry.tier && entry.tier > tier) {
     printLine(`✗ ACCÈS REFUSÉ — Tier ${entry.tier} requis.`, 'error');
     printLine(`Votre niveau actuel: Tier ${tier}`, 'dim');
+    return;
+  }
+
+  // Password-protected file
+  if (entry.password) {
+    printLine(`🔒 Fichier protégé.`, 'warning');
+    printLine(`Q: ${entry.password.question}`, 'bright');
+    setPendingConfirm((input) => {
+      clearPendingConfirm();
+      if (input.trim().toUpperCase() === entry.password.answer.toUpperCase()) {
+        printLine(`── ${name} ──`, 'bright');
+        printLines(entry.content);
+        printLine('── fin ──', 'dim');
+      } else {
+        printLine('✗ Réponse incorrecte. Accès refusé.', 'error');
+      }
+    });
     return;
   }
 

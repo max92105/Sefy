@@ -2,13 +2,13 @@
  * Terminal command dispatch — HELP, action codes, tier upgrade, decrypt.
  */
 
-import { ACTION_CODES, AGENT_HASHES, PROMOTE_CODES } from './config.js';
+import { ACTION_CODES, AGENT_HASHES, PROMOTE_CODES, TERMINAL_COLORS, OVERRIDE_CODES } from './config.js';
 import { fetchAgentState, pushAgentState, updateAgentFields } from './firebase.js';
 import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256 } from './io.js';
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
   isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
-  isStaff, setPendingConfirm,
+  isStaff, setPendingConfirm, getTerminalId,
 } from './state.js';
 import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
 
@@ -101,6 +101,12 @@ export async function handleCommand(raw) {
     case 'AR':
       await handleActivateAR();
       break;
+    case 'COLOR':
+      handleColor();
+      break;
+    case 'OVERRIDE':
+      await handleOverride(args);
+      break;
     case 'PROMOTE':
       printLine('✗ ACCÈS REFUSÉ — Seul le personnel autorisé peut promouvoir un agent.', 'error');
       printLine('Demandez à un responsable de se connecter au terminal.', 'dim');
@@ -167,6 +173,10 @@ function showHelp() {
   }
   if (state && state.accessTier >= 3) {
     lines.push('║  AR ............ Activer scanner AR   ║');
+  }
+  if (state && state.accessTier >= 4) {
+    lines.push('║  COLOR ......... Identifier terminal  ║');
+    lines.push('║  OVERRIDE <code> Entrer code carte    ║');
   }
   lines.push('╠═══════════════════════════════════════╣');
   lines.push('║  Entrez un CODE D\'ACTION pour agir.  ║');
@@ -340,6 +350,92 @@ async function handleActivateAR() {
     printLine('Le scanner AR est maintenant disponible sur le terrain.', 'bright');
     printLine('Vos agents peuvent accéder à l\'onglet AR.', 'dim');
   });
+}
+
+/* ═══════════════  COLOR (Tier 4)  ═══════════════ */
+
+function handleColor() {
+  const state = getAgentState();
+  if (!state || (state.accessTier || 1) < 4) {
+    printLine('✗ ACCÈS REFUSÉ — Tier 4 requis.', 'error');
+    return;
+  }
+  const tid = getTerminalId();
+  const info = TERMINAL_COLORS[tid];
+  if (!info) {
+    printLine('✗ Terminal non identifié — paramètre ?t= manquant dans l\'URL.', 'error');
+    return;
+  }
+  printLines([
+    '╔═══════════════════════════════════════╗',
+    `║  IDENTIFICATION TERMINAL              ║`,
+    '╠═══════════════════════════════════════╣',
+    `║  Couleur: ${info.label.padEnd(27)}║`,
+    `║  ID:      ${tid.padEnd(27)}║`,
+    '╚═══════════════════════════════════════╝',
+  ]);
+}
+
+/* ═══════════════  OVERRIDE (Tier 4)  ═══════════════ */
+
+async function handleOverride(args) {
+  const state = getAgentState();
+  const id = getAgentId();
+  if (!state || (state.accessTier || 1) < 4) {
+    printLine('✗ ACCÈS REFUSÉ — Tier 4 requis.', 'error');
+    return;
+  }
+  const code = (args[0] || '').trim().toUpperCase();
+  if (!code) {
+    printLine('Usage: OVERRIDE <code_carte>', 'dim');
+    return;
+  }
+  const expectedColor = OVERRIDE_CODES[code];
+  if (!expectedColor) {
+    printLine('✗ Code non reconnu.', 'error');
+    return;
+  }
+  const tid = getTerminalId();
+  const termInfo = TERMINAL_COLORS[tid];
+  if (!termInfo) {
+    printLine('✗ Terminal non identifié.', 'error');
+    return;
+  }
+  if (termInfo.color !== expectedColor) {
+    printLine('✗ OVERRIDE REFUSÉ — Ce code ne correspond pas à ce terminal.', 'error');
+    printLine('Chaque carte doit être utilisée sur le terminal de la bonne couleur.', 'dim');
+    appendLog(state, `OVERRIDE REFUSÉ — Code ${code} sur terminal ${termInfo.label}.`);
+    setAgentState(state);
+    updateAgentFields(id, { systemLog: state.systemLog });
+    return;
+  }
+  // Check if already overridden
+  if (!state.overrides) state.overrides = {};
+  if (state.overrides[expectedColor]) {
+    printLine(`Override ${termInfo.label} déjà effectué.`, 'warning');
+    return;
+  }
+  // Success
+  state.overrides[expectedColor] = true;
+  appendLog(state, `OVERRIDE ${termInfo.label} — Code ${code} accepté.`);
+  setAgentState(state);
+  updateAgentFields(id, { overrides: state.overrides, systemLog: state.systemLog });
+
+  await typeLine(`╔═══════════════════════════════════════╗`, 'success');
+  await typeLine(`║  OVERRIDE ${termInfo.label.padEnd(27)}║`, 'success');
+  await typeLine(`╠═══════════════════════════════════════╣`, 'success');
+  await typeLine(`║  Code accepté. Verrou désactivé.      ║`, 'success');
+  await typeLine(`╚═══════════════════════════════════════╝`, 'success');
+
+  const done = Object.keys(state.overrides).length;
+  const total = Object.keys(OVERRIDE_CODES).length;
+  printBlank();
+  printLine(`Progression: ${done} / ${total} terminaux déverrouillés.`, 'bright');
+  if (done >= total) {
+    printBlank();
+    await typeLine('▓▓▓ TOUS LES VERROUS DÉSACTIVÉS ▓▓▓', 'success');
+    printLine('Le système est prêt pour la désactivation finale.', 'bright');
+  }
 }
 
 /* ═══════════════  Promote (Staff only)  ═══════════════ */

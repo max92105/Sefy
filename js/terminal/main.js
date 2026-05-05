@@ -6,7 +6,7 @@ import { input, focusInput, clearInput, showInputLine } from './io.js';
 import {
   isLoggedIn, resetInactivityTimer, onLogout,
   getCommandHistory, getHistoryIndex, setHistoryIndex,
-  getPendingConfirm, clearPendingConfirm,
+  getPendingConfirm, clearPendingConfirm, setTerminalId,
 } from './state.js';
 import { boot, handleLogin, loginPrompt } from './auth.js';
 import { handleCommand } from './commands.js';
@@ -78,4 +78,9 @@ document.addEventListener('click', () => focusInput());
 
 /* ═══════════════  Start  ═══════════════ */
 
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', () => {
+  // Read terminal ID from URL (?t=1, ?t=2, ?t=3)
+  const tid = new URLSearchParams(window.location.search).get('t');
+  if (tid) setTerminalId(tid);
+  boot();
+});

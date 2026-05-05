@@ -1790,10 +1790,31 @@ body.banner-active .arscan-layout {
 
 /* --- Inventory Items (generic) --- */
 
+.inv-categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.inv-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.inv-section-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--accent-green);
+  letter-spacing: 0.15em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-xs);
+}
+
 .inv-items {
   display: flex;
   gap: var(--space-md);
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
 }
 
@@ -1809,7 +1830,31 @@ body.banner-active .arscan-layout {
   box-shadow: 0 0 12px color-mix(in srgb, var(--item-color) 20%, transparent);
   min-width: 90px;
   cursor: default;
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.inv-item.playable,
+.inv-item.zoomable,
+.inv-item.clickable {
+  cursor: pointer;
+}
+
+.inv-item.playable:hover,
+.inv-item.zoomable:hover,
+.inv-item.clickable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--item-color) 40%, transparent);
+}
+
+.inv-item.playing {
+  animation: audioPulse 1s ease infinite;
+  border-color: var(--item-color);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--item-color) 50%, transparent);
+}
+
+@keyframes audioPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .inv-item-icon {
@@ -1822,6 +1867,154 @@ body.banner-active .arscan-layout {
   color: var(--item-color);
   font-weight: bold;
   letter-spacing: 0.1em;
+  text-align: center;
+}
+
+/* --- Inventory: Card Zoom Overlay --- */
+
+.inv-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  animation: fadeIn 0.2s ease;
+}
+
+.inv-zoom-card {
+  background: var(--bg-panel);
+  border: 2px solid var(--accent-green);
+  padding: var(--space-xl) var(--space-xxl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 220px;
+  box-shadow: 0 0 40px rgba(0, 255, 65, 0.3);
+  animation: zoomIn 0.3s ease;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.inv-zoom-icon {
+  font-size: 3rem;
+}
+
+.inv-zoom-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  color: var(--accent-green);
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+.inv-zoom-code {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  padding: var(--space-sm) var(--space-lg);
+  letter-spacing: 0.2em;
+}
+
+.inv-zoom-desc {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+}
+
+/* --- Inventory: Paper Puzzle Overlay --- */
+
+.inv-paper-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.95);
+  display: flex;
+  flex-direction: column;
+  z-index: 9000;
+  animation: fadeIn 0.2s ease;
+}
+
+.inv-paper-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  color: var(--accent-green);
+  letter-spacing: 0.1em;
+}
+
+.inv-paper-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.inv-paper-piece {
+  position: absolute;
+  width: 45%;
+  max-width: 200px;
+  border: 1px solid rgba(200, 160, 80, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.inv-paper-piece.dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 32px rgba(200, 160, 80, 0.5);
+  transform: scale(1.05);
+}
+
+/* --- Inventory: Debug QR (REMOVE BEFORE PROD) --- */
+
+.inv-debug {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px dashed #ff4040;
+  background: rgba(255, 64, 64, 0.05);
+}
+
+.inv-debug-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: #ff4040;
+  margin-bottom: var(--space-sm);
+}
+
+.inv-debug-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.inv-debug-input {
+  flex: 1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.inv-debug-feedback {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: #ff4040;
+  margin-top: var(--space-xs);
+  min-height: 1.2em;
 }
 
 /* --- QR Scanner Screen --- */

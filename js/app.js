@@ -20,7 +20,7 @@ import { createTerminalScreen, runBootSequence } from './intro/screens/boot.js';
 import { createLandingScreen, runLanding } from './intro/screens/landing.js';
 import { createScreen as createBriefingScreen, start as runBriefing } from './stages/mission-briefing/screen.js';
 import { createStageScreen, populateStage, openHintModal } from './screens/stage.js';
-import { createInventoryScreen, populateInventory, updateInventoryBadge } from './screens/evidence.js';
+import { createInventoryScreen, populateInventory, updateInventoryBadge, bindDebugQR } from './screens/evidence.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
 import { createScreen as createScannerRebootScreen, start as startScannerReboot } from './stages/scanner-reboot/screen.js';
@@ -384,6 +384,7 @@ function missionSuccess() {
 
 function showInventory() {
   populateInventory(state);
+  bindDebugQR(state);
   showScreen('screen-inventory');
 }
 

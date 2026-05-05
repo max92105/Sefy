@@ -1,34 +1,30 @@
 /**
- * Screen: Scanner Reboot — SEFY intro + geo proximity tracker.
+ * Screen: Scanner Reboot — Multi-step per-agent route.
  *
- * Uses the intro-cinematic component for Phase 1,
- * then transitions to a warm/cold radar tracker for Phase 2.
+ * Flow per step:
+ *   1. Geo tracker (navigate to destination) — skipped if step.geo is null
+ *   2. Arrival audio + code validation
+ *   3. Transition audio → next step
+ *
+ * After all steps completed → stage solves → app routes to terminal-wait.
  */
 
-import { playSFX } from '../../ui.js';
 import { solvePuzzle, saveState } from '../../state.js';
+import { validateAnswer } from '../../stages.js';
+import { showFeedback, glitch } from '../../ui.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestLocationWithRetry, GEO_OPTS } from '../../utils/geolocation.js';
-import { INTRO_SEQUENCE } from './config.js';
+import { INTRO_SEQUENCE, ROUTES } from './config.js';
 
 const PREFIX = 'scanner-reboot';
 
-/* ───────── Media ───────── */
-const MEDIA = {
-  sfxBurning: 'assets/audio/zone_burning.wav',
-  sfxHot:     'assets/audio/zone_hot.wav',
-  sfxWarm:    'assets/audio/zone_warm.wav',
-  sfxCold:    'assets/audio/zone_cold.wav',
-  sfxFound:   'assets/audio/zone_found.wav',
-};
-
 /* ───────── Distance zones ───────── */
 const ZONES = [
-  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !',                 sfx: MEDIA.sfxBurning },
-  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.',            sfx: MEDIA.sfxHot },
-  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.',             sfx: MEDIA.sfxWarm },
-  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.',     sfx: MEDIA.sfxCold },
-  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing',  color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.',  sfx: MEDIA.sfxCold },
+  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !' },
+  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.' },
+  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.' },
+  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.' },
+  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing', color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.' },
 ];
 
 const POLL_INTERVAL_MS = 800;
@@ -36,6 +32,7 @@ const POLL_INTERVAL_MS = 800;
 /* ───────── Module state ───────── */
 let watchId = null;
 let pollInterval = null;
+let currentAudio = null;
 
 /* ═══════════════  DOM  ═══════════════ */
 
@@ -47,10 +44,10 @@ export function createScreen() {
   const layout = document.createElement('div');
   layout.className = 'stage-layout geo-layout';
 
-  // Phase 1: Intro cinematic
+  // Phase: Intro cinematic
   layout.appendChild(createIntroCinematicDOM(PREFIX));
 
-  // Phase 2: Radar tracking
+  // Phase: Geo tracker
   const tracker = document.createElement('div');
   tracker.className = 'geo-tracker hidden';
   tracker.id = `${PREFIX}-tracker`;
@@ -77,17 +74,63 @@ export function createScreen() {
 
       <div class="geo-distance" id="${PREFIX}-distance">-- m</div>
 
-      <div class="geo-found hidden" id="${PREFIX}-found">
-        <p class="geo-found-text">SIGNAL LOCALISÉ — ZONE SÉCURISÉE</p>
-        <p class="geo-found-instruction" id="${PREFIX}-found-instruction"></p>
-      </div>
-
-      <div class="stage-actions">
-        <button id="btn-hint" class="btn btn-secondary">DEMANDER UN INDICE</button>
-      </div>
+      <!-- DEBUG: Remove before production -->
+      <button id="${PREFIX}-skip-geo" class="btn btn-outline" style="margin-top:1rem;border-color:var(--accent-red);color:var(--accent-red);font-size:0.7rem;">⚠ SKIP GEO (DEBUG)</button>
     </div>
   `;
   layout.appendChild(tracker);
+
+  // Phase: Code entry (reuses same structure as code-entry-form component)
+  const codePanel = document.createElement('div');
+  codePanel.className = 'code-entry-form hidden';
+  codePanel.id = `${PREFIX}-code-panel`;
+  codePanel.innerHTML = `
+    <div class="screen-content centered">
+      <div class="screen-header">
+        <span class="header-tag" id="${PREFIX}-code-tag">CODE</span>
+        <span class="header-title" id="${PREFIX}-code-title">—</span>
+      </div>
+
+      <div class="narrative-box" id="${PREFIX}-code-narrative"></div>
+
+      <div class="puzzle-area">
+        <p class="puzzle-prompt" id="${PREFIX}-code-prompt"></p>
+        <div class="input-group">
+          <input
+            type="text"
+            id="${PREFIX}-code-input"
+            class="code-input"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="ENTRER LE CODE"
+          >
+          <button id="${PREFIX}-code-submit" class="btn btn-primary">VALIDER</button>
+        </div>
+        <div id="${PREFIX}-code-feedback" class="feedback hidden"></div>
+      </div>
+    </div>
+  `;
+  layout.appendChild(codePanel);
+
+  // Phase: Transition (between steps)
+  const transition = document.createElement('div');
+  transition.className = 'route-transition hidden';
+  transition.id = `${PREFIX}-transition`;
+  transition.innerHTML = `
+    <div class="screen-content centered">
+      <div class="screen-header">
+        <span class="header-tag">SEFY</span>
+        <span class="header-title">EN ROUTE</span>
+      </div>
+      <p class="route-transition-text" id="${PREFIX}-transition-text"></p>
+      <div class="tw-status">
+        <div class="tw-spinner"></div>
+      </div>
+    </div>
+  `;
+  layout.appendChild(transition);
 
   section.appendChild(layout);
   return section;
@@ -96,14 +139,19 @@ export function createScreen() {
 /* ═══════════════  Start  ═══════════════ */
 
 export function start(stage, state, onSolved) {
-  // Skip intro if already watched
-  if (!INTRO_SEQUENCE || (state.stagePhase && state.stagePhase[stage.id] === 'tracker')) {
-    return resumeGeoTracker(stage, state, onSolved);
+  const agent = state.playerAgent || 'emy';
+  const route = ROUTES[agent] || ROUTES.emy;
+
+  // Determine current progress
+  const routeStep = (state.routeStep || 0);
+
+  // If intro already done, resume at current step
+  if (state.stagePhase && state.stagePhase[stage.id] === 'route') {
+    return resumeRoute(stage, state, route, routeStep, onSolved);
   }
 
-  const trackerEl = document.getElementById(`${PREFIX}-tracker`);
-  if (trackerEl) trackerEl.classList.add('hidden');
-
+  // Otherwise play intro cinematic
+  hideAllPanels();
   const lineEl = document.getElementById(`${PREFIX}-current-line`);
   let intro;
   intro = startIntroCinematic(PREFIX, INTRO_SEQUENCE, {
@@ -112,88 +160,93 @@ export function start(stage, state, onSolved) {
       if (abort.aborted || !granted) return 'stop';
       return 'reset-clock';
     },
-    startTracking() {
+    startRoute() {
       intro.hide();
-      transitionToTracker(stage, state, onSolved);
+      // Mark intro done
+      if (!state.stagePhase) state.stagePhase = {};
+      state.stagePhase[stage.id] = 'route';
+      state.routeStep = 0;
+      saveState(state);
+      startStep(stage, state, route, 0, onSolved);
       return 'stop';
     },
   });
 
   return () => {
     intro.cleanup();
-    stopWatching();
+    cleanup();
   };
 }
 
-/* ═══════════════  Phase transitions  ═══════════════ */
+/* ═══════════════  Route step machine  ═══════════════ */
 
-function resumeGeoTracker(stage, state, onSolved) {
-  const introEl   = document.getElementById(`${PREFIX}-intro`);
-  const trackerEl = document.getElementById(`${PREFIX}-tracker`);
-  if (introEl)   introEl.classList.add('hidden');
-  if (trackerEl) trackerEl.classList.remove('hidden');
+function resumeRoute(stage, state, route, stepIndex, onSolved) {
+  hideAllPanels();
 
-  setupTracker(stage, state, onSolved);
-  return () => { stopWatching(); };
+  if (stepIndex >= route.length) {
+    // All done — solve
+    solvePuzzle(state, stage.id);
+    onSolved(stage);
+    return () => {};
+  }
+
+  startStep(stage, state, route, stepIndex, onSolved);
+  return () => { cleanup(); };
 }
 
-function transitionToTracker(stage, state, onSolved) {
-  if (!state.stagePhase) state.stagePhase = {};
-  state.stagePhase[stage.id] = 'tracker';
-  saveState(state);
-
-  const introEl   = document.getElementById(`${PREFIX}-intro`);
-  const trackerEl = document.getElementById(`${PREFIX}-tracker`);
-  if (introEl)   introEl.classList.add('hidden');
-  if (trackerEl) trackerEl.classList.remove('hidden');
-
-  setupTracker(stage, state, onSolved);
-}
-
-/* ═══════════════  Phase 2 — Radar Tracking  ═══════════════ */
-
-function setupTracker(stage, state, onSolved) {
-  const puzzle    = stage.puzzle;
-  const targetLat = puzzle.lat;
-  const targetLng = puzzle.lng;
-  const radius    = puzzle.radiusMeters || 2;
-
-  // Populate header
-  const tagEl       = document.getElementById(`${PREFIX}-tag`);
-  const titleEl     = document.getElementById(`${PREFIX}-title`);
-  const narrativeEl = document.getElementById(`${PREFIX}-narrative`);
-  if (tagEl)       tagEl.textContent = `ÉTAPE ${stage.order}`;
-  if (titleEl)     titleEl.textContent = stage.title;
-  if (narrativeEl) narrativeEl.innerHTML = stage.narrative?.text || '';
-
-  // DOM refs
-  const zoneLabel        = document.getElementById(`${PREFIX}-zone-label`);
-  const zoneMsg          = document.getElementById(`${PREFIX}-zone-msg`);
-  const distanceEl       = document.getElementById(`${PREFIX}-distance`);
-  const radar            = document.getElementById(`${PREFIX}-radar`);
-  const dot              = document.getElementById(`${PREFIX}-dot`);
-  const foundEl          = document.getElementById(`${PREFIX}-found`);
-  const foundInstruction = document.getElementById(`${PREFIX}-found-instruction`);
-
-  if (foundEl) foundEl.classList.add('hidden');
-  if (foundInstruction) foundInstruction.textContent = puzzle.foundText || 'Cherchez l\'objet caché dans cette zone.';
-
-  let solved      = false;
-  let lastZoneCls = '';
-
-  if (!navigator.geolocation) {
-    if (zoneLabel) zoneLabel.textContent = 'ERREUR';
-    if (zoneMsg)   zoneMsg.textContent = 'Géolocalisation non disponible sur cet appareil.';
+function startStep(stage, state, route, stepIndex, onSolved) {
+  if (stepIndex >= route.length) {
+    // Route complete — mark puzzle solved and notify app
+    solvePuzzle(state, stage.id);
+    onSolved(stage);
     return;
   }
 
+  const step = route[stepIndex];
+
+  if (step.geo) {
+    showGeoTracker(stage, state, route, stepIndex, onSolved);
+  } else {
+    // No geo needed — go straight to code (play arrival audio first)
+    showCodeEntry(stage, state, route, stepIndex, onSolved);
+  }
+}
+
+/* ═══════════════  Phase: Geo Tracker  ═══════════════ */
+
+function showGeoTracker(stage, state, route, stepIndex, onSolved) {
+  hideAllPanels();
+  const step = route[stepIndex];
+  const trackerEl = document.getElementById(`${PREFIX}-tracker`);
+  if (trackerEl) trackerEl.classList.remove('hidden');
+
+  const tagEl       = document.getElementById(`${PREFIX}-tag`);
+  const titleEl     = document.getElementById(`${PREFIX}-title`);
+  const narrativeEl = document.getElementById(`${PREFIX}-narrative`);
+  if (tagEl)       tagEl.textContent = `${stepIndex + 1} / ${route.length}`;
+  if (titleEl)     titleEl.textContent = step.label;
+  if (narrativeEl) narrativeEl.textContent = `Dirigez-vous vers : ${step.label}`;
+
+  const zoneLabel  = document.getElementById(`${PREFIX}-zone-label`);
+  const zoneMsg    = document.getElementById(`${PREFIX}-zone-msg`);
+  const distanceEl = document.getElementById(`${PREFIX}-distance`);
+  const radar      = document.getElementById(`${PREFIX}-radar`);
+  const dot        = document.getElementById(`${PREFIX}-dot`);
+
+  if (zoneLabel)  zoneLabel.textContent = 'INITIALISATION…';
+  if (zoneMsg)    zoneMsg.textContent = 'Activation du scanner de proximité…';
+  if (distanceEl) distanceEl.textContent = '-- m';
+  if (radar)      { radar.className = 'geo-radar'; }
+
+  const targetLat = step.geo.lat;
+  const targetLng = step.geo.lng;
+  const radius    = step.geo.radius || 4;
+  let solved = false;
+  let lastZoneCls = '';
+
   function onPosition(pos) {
     if (solved) return;
-
-    const dist = haversineDistance(
-      pos.coords.latitude, pos.coords.longitude,
-      targetLat, targetLng,
-    );
+    const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, targetLat, targetLng);
     const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
 
     if (distanceEl) { distanceEl.textContent = `${Math.round(dist)} m`; distanceEl.style.color = zone.color; }
@@ -203,7 +256,6 @@ function setupTracker(stage, state, onSolved) {
     if (radar && zone.cls !== lastZoneCls) {
       if (lastZoneCls) radar.classList.remove(lastZoneCls);
       radar.classList.add(zone.cls);
-      if (lastZoneCls && zone.sfx) playSFX(zone.sfx);
       lastZoneCls = zone.cls;
     }
 
@@ -214,14 +266,14 @@ function setupTracker(stage, state, onSolved) {
       stopWatching();
 
       if (zoneLabel) zoneLabel.textContent = 'CIBLE LOCALISÉE';
-      if (zoneMsg)   { zoneMsg.textContent = 'Position confirmée. Signal verrouillé.'; zoneMsg.style.color = 'var(--accent-green)'; }
+      if (zoneMsg)   { zoneMsg.textContent = 'Position confirmée.'; zoneMsg.style.color = 'var(--accent-green)'; }
       if (distanceEl) distanceEl.style.color = 'var(--accent-green)';
-      if (foundEl)   foundEl.classList.remove('hidden');
-      if (radar)     radar.classList.add('geo-locked');
+      if (radar) radar.classList.add('geo-locked');
 
-      playSFX(MEDIA.sfxFound);
-      solvePuzzle(state, stage.id);
-      setTimeout(() => onSolved(stage), 5000);
+      // Short delay then show code entry
+      setTimeout(() => {
+        showCodeEntry(stage, state, route, stepIndex, onSolved);
+      }, 2000);
     }
   }
 
@@ -229,9 +281,9 @@ function setupTracker(stage, state, onSolved) {
     if (zoneLabel) zoneLabel.textContent = 'ERREUR';
     if (zoneMsg) {
       const messages = {
-        [err.PERMISSION_DENIED]:    'Accès à la localisation refusé. Activez la géolocalisation dans les paramètres.',
-        [err.POSITION_UNAVAILABLE]: 'Position indisponible. Essayez de vous déplacer.',
-        [err.TIMEOUT]:              'Délai d\'attente dépassé. Réessai en cours…',
+        [err.PERMISSION_DENIED]:    'Accès refusé. Activez la géolocalisation.',
+        [err.POSITION_UNAVAILABLE]: 'Position indisponible. Déplacez-vous.',
+        [err.TIMEOUT]:              'Délai dépassé. Réessai…',
       };
       zoneMsg.textContent = messages[err.code] || 'Erreur de géolocalisation.';
     }
@@ -242,13 +294,145 @@ function setupTracker(stage, state, onSolved) {
   pollInterval = setInterval(() => {
     if (!solved) navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
   }, POLL_INTERVAL_MS);
+
+  // DEBUG: Skip button
+  const skipBtn = document.getElementById(`${PREFIX}-skip-geo`);
+  if (skipBtn) {
+    skipBtn.onclick = () => {
+      if (solved) return;
+      solved = true;
+      stopWatching();
+      showCodeEntry(stage, state, route, stepIndex, onSolved);
+    };
+  }
+}
+
+/* ═══════════════  Phase: Code Entry  ═══════════════ */
+
+function showCodeEntry(stage, state, route, stepIndex, onSolved) {
+  stopWatching();
+  hideAllPanels();
+
+  const step = route[stepIndex];
+  const panel = document.getElementById(`${PREFIX}-code-panel`);
+  if (panel) panel.classList.remove('hidden');
+
+  const tagEl      = document.getElementById(`${PREFIX}-code-tag`);
+  const titleEl    = document.getElementById(`${PREFIX}-code-title`);
+  const narrativeEl = document.getElementById(`${PREFIX}-code-narrative`);
+  const promptEl   = document.getElementById(`${PREFIX}-code-prompt`);
+  const inputEl    = document.getElementById(`${PREFIX}-code-input`);
+  const submitEl   = document.getElementById(`${PREFIX}-code-submit`);
+  const feedbackEl = document.getElementById(`${PREFIX}-code-feedback`);
+
+  if (tagEl)       tagEl.textContent = `${stepIndex + 1} / ${route.length}`;
+  if (titleEl)     titleEl.textContent = step.label;
+  if (narrativeEl) narrativeEl.innerHTML = step.narrative || '';
+  if (promptEl)    promptEl.textContent = step.codePrompt;
+  if (inputEl)     { inputEl.value = ''; inputEl.disabled = false; }
+  if (submitEl)    submitEl.disabled = false;
+  if (feedbackEl)  feedbackEl.classList.add('hidden');
+
+  // Play arrival audio
+  playAudio(step.arrivalAudio);
+
+  // Wire submit
+  let submitting = false;
+
+  async function doSubmit() {
+    if (submitting) return;
+    const answer = (inputEl?.value || '').trim();
+    if (!answer) {
+      showFeedback(`${PREFIX}-code-feedback`, 'SAISIE REQUISE', 'error');
+      return;
+    }
+    submitting = true;
+
+    const correct = await validateAnswer(answer, step.codeHash);
+    if (correct) {
+      showFeedback(`${PREFIX}-code-feedback`, 'CODE VALIDÉ', 'success');
+      if (submitEl) submitEl.disabled = true;
+      if (inputEl) inputEl.disabled = true;
+
+      // Advance to next step
+      const nextStep = stepIndex + 1;
+      state.routeStep = nextStep;
+      saveState(state);
+
+      setTimeout(() => {
+        if (step.transitionText && nextStep < route.length) {
+          showTransition(stage, state, route, nextStep, step, onSolved);
+        } else {
+          // Last step — route complete
+          startStep(stage, state, route, nextStep, onSolved);
+        }
+      }, 1000);
+    } else {
+      showFeedback(`${PREFIX}-code-feedback`, 'CODE INCORRECT', 'error');
+      if (inputEl) { glitch(inputEl); inputEl.value = ''; inputEl.focus(); }
+      submitting = false;
+    }
+  }
+
+  const onKey = (e) => { if (e.key === 'Enter') doSubmit(); };
+  const onClick = () => doSubmit();
+
+  // Remove old listeners by cloning nodes
+  if (submitEl) {
+    const newBtn = submitEl.cloneNode(true);
+    submitEl.parentNode.replaceChild(newBtn, submitEl);
+    newBtn.addEventListener('click', onClick);
+  }
+  if (inputEl) {
+    inputEl.addEventListener('keydown', onKey);
+    setTimeout(() => inputEl.focus(), 100);
+  }
+}
+
+/* ═══════════════  Phase: Transition  ═══════════════ */
+
+function showTransition(stage, state, route, nextStepIndex, prevStep, onSolved) {
+  hideAllPanels();
+  const transEl = document.getElementById(`${PREFIX}-transition`);
+  if (transEl) transEl.classList.remove('hidden');
+
+  const textEl = document.getElementById(`${PREFIX}-transition-text`);
+  if (textEl) textEl.textContent = prevStep.transitionText;
+
+  // Play transition audio
+  playAudio(prevStep.transitionAudio);
+
+  // After a delay, start the next step
+  setTimeout(() => {
+    startStep(stage, state, route, nextStepIndex, onSolved);
+  }, 4000);
 }
 
 /* ═══════════════  Helpers  ═══════════════ */
 
+function hideAllPanels() {
+  const ids = [`${PREFIX}-intro`, `${PREFIX}-tracker`, `${PREFIX}-code-panel`, `${PREFIX}-transition`];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  }
+}
+
 function stopWatching() {
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (pollInterval !== null) { clearInterval(pollInterval); pollInterval = null; }
+}
+
+function playAudio(src) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (!src) return;
+  currentAudio = new Audio(src);
+  currentAudio.play().catch(() => {});
+}
+
+function cleanup() {
+  stopWatching();
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 }
 
 function haversineDistance(lat1, lon1, lat2, lon2) {

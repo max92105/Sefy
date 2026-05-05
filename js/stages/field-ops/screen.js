@@ -12,12 +12,12 @@
  */
 
 import { playSFX } from '../../ui.js';
-import { solvePuzzle, addKeycard, saveState, fetchState } from '../../state.js';
+import { solvePuzzle, addKeycard, addInventoryItem, saveState, fetchState } from '../../state.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, AUDIO_CATALOG, PAPER_CATALOG } from './config.js';
 
 const PREFIX = 'field-ops';
 
@@ -387,6 +387,41 @@ function handleQRCode(data, stage, state) {
       showQRFeedback(`${item?.label || value} collectée !`, 'success');
     } else {
       showQRFeedback(`${item?.label || value} — déjà en possession.`, 'info');
+    }
+    return;
+  }
+
+  if (type === 'AUDIO') {
+    const audio = AUDIO_CATALOG[value];
+    if (!audio) { showQRFeedback('Audio non reconnu.', 'error'); return; }
+    if (!state.audioLogs) state.audioLogs = [];
+    const isNew = !state.audioLogs.includes(value);
+    if (isNew) {
+      state.audioLogs.push(value);
+      saveState(state);
+      updateInventoryBadge(state);
+      playSFX(audio.src);
+      showQRFeedback(`🔊 ${audio.label}`, 'success');
+    } else {
+      playSFX(audio.src);
+      showQRFeedback(`🔊 ${audio.label} — déjà collecté. Lecture…`, 'info');
+    }
+    return;
+  }
+
+  if (type === 'PAPER') {
+    const paper = PAPER_CATALOG[value];
+    if (!paper) { showQRFeedback('Papier non reconnu.', 'error'); return; }
+    if (!state.papers) state.papers = [];
+    const isNew = !state.papers.includes(value);
+    if (isNew) {
+      state.papers.push(value);
+      saveState(state);
+      updateInventoryBadge(state);
+      playSFX('assets/audio/card_found.wav');
+      showQRFeedback(`📜 ${paper.label} collecté !`, 'success');
+    } else {
+      showQRFeedback(`📜 ${paper.label} — déjà collecté.`, 'info');
     }
     return;
   }

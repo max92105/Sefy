@@ -48,23 +48,18 @@
       "id": "scanner-reboot",
       "order": 3,
       "title": "Réactivation du Module de Décryptage",
-      "type": "geo",
+      "type": "route",
       "narrative": {
-        "text": "Mon module de décryptage est hors ligne. J'ai localisé un point de réactivation à proximité. Suivez mes indications pour retrouver le code d'accès qui me permettra de restaurer mes capacités d'analyse.",
+        "text": "Suivez mes indications pour collecter les trois codes nécessaires à la réactivation.",
         "media": null
       },
       "puzzle": {
-        "type": "geo",
-        "prompt": "Suivez le signal pour localiser le code de réactivation.",
-        "lat": 48.41326437917094,
-        "lng": -71.10586537835142, 
-        "radiusMeters": 3,
-        "foundText": "Point de réactivation localisé ! Cherchez le code caché dans cette zone et entrez-le dans le terminal pour réactiver le module de décryptage."
+        "type": "route"
       },
       "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER — Indice vague sur la direction]" },
-        { "tier": 2, "text": "[À COMPLÉTER — Indice sur la pièce]" },
-        { "tier": 3, "text": "[À COMPLÉTER — Emplacement exact]" }
+        { "tier": 1, "text": "[À COMPLÉTER]" },
+        { "tier": 2, "text": "[À COMPLÉTER]" },
+        { "tier": 3, "text": "[À COMPLÉTER]" }
       ],
       "nextStage": "field-ops"
     },

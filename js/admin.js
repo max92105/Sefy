@@ -147,8 +147,9 @@ async function jumpToStage(stages, stage, phase) {
     state.accessTier = Math.max(state.accessTier || 1, 2);
   }
   if (order >= 4) {
-    // Past scanner-reboot → decrypt activated
+    // Past scanner-reboot → decrypt activated, route complete
     state.decryptActivated = true;
+    state.routeStep = 3; // All route steps done
   }
   if (order >= 5) {
     // Past field-ops → tier 4, AR done
@@ -174,6 +175,7 @@ async function jumpToStage(stages, stage, phase) {
     }
     state.decryptActivated = false;
     state.accessTier = 1;
+    state.routeStep = 3; // All route codes found
     // Keep currentStage as scanner-reboot so app detects the wait state
   }
 

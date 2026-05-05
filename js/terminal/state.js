@@ -13,6 +13,7 @@ let agentName   = null;   // display code the agent typed (e.g. '456D79')
 let agentId     = null;   // 'emy' | 'lea'
 let agentState  = null;   // object pulled from Firebase
 let staffMode   = false;  // true when logged in as staff (Victor / Élodie)
+let terminalId  = null;   // '1' | '2' | '3' — set from URL ?t= param
 let currentDir  = '/';
 let usedCodes   = new Set();
 let commandHistory = [];
@@ -33,6 +34,8 @@ export function getAgentId()   { return agentId; }
 export function getAgentState() { return agentState; }
 export function getCurrentDir() { return currentDir; }
 export function setCurrentDir(d) { currentDir = d || '/'; }
+export function getTerminalId()   { return terminalId; }
+export function setTerminalId(id) { terminalId = id; }
 
 export function getCommandHistory() { return commandHistory; }
 export function getHistoryIndex()   { return historyIndex; }

@@ -5,6 +5,8 @@
 import { setupCodeEntry, getAvailableHintTier, revealHint } from '../puzzles.js';
 import { hideFeedback } from '../ui.js';
 import { openModal } from '../components/modals.js';
+import { setHintButton } from '../components/nav.js';
+import { getStageHints } from '../stages/hints.js';
 
 /** Create the stage screen DOM */
 export function createStageScreen() {
@@ -38,10 +40,6 @@ export function createStageScreen() {
         </div>
         <div id="puzzle-feedback" class="feedback hidden"></div>
       </div>
-
-      <div class="stage-actions">
-        <button id="btn-hint" class="btn btn-secondary">DEMANDER UN INDICE</button>
-      </div>
     </div>
   `;
   return section;
@@ -73,27 +71,43 @@ export function populateStage(stage, state, onPuzzleSolved) {
   return cleanup;
 }
 
+/** Refresh the nav hint badge for a stage. */
+function refreshHintBadge(stage, state) {
+  const total = getStageHints(stage.id).length;
+  const used = (state.hintsUsed && state.hintsUsed[stage.id]) || 0;
+  setHintButton(total - used, total);
+}
+
 /** Open hint modal for the current stage */
 export function openHintModal(currentStage, state) {
   if (!currentStage) return;
+  const total = getStageHints(currentStage.id).length;
   const tier = getAvailableHintTier(currentStage, state);
   const hintText = document.getElementById('hint-text');
   const hintWarning = document.getElementById('hint-warning');
   const revealBtn = document.getElementById('btn-reveal-hint');
 
   if (tier === null) {
-    if (hintText) hintText.textContent = 'Tous les indices ont été révélés pour cette énigme.';
+    if (hintText) hintText.textContent = total > 0
+      ? 'Tous les indices ont été révélés pour cette énigme.'
+      : 'Aucun indice disponible pour cette énigme.';
     if (hintWarning) hintWarning.textContent = '';
     if (revealBtn) revealBtn.style.display = 'none';
   } else {
-    const remaining = (currentStage.hints?.length || 0) - tier;
+    const remaining = total - tier;
     if (hintText) hintText.textContent = `${remaining} indice(s) disponible(s). Demander des indices affecte votre évaluation finale.`;
-    if (hintWarning) hintWarning.textContent = `Niveau d'indice : ${tier + 1} sur ${currentStage.hints?.length || 0}`;
+    if (hintWarning) hintWarning.textContent = `Niveau d'indice : ${tier + 1} sur ${total}`;
     if (revealBtn) {
       revealBtn.style.display = '';
       revealBtn.onclick = () => {
         const hint = revealHint(currentStage, state);
         if (hint && hintText) hintText.textContent = hint.text;
+        refreshHintBadge(currentStage, state);
+        // Hide the reveal button once no more hints remain.
+        if (getAvailableHintTier(currentStage, state) === null && revealBtn) {
+          revealBtn.style.display = 'none';
+          if (hintWarning) hintWarning.textContent = '';
+        }
       };
     }
   }

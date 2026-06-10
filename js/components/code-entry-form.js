@@ -45,10 +45,6 @@ export function createCodeEntryFormDOM(prefix, options = {}) {
         <div id="${prefix}-feedback" class="feedback hidden"></div>
       </div>
 
-      <div class="stage-actions">
-        <button id="btn-hint" class="btn btn-secondary">DEMANDER UN INDICE</button>
-      </div>
-
       ${options.backButton ? `
         <button id="btn-${prefix}-back" class="btn btn-secondary" style="margin-top: var(--space-md);">
           ${options.backLabel || '◀ RETOUR'}

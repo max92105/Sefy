@@ -164,6 +164,9 @@ async function jumpToStage(stages, stage, phase) {
   // Handle terminal-wait-geo: at geo-activation stage, waiting for GEO command
   if (phase === 'terminal-wait-geo') {
     state.geoActivated = false;
+    // Intro already considered watched → land directly on the GEO terminal wait
+    state.stagePhase = state.stagePhase || {};
+    state.stagePhase['geo-activation'] = 'intro-done';
     // Keep currentStage as geo-activation so app detects the wait state
   }
 

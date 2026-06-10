@@ -537,7 +537,7 @@ async function startARScanner(stage, state, onSolved) {
 
     cooldown = true;
     if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX('assets/audio/zone_found.wav');
+    playSFX('assets/audio/loc_position_trouve.wav');
     startSeeking(obj, stage, state, onSolved);
   }, 250);
 }
@@ -625,7 +625,7 @@ function startSeeking(obj, stage, state, onSolved) {
       if (seekingEl) seekingEl.classList.add('hidden');
       objectRevealed = true;
       stopOrientationTracking();
-      playSFX('assets/audio/zone_found.wav');
+      playSFX('assets/audio/loc_position_trouve.wav');
       showObjectOnCamera(obj, stage, state, onSolved, abort);
       return;
     }
@@ -646,7 +646,7 @@ function startSeeking(obj, stage, state, onSolved) {
         if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
         if (seekingEl) seekingEl.classList.add('hidden');
         stopOrientationTracking();
-        playSFX('assets/audio/zone_found.wav');
+        playSFX('assets/audio/loc_position_trouve.wav');
         showObjectOnCamera(obj, stage, state, onSolved, abort);
       }
     }, 100);
@@ -703,7 +703,7 @@ function collectARObject(obj, stage, state, onSolved, abort) {
   state.arFound.push(obj.id);
   saveState(state);
 
-  playSFX('assets/audio/zone_found.wav');
+  playSFX('assets/audio/loc_position_trouve.wav');
   showARReveal(obj);
   renderARObjectStatus();
   updateInventoryBadge(state);
@@ -727,7 +727,7 @@ function completeARScan(stage, state, onSolved) {
   stopARScanner();
   solvePuzzle(state, stage.id);
   showARFeedback('Tous les objets localisés !', 'success');
-  playSFX('assets/audio/zone_found.wav');
+  playSFX('assets/audio/loc_position_trouve.wav');
   setTimeout(() => onSolved(stage), 3000);
 }
 
@@ -759,7 +759,7 @@ function resumeARQRScanning(stage, state, onSolved) {
     if (!obj || foundObjects.includes(obj.id)) return;
     cooldown = true;
     if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX('assets/audio/zone_found.wav');
+    playSFX('assets/audio/loc_position_trouve.wav');
     startSeeking(obj, stage, state, onSolved);
   }, 250);
 }

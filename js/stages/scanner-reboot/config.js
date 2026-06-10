@@ -15,20 +15,20 @@
 
 const MEDIA = {
   // Intro / Briefing 2
-  briefing:         'assets/audio/briefing2/briefing2.wav',
+  briefing:         'assets/audio/briefing 2.1.wav',
 
   // Per-location arrival audio
-  serverRoom:       'assets/audio/briefing2/server_room.wav',
-  security:         'assets/audio/briefing2/security.wav',
-  commandCenter:    'assets/audio/briefing2/command_center.wav',
+  serverRoom:       'assets/audio/loc_arrive_salle_serveur.wav',
+  security:         'assets/audio/loc_arrive_securite.wav',
+  commandCenter:    'assets/audio/briefing 2.2.wav',
 
   // Transition audio (directing player to next location)
-  toServerRoom:     'assets/audio/briefing2/to_server_room.wav',
-  toSecurity:       'assets/audio/briefing2/to_security.wav',
-  toCommandCenter:  'assets/audio/briefing2/to_command_center.wav',
+  toServerRoom:     'assets/audio/loc_quitte_centre_commandement.wav',
+  toSecurity:       'assets/audio/loc_fini_salle_serveur.wav',
+  toCommandCenter:  'assets/audio/loc_quitte_securite.wav',
 
   // Geo permission + confirmation
-  geoConfirmed:     'assets/audio/geo_confirmed_sefy.wav',
+  geoConfirmed:     'assets/audio/loc_position_trouve.wav',
 };
 
 /* ═══════════════  Intro Sequence (Briefing 2)  ═══════════════ */
@@ -49,6 +49,16 @@ export const INTRO_SEQUENCE = [
   { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.geoConfirmed },
   { time: 0,     type: 'text',   text: 'Position confirmée.' },
   { time: 2000,  type: 'action', action: 'startRoute' },
+];
+
+/* ═══════════════  Hints  ═══════════════
+   Tiered hints for this puzzle, shown in order (vague → précis).
+   Add or remove entries to give this puzzle more or fewer hints.
+   ════════════════════════════════════════════════════════════ */
+export const HINTS = [
+  { text: '[À COMPLÉTER — indice vague]' },
+  { text: '[À COMPLÉTER — indice plus direct]' },
+  { text: '[À COMPLÉTER — indice quasi-solution]' },
 ];
 
 /* ═══════════════  Geo Coordinates (placeholder)  ═══════════════

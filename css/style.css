@@ -1574,7 +1574,7 @@ body.banner-active .arscan-layout {
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: center;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
   padding: var(--space-sm) var(--space-md);
   z-index: 100;
 }
@@ -1615,6 +1615,21 @@ body.banner-active .arscan-layout {
   text-align: center;
   border-radius: 8px;
   padding: 0 3px;
+}
+
+/* Hint badge: amber (intel/support) rather than red (alert). */
+#hint-badge {
+  background: var(--accent-amber);
+  color: #000;
+}
+
+/* Hint button dims once every hint has been revealed. */
+.nav-btn.depleted {
+  opacity: 0.3;
+}
+.nav-btn.depleted:hover,
+.nav-btn.depleted:active {
+  opacity: 0.45;
 }
 
 /* --- Utility --- */

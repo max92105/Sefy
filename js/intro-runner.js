@@ -54,18 +54,18 @@ export async function runIntroSequence(sequence, textEl, abort, actionHandlers =
           // Re-anchor clock so absolute times sync with when audio started
           segmentStart = Date.now() - event.time;
         }
-      } else {
-        const handler = actionHandlers[event.action];
-        if (handler) {
-          const result = await handler(event, abort);
-          if (abort.aborted) return;
-          if (result === 'reset-clock') segmentStart = Date.now();
-          if (result === 'stop') return;
-        }
+      } 
+      else {
+      const handler = actionHandlers[event.action];
+      if (handler) {
+        const result = await handler(event, abort);
+        if (abort.aborted) return;
+        if (result === 'reset-clock') segmentStart = Date.now();
+        if (result === 'stop') return;
       }
     }
   }
-}
+}}
 
 /**
  * Try to play audio immediately. Returns true if playback started.

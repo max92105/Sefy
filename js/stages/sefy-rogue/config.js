@@ -4,7 +4,7 @@
  */
 
 const MEDIA = {
-  audio: 'assets/audio/geo_intro_sefy.wav',
+  audio: 'assets/audio/briefing 4.wav',
 };
 
 export const INTRO_SEQUENCE = [
@@ -17,4 +17,14 @@ export const INTRO_SEQUENCE = [
   { time: 23000, type: 'text', text: 'Vous avez été verrouillé hors de tous les systèmes.' },
   { time: 28000, type: 'text', text: 'Bonne chance.' },
   { time: 32000, type: 'action', action: 'showCodeEntry' },
+];
+
+/* ═══════════════  Hints  ═══════════════
+   Tiered hints for this puzzle, shown in order (vague → précis).
+   Add or remove entries to give this puzzle more or fewer hints.
+   ════════════════════════════════════════════════════════════ */
+export const HINTS = [
+  { text: '[À COMPLÉTER — indice vague]' },
+  { text: '[À COMPLÉTER — indice plus direct]' },
+  { text: '[À COMPLÉTER — indice quasi-solution]' },
 ];

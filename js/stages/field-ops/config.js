@@ -5,9 +5,9 @@
  */
 
 const MEDIA = {
-  audioIntro:     'assets/audio/qr_intro_sefy.wav',
-  audioConfirmed: 'assets/audio/qr_confirmed_sefy.wav',
-  audioAR:        'assets/audio/qr_intro_sefy.wav',   // reuse for AR briefing
+  audioIntro:     'assets/audio/briefing 3.1.wav',
+  audioConfirmed: 'assets/audio/briefing 3.2.wav',
+  audioAR:        'assets/audio/briefing 3.1.wav',
 };
 
 /* ═══════════════  QR Item Catalogs  ═══════════════ */
@@ -17,31 +17,31 @@ const MEDIA = {
  * Each entry maps id → { label, room, src }
  */
 export const AUDIO_CATALOG = {
-  'cmd-center':       { label: 'Centre de Commandement',          room: 'Centre de Commandement',       src: 'assets/audio/rooms/cmd_center.mp3' },
-  'cmd-clear':        { label: 'Rien à signaler',                 room: 'Centre de Commandement (AR)',  src: 'assets/audio/rooms/cmd_clear.mp3' },
-  'lab-door':         { label: 'Laboratoire Chimique',            room: 'Laboratoire Chimique',         src: 'assets/audio/rooms/lab_door.mp3' },
-  'lab-battle':       { label: 'Bataille Infecté',                room: 'Laboratoire Chimique',         src: 'assets/audio/rooms/lab_battle.mp3' },
-  'lab-virus':        { label: 'Présence Virus ARK-41',           room: 'Laboratoire Chimique (AR)',    src: 'assets/audio/rooms/lab_virus.mp3' },
-  'infirmary-door':   { label: 'Infirmerie',                      room: 'Infirmerie',                   src: 'assets/audio/rooms/infirmary_door.mp3' },
-  'infirmary-julien': { label: 'Julien Park — Dissection',        room: 'Infirmerie',                   src: 'assets/audio/rooms/infirmary_julien.mp3' },
-  'infirmary-virus':  { label: 'Présence Virus ARK-41',           room: 'Infirmerie (AR)',              src: 'assets/audio/rooms/infirmary_virus.mp3' },
-  'quarters-door':    { label: 'Quartier du Personnel',           room: 'Quartier du Personnel',        src: 'assets/audio/rooms/quarters_door.mp3' },
-  'quarters-thomas':  { label: 'Thomas — Journal',                room: 'Quartier du Personnel',        src: 'assets/audio/rooms/quarters_thomas.mp3' },
-  'quarters-clear':   { label: 'Rien à signaler',                 room: 'Quartier du Personnel (AR)',   src: 'assets/audio/rooms/quarters_clear.mp3' },
-  'science-door':     { label: 'Bureau Scientifique',             room: 'Bureau Scientifique',          src: 'assets/audio/rooms/science_door.mp3' },
-  'science-sofia':    { label: 'Sofia Ionescu — Dernier Message', room: 'Bureau Scientifique',          src: 'assets/audio/rooms/science_sofia.mp3' },
-  'science-hint':     { label: 'Trouvez la fausse bombe',         room: 'Bureau Scientifique (AR)',     src: 'assets/audio/rooms/science_hint.mp3' },
-  'decon-door':       { label: 'Module de Décontamination',       room: 'Module de Décontamination',   src: 'assets/audio/rooms/decon_door.mp3' },
-  'decon-personnel':  { label: 'Décontamination du Personnel',    room: 'Module de Décontamination',   src: 'assets/audio/rooms/decon_personnel.mp3' },
-  'decon-virus':      { label: 'Présence Virus ARK-41',           room: 'Module de Décontamination (AR)', src: 'assets/audio/rooms/decon_virus.mp3' },
-  'chief-door':       { label: 'Quartier du Chef Scientifique',   room: 'Quartier du Chef',            src: 'assets/audio/rooms/chief_door.mp3' },
-  'chief-adrian':     { label: 'Adrian — Message Final',          room: 'Quartier du Chef (AR)',        src: 'assets/audio/rooms/chief_adrian.mp3' },
-  'security-door':    { label: 'Sécurité',                        room: 'Sécurité',                     src: 'assets/audio/rooms/security_door.mp3' },
-  'security-victor':  { label: 'Victor — Protocole 5',            room: 'Sécurité',                     src: 'assets/audio/rooms/security_victor.mp3' },
-  'security-clear':   { label: 'Rien à signaler',                 room: 'Sécurité (AR)',                src: 'assets/audio/rooms/security_clear.mp3' },
-  'servers-door':     { label: 'Salle des Serveurs',              room: 'Salle des Serveurs',           src: 'assets/audio/rooms/servers_door.mp3' },
-  'servers-elodie':   { label: 'Élodie — Désespoir',              room: 'Salle des Serveurs',           src: 'assets/audio/rooms/servers_elodie.mp3' },
-  'servers-t4':       { label: 'Carte Dr. Adrian — Code T4',      room: 'Salle des Serveurs (AR)',      src: 'assets/audio/rooms/servers_t4.mp3' },
+  'cmd-center':       { label: 'Centre de Commandement',          room: 'Centre de Commandement',          src: 'assets/audio/qr_title_centre_de_commande.wav' },
+  'cmd-clear':        { label: 'Rien à signaler',                 room: 'Centre de Commandement (AR)',     src: 'assets/audio/qr_ar_rien_a_signale.wav' },
+  'lab-door':         { label: 'Laboratoire Chimique',            room: 'Laboratoire Chimique',            src: 'assets/audio/qr_title_laboratoire_chimique.wav' },
+  'lab-battle':       { label: 'Bataille Infecté',                room: 'Laboratoire Chimique',            src: 'assets/audio/qr_audio_log_laboratoire_chimique.wav' },
+  'lab-virus':        { label: 'Présence Virus ARK-41',           room: 'Laboratoire Chimique (AR)',       src: 'assets/audio/qr_ar_ark41.wav' },
+  'infirmary-door':   { label: 'Infirmerie',                      room: 'Infirmerie',                      src: 'assets/audio/qr_title_infirmerie.wav' },
+  'infirmary-julien': { label: 'Julien Park — Dissection',        room: 'Infirmerie',                      src: 'assets/audio/qr_audio_log_infimerie.wav' },
+  'infirmary-virus':  { label: 'Présence Virus ARK-41',           room: 'Infirmerie (AR)',                 src: 'assets/audio/qr_ar_ark41.wav' },
+  'quarters-door':    { label: 'Quartier du Personnel',           room: 'Quartier du Personnel',           src: 'assets/audio/qr_title_quartier_du_personnel.wav' },
+  'quarters-thomas':  { label: 'Thomas — Journal',                room: 'Quartier du Personnel',           src: 'assets/audio/qr_audio_log_quartier_du_personnel.wav' },
+  'quarters-clear':   { label: 'Rien à signaler',                 room: 'Quartier du Personnel (AR)',      src: 'assets/audio/qr_ar_rien_a_signale.wav' },
+  'science-door':     { label: 'Bureau Scientifique',             room: 'Bureau Scientifique',             src: 'assets/audio/qr_title_bureau_scientifique.wav' },
+  'science-sofia':    { label: 'Sofia Ionescu — Dernier Message', room: 'Bureau Scientifique',             src: 'assets/audio/qr_audio_log_bureau_scientifique.wav' },
+  'science-hint':     { label: 'Trouvez la fausse bombe',         room: 'Bureau Scientifique (AR)',        src: 'assets/audio/qr_ar_engin_explosif_trouve.wav' },
+  'decon-door':       { label: 'Module de Décontamination',       room: 'Module de Décontamination',      src: null },
+  'decon-personnel':  { label: 'Décontamination du Personnel',    room: 'Module de Décontamination',      src: 'assets/audio/qr_audio_log_module_de_décontamination.wav' },
+  'decon-virus':      { label: 'Présence Virus ARK-41',           room: 'Module de Décontamination (AR)', src: 'assets/audio/qr_ar_ark41.wav' },
+  'chief-door':       { label: 'Quartier du Chef Scientifique',   room: 'Quartier du Chef',               src: null },
+  'chief-adrian':     { label: 'Adrian — Message Final',          room: 'Quartier du Chef (AR)',           src: null },
+  'security-door':    { label: 'Sécurité',                        room: 'Sécurité',                        src: null },
+  'security-victor':  { label: 'Victor — Protocole 5',            room: 'Sécurité',                        src: 'assets/audio/qr_audio_log_securite.wav' },
+  'security-clear':   { label: 'Rien à signaler',                 room: 'Sécurité (AR)',                   src: 'assets/audio/qr_ar_rien_a_signale.wav' },
+  'servers-door':     { label: 'Salle des Serveurs',              room: 'Salle des Serveurs',              src: null },
+  'servers-elodie':   { label: 'Élodie — Désespoir',              room: 'Salle des Serveurs',              src: 'assets/audio/qr_audio_log_salle_des_serveurs.wav' },
+  'servers-t4':       { label: 'Carte Dr. Adrian — Code T4',      room: 'Salle des Serveurs (AR)',         src: null },
 };
 
 /**
@@ -120,4 +120,14 @@ export const AR_BRIEFING_SEQUENCE = [
   { time: 22000, type: 'text',  text: 'Ensuite, la commande AR déverrouillera le scanner.' },
   { time: 26000, type: 'text',  text: 'En attendant, utilisez le scanner QR pour collecter les cartes d\'accès.' },
   { time: 30000, type: 'action', action: 'endBriefing' },
+];
+
+/* ═══════════════  Hints  ═══════════════
+   Tiered hints for this puzzle, shown in order (vague → précis).
+   Add or remove entries to give this puzzle more or fewer hints.
+   ════════════════════════════════════════════════════════════ */
+export const HINTS = [
+  { text: '[À COMPLÉTER — indice vague]' },
+  { text: '[À COMPLÉTER — indice plus direct]' },
+  { text: '[À COMPLÉTER — indice quasi-solution]' },
 ];

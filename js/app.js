@@ -11,7 +11,10 @@ import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
 import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
-import { createNav, showNav, hideNav, bindNav, setInventoryVisible } from './components/nav.js';
+import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setHintButton, setReplayVisible } from './components/nav.js';
+import { replayIntroCinematic } from './components/intro-cinematic.js';
+import { getStageHints } from './stages/hints.js';
+import { INTRO_SEQUENCE as sefyRogueIntroSequence } from './stages/sefy-rogue/config.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
@@ -147,6 +150,36 @@ const stageStarters = {
   'sefy-rogue':          (stage, state, onSolved) => startSefyRogue(stage, state, onSolved),
 };
 
+/**
+ * Stages whose briefing intro can be replayed via the nav button.
+ * Only stages whose intro screen stays on-screen through the puzzle qualify
+ * (so the replay overlay has something to return to). geo-activation hands off
+ * to the terminal-wait screen after its intro, so it is intentionally excluded.
+ */
+const introReplays = {
+  'sefy-rogue': sefyRogueIntroSequence,
+};
+
+/**
+ * Sync the nav hint + replay buttons to the current stage.
+ * @param {object}  stage
+ * @param {boolean} [replayable] — whether the stage's own intro screen is showing
+ */
+function updateStageTools(stage, { replayable = false } = {}) {
+  if (!stage) return;
+  const hints = getStageHints(stage.id);
+  const used = (state.hintsUsed && state.hintsUsed[stage.id]) || 0;
+  setHintButton(hints.length - used, hints.length);
+  setReplayVisible(replayable && !!introReplays[stage.id]);
+}
+
+/** Replay the current stage's briefing intro (no flow side-effects). */
+function replayCurrentIntro() {
+  if (!currentStage) return;
+  const sequence = introReplays[currentStage.id];
+  if (sequence) replayIntroCinematic(currentStage.id, sequence);
+}
+
 function enterStage(stage) {
   currentStage = stage;
 
@@ -177,21 +210,43 @@ function enterStage(stage) {
     showScreen(screenId);
     showNav();
     setInventoryVisible(true);
+    updateStageTools(stage, { replayable: true });
     return;
   }
 
-  // geo-activation: wait for terminal GEO command, then play briefing & advance
+  // geo-activation: play SEFY intro briefing, then wait for terminal GEO command, then advance
   if (stage.id === 'geo-activation') {
+    // GEO command already entered → advance to the next stage
     if (state.geoActivated) {
-      // Already activated — skip straight to briefing/next
-      geoActivatedFlow(stage);
-    } else {
+      advancePastGeo(stage);
+      return;
+    }
+
+    const goWaitForGeo = () => {
       goTerminalWait('geo', () => {
         state.geoActivated = true;
         saveState(state);
-        geoActivatedFlow(stage);
+        advancePastGeo(stage);
       });
+    };
+
+    // Resuming after the intro was already watched → straight to the terminal wait
+    if (state.stagePhase && state.stagePhase[stage.id]) {
+      goWaitForGeo();
+      return;
     }
+
+    // First time: play the SEFY intro briefing, then send players to the terminal wait
+    puzzleCleanup = startGeoActivation(stage, state, () => {
+      if (!state.stagePhase) state.stagePhase = {};
+      state.stagePhase[stage.id] = 'intro-done';
+      saveState(state);
+      goWaitForGeo();
+    });
+    lastActiveScreen = screenId;
+    showScreen(screenId);
+    showNav();
+    updateStageTools(stage, { replayable: true });
     return;
   }
 
@@ -217,6 +272,7 @@ function enterStage(stage) {
     lastActiveScreen = screenId;
     showScreen(screenId);
     showNav();
+    updateStageTools(stage, { replayable: true });
     return;
   }
 
@@ -225,6 +281,7 @@ function enterStage(stage) {
   lastActiveScreen = 'screen-stage';
   showScreen('screen-stage');
   showNav();
+  updateStageTools(stage, { replayable: true });
 }
 
 /* ── System log entries tied to stage progression ── */
@@ -298,28 +355,11 @@ function goTerminalWait(waitType, onDone) {
   lastActiveScreen = 'screen-terminal-wait';
   showScreen('screen-terminal-wait');
   showNav();
+  // Keep the hint available for the active stage, but no intro to replay here.
+  updateStageTools(currentStage, { replayable: false });
 
   const agent = state.playerAgent;
   puzzleCleanup = startTerminalWait(agent, waitType, onDone);
-}
-
-/** After GEO activated: play the geo-activation intro/briefing, then advance */
-function geoActivatedFlow(stage) {
-  // If briefing already played, just advance
-  if (state.stagePhase && state.stagePhase[stage.id] === 'done') {
-    advancePastGeo(stage);
-    return;
-  }
-
-  // Show geo-activation screen and run its intro cinematic
-  const screenId = `screen-${stage.id}`;
-  puzzleCleanup = startGeoActivation(stage, state, () => {
-    // Intro done → mark and advance
-    advancePastGeo(stage);
-  });
-  lastActiveScreen = screenId;
-  showScreen(screenId);
-  showNav();
 }
 
 function advancePastGeo(stage) {
@@ -409,12 +449,7 @@ function toggleSound() {
 // ---- Global Event Bindings ----
 
 function bindGlobalEvents() {
-  // Hint
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#btn-hint');
-    if (btn) openHintModal(currentStage, state);
-  });
-
+  // Hint modal opens from the nav hint button (see bindNav below).
   document.addEventListener('click', (e) => {
     if (e.target.closest('#btn-close-hint')) closeModal('modal-hint');
   });
@@ -428,6 +463,8 @@ function bindGlobalEvents() {
   bindNav({
     onInventory: () => showInventory(),
     onSoundToggle: () => toggleSound(),
+    onHint: () => openHintModal(currentStage, state),
+    onReplayIntro: () => replayCurrentIntro(),
   });
 
   // Reset flow

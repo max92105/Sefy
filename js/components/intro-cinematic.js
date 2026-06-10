@@ -51,8 +51,12 @@ export function startIntroCinematic(prefix, sequence, actionHandlers = {}) {
   if (currentLine) currentLine.textContent = '';
 
   const abortCtrl = { aborted: false, currentAudio: null };
+  // Mark this intro as on-screen so replay stays a no-op until it finishes.
+  _activeIntros[prefix] = abortCtrl;
 
   runIntroSequence(sequence, currentLine, abortCtrl, actionHandlers);
+
+  const release = () => { if (_activeIntros[prefix] === abortCtrl) delete _activeIntros[prefix]; };
 
   return {
     abortCtrl,
@@ -61,10 +65,75 @@ export function startIntroCinematic(prefix, sequence, actionHandlers = {}) {
       abortCtrl.aborted = true;
       if (video) { video.pause(); video.currentTime = 0; }
       if (abortCtrl.currentAudio) { abortCtrl.currentAudio.pause(); abortCtrl.currentAudio = null; }
+      release();
     },
     hide() {
       if (video) { video.pause(); video.currentTime = 0; }
       if (introEl) introEl.classList.add('hidden');
+      release();
     },
   };
+}
+
+/* ═══════════════  Replay  ═══════════════ */
+
+let _replayCtrl = null;
+const _activeIntros = {};
+
+/**
+ * Replay an intro cinematic without advancing the flow.
+ *
+ * Re-plays the video + voice + typewriter narration. Every flow action
+ * (complete / showCodeEntry / startRoute / requestLocation / …) is
+ * neutralized so replaying never mutates state or advances the stage.
+ *
+ * The currently-visible sibling panels are hidden for the duration and
+ * restored when the replay ends (the intro block is a flex child, not an
+ * overlay, so it must take the layout space on its own).
+ *
+ * @param {string} prefix   — matches createIntroCinematicDOM prefix
+ * @param {Array}  sequence — intro events array
+ */
+export function replayIntroCinematic(prefix, sequence) {
+  const introEl = document.getElementById(`${prefix}-intro`);
+  if (!introEl || !sequence) return;
+
+  // If the original intro is still playing on screen, replaying is redundant.
+  if (_activeIntros[prefix] && !_activeIntros[prefix].aborted) return;
+
+  // Cancel any in-flight replay first.
+  if (_replayCtrl) { _replayCtrl.end(); _replayCtrl = null; }
+
+  const layout = introEl.parentElement;
+  const hiddenForReplay = layout
+    ? Array.from(layout.children).filter(el => el !== introEl && !el.classList.contains('hidden'))
+    : [];
+  hiddenForReplay.forEach(el => el.classList.add('hidden'));
+  introEl.classList.remove('hidden');
+
+  const video = document.getElementById(`${prefix}-avatar-video`);
+  if (video) { video.currentTime = 0; video.play().catch(() => {}); }
+
+  const currentLine = document.getElementById(`${prefix}-current-line`);
+  if (currentLine) currentLine.textContent = '';
+
+  const abortCtrl = { aborted: false, currentAudio: null };
+
+  const end = () => {
+    if (abortCtrl.aborted) return;
+    abortCtrl.aborted = true;
+    if (abortCtrl.currentAudio) { abortCtrl.currentAudio.pause(); abortCtrl.currentAudio = null; }
+    if (video) { video.pause(); video.currentTime = 0; }
+    introEl.classList.add('hidden');
+    hiddenForReplay.forEach(el => el.classList.remove('hidden'));
+    if (_replayCtrl && _replayCtrl.abortCtrl === abortCtrl) _replayCtrl = null;
+  };
+
+  // Neutralize every custom flow action: skip it and keep the narration flowing.
+  // (playAudio is handled internally by the runner, so voice still plays.)
+  const safeHandlers = new Proxy({}, { get: () => async () => { /* no-op, continue */ } });
+
+  _replayCtrl = { abortCtrl, end };
+
+  runIntroSequence(sequence, currentLine, abortCtrl, safeHandlers).then(() => end());
 }

@@ -6,9 +6,10 @@
  * Code-entry form is kept for potential future use (lockdown).
  */
 
-import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
+import { playBriefing } from '../../screens/stage-briefing.js';
 import { createCodeEntryFormDOM, setupCodeEntryForm } from '../../components/code-entry-form.js';
 import { saveState } from '../../state.js';
+import { showScreen } from '../../ui.js';
 import { INTRO_SEQUENCE } from './config.js';
 
 const PREFIX = 'geo-activation';
@@ -23,7 +24,8 @@ export function createScreen() {
   const layout = document.createElement('div');
   layout.className = 'stage-layout codeentry-layout';
 
-  layout.appendChild(createIntroCinematicDOM(PREFIX));
+  // Briefing plays on the shared overlay; this screen only holds the (optional)
+  // code-entry form, kept hidden for potential future lockdown use.
   layout.appendChild(createCodeEntryFormDOM(PREFIX));
 
   section.appendChild(layout);
@@ -42,7 +44,8 @@ export function start(stage, state, onSolved) {
   const puzzleEl = document.getElementById(`${PREFIX}-puzzle`);
   if (puzzleEl) puzzleEl.classList.add('hidden');
 
-  const intro = startIntroCinematic(PREFIX, INTRO_SEQUENCE, {
+  let intro;
+  intro = playBriefing(INTRO_SEQUENCE, {
     complete() {
       intro.hide();
       onSolved(stage);
@@ -66,9 +69,10 @@ function transitionToCodeEntry(stage, state, onSolved) {
   state.stagePhase[stage.id] = 'code-entry';
   saveState(state);
 
-  const introEl  = document.getElementById(`${PREFIX}-intro`);
+  // Briefing played on the shared briefing screen — navigate back to this stage.
+  showScreen(`screen-${PREFIX}`);
+
   const puzzleEl = document.getElementById(`${PREFIX}-puzzle`);
-  if (introEl)  introEl.classList.add('hidden');
   if (puzzleEl) puzzleEl.classList.remove('hidden');
 
   setupCodeEntryForm(stage, state, onSolved, PREFIX);

@@ -78,39 +78,74 @@ function refreshHintBadge(stage, state) {
   setHintButton(total - used, total);
 }
 
-/** Open hint modal for the current stage */
+/** Index of the revealed hint currently shown in the modal. */
+let _hintView = 0;
+
+/**
+ * Open hint modal for the current stage.
+ * Lets the player page back through hints they already revealed and reveal
+ * the next one when available.
+ */
 export function openHintModal(currentStage, state) {
   if (!currentStage) return;
-  const total = getStageHints(currentStage.id).length;
-  const tier = getAvailableHintTier(currentStage, state);
-  const hintText = document.getElementById('hint-text');
-  const hintWarning = document.getElementById('hint-warning');
+
+  const hints = getStageHints(currentStage.id);
+  const total = hints.length;
+  let used = (state.hintsUsed && state.hintsUsed[currentStage.id]) || 0;
+
+  const counterEl = document.getElementById('hint-counter');
+  const textEl    = document.getElementById('hint-text');
+  const warnEl    = document.getElementById('hint-warning');
+  const navEl     = document.getElementById('hint-nav');
+  const prevBtn   = document.getElementById('btn-hint-prev');
+  const nextBtn   = document.getElementById('btn-hint-next');
   const revealBtn = document.getElementById('btn-reveal-hint');
 
-  if (tier === null) {
-    if (hintText) hintText.textContent = total > 0
-      ? 'Tous les indices ont été révélés pour cette énigme.'
-      : 'Aucun indice disponible pour cette énigme.';
-    if (hintWarning) hintWarning.textContent = '';
-    if (revealBtn) revealBtn.style.display = 'none';
-  } else {
-    const remaining = total - tier;
-    if (hintText) hintText.textContent = `${remaining} indice(s) disponible(s). Demander des indices affecte votre évaluation finale.`;
-    if (hintWarning) hintWarning.textContent = `Niveau d'indice : ${tier + 1} sur ${total}`;
+  // Open on the most recently revealed hint.
+  _hintView = used > 0 ? used - 1 : 0;
+
+  function render() {
+    if (used === 0) {
+      if (counterEl) counterEl.textContent = total > 0 ? `Indices : 0 / ${total}` : '';
+      if (textEl) textEl.textContent = total > 0
+        ? `${total} indice(s) disponible(s) pour cette énigme. Demander un indice affecte votre évaluation finale.`
+        : 'Aucun indice disponible pour cette énigme.';
+      if (warnEl) warnEl.textContent = '';
+      if (navEl) navEl.classList.add('hidden');
+    } else {
+      const remainingTxt = used < total ? ` · ${total - used} restant(s)` : '';
+      if (counterEl) counterEl.textContent = `Indice ${_hintView + 1} / ${used} révélé(s)${remainingTxt}`;
+      if (textEl) textEl.textContent = hints[_hintView].text;
+      if (warnEl) warnEl.textContent = '';
+      // Only show prev/next when there is more than one revealed hint to page through.
+      if (navEl) navEl.classList.toggle('hidden', used <= 1);
+      if (prevBtn) prevBtn.disabled = _hintView <= 0;
+      if (nextBtn) nextBtn.disabled = _hintView >= used - 1;
+    }
+
     if (revealBtn) {
-      revealBtn.style.display = '';
-      revealBtn.onclick = () => {
-        const hint = revealHint(currentStage, state);
-        if (hint && hintText) hintText.textContent = hint.text;
-        refreshHintBadge(currentStage, state);
-        // Hide the reveal button once no more hints remain.
-        if (getAvailableHintTier(currentStage, state) === null && revealBtn) {
-          revealBtn.style.display = 'none';
-          if (hintWarning) hintWarning.textContent = '';
-        }
-      };
+      if (used < total) {
+        revealBtn.style.display = '';
+        revealBtn.textContent = used === 0 ? 'RÉVÉLER UN INDICE' : 'INDICE SUIVANT';
+      } else {
+        revealBtn.style.display = 'none';
+      }
     }
   }
 
+  if (revealBtn) {
+    revealBtn.onclick = () => {
+      const hint = revealHint(currentStage, state);
+      if (!hint) return;
+      used = (state.hintsUsed && state.hintsUsed[currentStage.id]) || used + 1;
+      _hintView = used - 1; // jump to the freshly revealed hint
+      refreshHintBadge(currentStage, state);
+      render();
+    };
+  }
+  if (prevBtn) prevBtn.onclick = () => { if (_hintView > 0) { _hintView--; render(); } };
+  if (nextBtn) nextBtn.onclick = () => { if (_hintView < used - 1) { _hintView++; render(); } };
+
+  render();
   openModal('modal-hint');
 }

@@ -53,10 +53,15 @@ export function startIntroCinematic(prefix, sequence, actionHandlers = {}) {
   const abortCtrl = { aborted: false, currentAudio: null };
   // Mark this intro as on-screen so replay stays a no-op until it finishes.
   _activeIntros[prefix] = abortCtrl;
+  // Full-screen cinematic: hide the bottom nav and let the video fill the screen.
+  document.body.classList.add('intro-playing');
 
   runIntroSequence(sequence, currentLine, abortCtrl, actionHandlers);
 
-  const release = () => { if (_activeIntros[prefix] === abortCtrl) delete _activeIntros[prefix]; };
+  const release = () => {
+    if (_activeIntros[prefix] === abortCtrl) delete _activeIntros[prefix];
+    setIntroPlaying();
+  };
 
   return {
     abortCtrl,
@@ -81,6 +86,24 @@ let _replayCtrl = null;
 const _activeIntros = {};
 
 /**
+ * Toggle the body.intro-playing class based on whether any intro (initial or
+ * replay) is currently on screen. Drives the full-screen cinematic CSS
+ * (hides the bottom nav, lets the video fill top-to-bottom).
+ */
+function setIntroPlaying() {
+  const active = Object.keys(_activeIntros).length > 0
+    || (_replayCtrl && !_replayCtrl.abortCtrl.aborted);
+  document.body.classList.toggle('intro-playing', !!active);
+}
+
+/** Force-clear the cinematic state (used when resetting the whole flow). */
+export function clearIntroPlaying() {
+  for (const k of Object.keys(_activeIntros)) delete _activeIntros[k];
+  if (_replayCtrl) { _replayCtrl.end(); _replayCtrl = null; }
+  document.body.classList.remove('intro-playing');
+}
+
+/**
  * Replay an intro cinematic without advancing the flow.
  *
  * Re-plays the video + voice + typewriter narration. Every flow action
@@ -91,10 +114,15 @@ const _activeIntros = {};
  * restored when the replay ends (the intro block is a flex child, not an
  * overlay, so it must take the layout space on its own).
  *
- * @param {string} prefix   — matches createIntroCinematicDOM prefix
- * @param {Array}  sequence — intro events array
+ * Tapping the cinematic while it replays skips it. When it ends (naturally
+ * or skipped) the optional `onEnd` callback runs — used to return to the
+ * screen the player came from (e.g. the terminal-wait search screen).
+ *
+ * @param {string}   prefix   — matches createIntroCinematicDOM prefix
+ * @param {Array}    sequence — intro events array
+ * @param {Function} [onEnd]  — called once when the replay finishes
  */
-export function replayIntroCinematic(prefix, sequence) {
+export function replayIntroCinematic(prefix, sequence, onEnd) {
   const introEl = document.getElementById(`${prefix}-intro`);
   if (!introEl || !sequence) return;
 
@@ -104,6 +132,7 @@ export function replayIntroCinematic(prefix, sequence) {
   // Cancel any in-flight replay first.
   if (_replayCtrl) { _replayCtrl.end(); _replayCtrl = null; }
 
+  // Hide any visible sibling panels so the intro takes the layout space.
   const layout = introEl.parentElement;
   const hiddenForReplay = layout
     ? Array.from(layout.children).filter(el => el !== introEl && !el.classList.contains('hidden'))
@@ -122,18 +151,26 @@ export function replayIntroCinematic(prefix, sequence) {
   const end = () => {
     if (abortCtrl.aborted) return;
     abortCtrl.aborted = true;
+    introEl.removeEventListener('click', end);
     if (abortCtrl.currentAudio) { abortCtrl.currentAudio.pause(); abortCtrl.currentAudio = null; }
     if (video) { video.pause(); video.currentTime = 0; }
     introEl.classList.add('hidden');
     hiddenForReplay.forEach(el => el.classList.remove('hidden'));
     if (_replayCtrl && _replayCtrl.abortCtrl === abortCtrl) _replayCtrl = null;
+    setIntroPlaying();
+    if (typeof onEnd === 'function') onEnd();
   };
+
+  // Tap the cinematic to skip the replay.
+  introEl.addEventListener('click', end);
 
   // Neutralize every custom flow action: skip it and keep the narration flowing.
   // (playAudio is handled internally by the runner, so voice still plays.)
   const safeHandlers = new Proxy({}, { get: () => async () => { /* no-op, continue */ } });
 
   _replayCtrl = { abortCtrl, end };
+  // Full-screen cinematic during replay too.
+  setIntroPlaying();
 
   runIntroSequence(sequence, currentLine, abortCtrl, safeHandlers).then(() => end());
 }

@@ -391,17 +391,8 @@ body::after {
   50% { border-color: var(--accent-green); }
 }
 
-/* --- Briefing Cinematic Layout --- */
-.briefing-layout {
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0;
-  gap: 0;
-  width: 100%;
-  overflow: hidden;
-}
+/* --- Briefing Cinematic Layout ---
+   (defined with the unified .stage-layout rules further down) */
 
 /* --- Persistent Mission Banner (fixed top bar) --- */
 .mission-banner {
@@ -409,11 +400,12 @@ body::after {
   top: 0;
   left: 0;
   right: 0;
+  height: 44px; /* must match --banner-h so the briefing video aligns below it */
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-lg);
+  padding: 0 var(--space-lg);
   z-index: 200;
   backdrop-filter: blur(6px);
   border-bottom: 1px solid;
@@ -529,6 +521,8 @@ body.banner-active .stage-screen {
   overflow: hidden;
   padding: 0;
   padding-top: var(--banner-h);
+  /* When the banner chrono slides in, the content stretches down with it. */
+  transition: padding-top 0.5s ease;
   position: relative;
 }
 
@@ -551,6 +545,7 @@ body.banner-active .stage-layout {
   overflow: hidden;
   padding: 0;
   padding-top: var(--banner-h);
+  transition: padding-top 0.5s ease;
   position: relative;
 }
 
@@ -560,6 +555,21 @@ body.banner-active .codeentry-layout,
 body.banner-active .qr-layout,
 body.banner-active .arscan-layout {
   --banner-h: 44px;
+}
+
+/* ── Full-screen cinematic ──────────────────────────────────
+   While a video intro/briefing plays (body.intro-playing), hide the bottom
+   nav so the video extends to the very bottom of the screen. The video stays
+   in flow inside .stage-layout, so it keeps the phone-width column on desktop
+   and shrinks below the banner (via the layout's padding-top) when the
+   countdown appears.
+   ──────────────────────────────────────────────────────────── */
+body.intro-playing .global-nav {
+  display: none !important;
+}
+/* Nav is hidden during the cinematic — pin the dialogue to the real bottom. */
+body.intro-playing .briefing-bottom {
+  bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Intro Cinematic Phase (video + typewriter) ──
@@ -906,7 +916,7 @@ body.banner-active .arscan-layout {
   }
 }
 
-/* ── PC / Tablet: constrain to phone-like dimensions ── */
+/* ── PC / Tablet: phone-like width, but always full screen height ── */
 @media (min-width: 768px) {
   .stage-layout,
   .briefing-layout,
@@ -915,8 +925,7 @@ body.banner-active .arscan-layout {
   .qr-layout,
   .arscan-layout {
     max-width: 480px;
-    max-height: min(100dvh, 860px);
-    margin: auto;
+    margin: 0 auto;
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
   }
@@ -1552,6 +1561,31 @@ body.banner-active .arscan-layout {
   font-size: var(--font-size-xs);
   color: var(--accent-amber);
   margin-top: var(--space-sm);
+}
+
+.hint-counter {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  color: var(--accent-green);
+  margin-bottom: var(--space-sm);
+}
+
+.hint-nav {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.hint-nav-btn {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.hint-nav-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .modal-actions {

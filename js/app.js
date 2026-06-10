@@ -12,8 +12,10 @@ import { showScreen, initButtonSounds } from './ui.js';
 // -- Components --
 import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
 import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setHintButton, setReplayVisible } from './components/nav.js';
-import { replayIntroCinematic } from './components/intro-cinematic.js';
+import { replayIntroCinematic, clearIntroPlaying } from './components/intro-cinematic.js';
+import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from './screens/stage-briefing.js';
 import { getStageHints } from './stages/hints.js';
+import { INTRO_SEQUENCE as geoIntroSequence } from './stages/geo-activation/config.js';
 import { INTRO_SEQUENCE as sefyRogueIntroSequence } from './stages/sefy-rogue/config.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
@@ -51,6 +53,7 @@ function buildDOM() {
   app.appendChild(createTerminalScreen());
   app.appendChild(createLandingScreen());
   app.appendChild(createBriefingScreen());
+  app.appendChild(createStageBriefingScreen());
   app.appendChild(createStageScreen());
   app.appendChild(createInventoryScreen());
   app.appendChild(createGeoActivationScreen());
@@ -89,6 +92,7 @@ async function init() {
 // ---- Screen Flows ----
 
 function goTerminal() {
+  clearIntroPlaying();
   hideNav();
   showScreen('screen-terminal');
   runBootSequence(() => goLanding());
@@ -150,14 +154,10 @@ const stageStarters = {
   'sefy-rogue':          (stage, state, onSolved) => startSefyRogue(stage, state, onSolved),
 };
 
-/**
- * Stages whose briefing intro can be replayed via the nav button.
- * Only stages whose intro screen stays on-screen through the puzzle qualify
- * (so the replay overlay has something to return to). geo-activation hands off
- * to the terminal-wait screen after its intro, so it is intentionally excluded.
- */
+/** Stages whose briefing intro can be replayed via the nav button. */
 const introReplays = {
-  'sefy-rogue': sefyRogueIntroSequence,
+  'geo-activation': geoIntroSequence,
+  'sefy-rogue':     sefyRogueIntroSequence,
 };
 
 /**
@@ -173,11 +173,18 @@ function updateStageTools(stage, { replayable = false } = {}) {
   setReplayVisible(replayable && !!introReplays[stage.id]);
 }
 
-/** Replay the current stage's briefing intro (no flow side-effects). */
+/** Replay the current stage's briefing on the shared briefing screen (no flow side-effects). */
 function replayCurrentIntro() {
   if (!currentStage) return;
   const sequence = introReplays[currentStage.id];
-  if (sequence) replayIntroCinematic(currentStage.id, sequence);
+  if (!sequence) return;
+
+  // Navigate to the briefing screen, replay, then return where the player was.
+  const returnScreenId = lastActiveScreen;
+  showScreen(BRIEFING_SCREEN_ID);
+  replayIntroCinematic(BRIEFING_PREFIX, sequence, () => {
+    if (returnScreenId) showScreen(returnScreenId);
+  });
 }
 
 function enterStage(stage) {
@@ -236,17 +243,21 @@ function enterStage(stage) {
       return;
     }
 
-    // First time: play the SEFY intro briefing, then send players to the terminal wait
+    // First time: play the SEFY intro briefing, then send players to the terminal wait.
+    // showScreen/showNav run first; startGeoActivation then navigates to the
+    // shared briefing screen (last showScreen wins).
+    lastActiveScreen = screenId;
+    showScreen(screenId);
+    showNav();
+    // No replay button while the intro is actively playing — it appears on the
+    // terminal-wait search screen (see goTerminalWait).
+    updateStageTools(stage, { replayable: false });
     puzzleCleanup = startGeoActivation(stage, state, () => {
       if (!state.stagePhase) state.stagePhase = {};
       state.stagePhase[stage.id] = 'intro-done';
       saveState(state);
       goWaitForGeo();
     });
-    lastActiveScreen = screenId;
-    showScreen(screenId);
-    showNav();
-    updateStageTools(stage, { replayable: true });
     return;
   }
 
@@ -268,11 +279,13 @@ function enterStage(stage) {
   // Stages with dedicated start functions
   const starter = stageStarters[stage.id];
   if (starter) {
-    puzzleCleanup = starter(stage, state, onPuzzleSolved);
+    // showScreen first; a stage that plays a briefing then navigates to the
+    // shared briefing screen (last showScreen wins).
     lastActiveScreen = screenId;
     showScreen(screenId);
     showNav();
     updateStageTools(stage, { replayable: true });
+    puzzleCleanup = starter(stage, state, onPuzzleSolved);
     return;
   }
 
@@ -355,8 +368,9 @@ function goTerminalWait(waitType, onDone) {
   lastActiveScreen = 'screen-terminal-wait';
   showScreen('screen-terminal-wait');
   showNav();
-  // Keep the hint available for the active stage, but no intro to replay here.
-  updateStageTools(currentStage, { replayable: false });
+  // Keep the hint available; the replay button (if the stage has a registered
+  // briefing) re-shows that briefing over this search screen.
+  updateStageTools(currentStage, { replayable: true });
 
   const agent = state.playerAgent;
   puzzleCleanup = startTerminalWait(agent, waitType, onDone);

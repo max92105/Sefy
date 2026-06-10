@@ -15,8 +15,13 @@ export function createModals() {
           <button class="modal-close" aria-label="Fermer">&times;</button>
         </div>
         <div class="modal-body" id="hint-body">
+          <p class="hint-counter" id="hint-counter"></p>
           <p id="hint-text">—</p>
           <p class="hint-warning" id="hint-warning"></p>
+          <div class="hint-nav hidden" id="hint-nav">
+            <button id="btn-hint-prev" class="btn btn-outline hint-nav-btn" aria-label="Indice précédent">◀ PRÉCÉDENT</button>
+            <button id="btn-hint-next" class="btn btn-outline hint-nav-btn" aria-label="Indice suivant">SUIVANT ▶</button>
+          </div>
         </div>
         <div class="modal-actions">
           <button id="btn-reveal-hint" class="btn btn-secondary">RÉVÉLER L'INDICE</button>

@@ -13,7 +13,7 @@ export function createNav() {
       <span class="nav-badge hidden" id="hint-badge">0</span>
     </button>
     <button class="nav-btn hidden" data-action="replay-intro" id="nav-replay-intro" title="Revoir l'intro">
-      <span class="nav-icon">↺</span>
+      <span class="nav-icon">🔄</span>
     </button>
     <button class="nav-btn" data-action="inventory" title="Inventaire">
       <span class="nav-icon">🎒</span>

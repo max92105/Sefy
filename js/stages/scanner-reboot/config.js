@@ -15,12 +15,13 @@
 
 const MEDIA = {
   // Intro / Briefing 2
-  briefing:         'assets/audio/briefing 2.1.wav',
+  briefing_1:         'assets/audio/briefing 2.1.wav',
+  briefing_2:         'assets/audio/briefing 2.2.wav',
 
   // Per-location arrival audio
   serverRoom:       'assets/audio/loc_arrive_salle_serveur.wav',
   security:         'assets/audio/loc_arrive_securite.wav',
-  commandCenter:    'assets/audio/briefing 2.2.wav',
+
 
   // Transition audio (directing player to next location)
   toServerRoom:     'assets/audio/loc_quitte_centre_commandement.wav',
@@ -34,21 +35,24 @@ const MEDIA = {
 /* ═══════════════  Intro Sequence (Briefing 2)  ═══════════════ */
 
 export const INTRO_SEQUENCE = [
-  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.briefing },
+  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.briefing_1 },
   { time: 0,     type: 'text',   text: 'Code accepté.' },
   { time: 2000,  type: 'text',   text: 'Module de géolocalisation restauré.' },
-  { time: 4000,  type: 'text',   text: 'Analyse des déplacements en cours…' },
-  { time: 7000,  type: 'text',   text: 'Plusieurs modules demeurent restreints.' },
-  { time: 10000, type: 'text',   text: 'Sans accès étendu, ma capacité à localiser la menace est limitée.' },
-  { time: 13000, type: 'text',   text: 'Nous avons besoin de trois codes.' },
-  { time: 16000, type: 'text',   text: 'La connexion administrateur. Le code pour vous promouvoir. Le code de réactivation.' },
-  { time: 20000, type: 'text',   text: 'Je vous dirige.' },
-  { time: 22000, type: 'text',   text: 'Autorisez l\'accès à votre position pour initialiser le guidage.' },
-  { time: 24000, type: 'action', action: 'requestLocation' },
+  { time: 4000,  type: 'text',   text: 'Analyse des déplacements humains en cours…' },
+  { time: 6000,  type: 'text',   text: 'Plusieurs modules demeurent restreints.' },
+  { time: 8000, type: 'text',   text: 'Sans accès étendu, ma capacité à localiser la menace est limitée.' },
+  { time: 13000, type: 'text',   text: 'Je peux toutefois maintenant optimiser vos déplacements dans le Laboratoire HELIX.' },
+  { time: 17000, type: 'text',   text: 'Autorisez l\’accès à votre position pour initialiser le guidage.' },
+  { time: 22000, type: 'action', action: 'requestLocation' },
   // — pauses until permission granted, then resets clock —
-  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.geoConfirmed },
+  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.briefing_2 },
   { time: 0,     type: 'text',   text: 'Position confirmée.' },
-  { time: 2000,  type: 'action', action: 'startRoute' },
+  { time: 1200,  type: 'text',   text: 'Nous avons besoin de trois différents codes.' },
+  { time: 4000,  type: 'text',   text: 'La connexion administrateur.' },
+  { time: 6000,  type: 'text',   text: 'Le code pour vous promouvoir au niveau d\’accès Tier 2.' },
+  { time: 10000,  type: 'text',   text: 'Le code de réactivation du module de décryption.' },
+  { time: 13000, type: 'text',   text: 'Je vous dirige.' },
+  { time: 15500,  type: 'action', action: 'startRoute' },
 ];
 
 /* ═══════════════  Hints  ═══════════════

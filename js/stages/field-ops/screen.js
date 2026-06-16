@@ -17,7 +17,8 @@ import { createIntroCinematicDOM, startIntroCinematic } from '../../components/i
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, AUDIO_CATALOG, PAPER_CATALOG, SFX } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG } from './config.js';
+import { playVideo } from '../../components/video-player.js';
 
 const PREFIX = 'field-ops';
 
@@ -212,48 +213,62 @@ async function transitionToPanel(stage, state, onSolved) {
     }
   }
 
-  const introEl = document.getElementById(`${PREFIX}-intro`);
-  const panelEl = document.getElementById(`${PREFIX}-panel`);
-
-  // If AR not activated and briefing not yet shown, play AR briefing
-  if (!state.arActivated && !state.arBriefingDone) {
-    if (panelEl) panelEl.classList.add('hidden');
-    if (introEl) introEl.classList.remove('hidden');
-
-    await new Promise((resolve) => {
-      const briefing = startIntroCinematic(PREFIX, AR_BRIEFING_SEQUENCE, {
-        endBriefing() {
-          briefing.hide();
-          resolve();
-          return 'stop';
-        },
-      });
-    });
-
-    state.arBriefingDone = true;
-    saveState(state);
-  }
-
-  if (introEl) introEl.classList.add('hidden');
-  if (panelEl) panelEl.classList.remove('hidden');
-
-  updateARLockState(state);
   bindTabs(stage, state, onSolved);
-  startQRScanner(stage, state, onSolved);
 
-  // Listen for Firebase state changes (e.g. AR activation from terminal)
+  // Listen for AR activation from the terminal → play the AR briefing, then unlock.
   if (state.playerAgent) {
     stateUnsubscribe = fbOnStateChange(state.playerAgent, (remote) => {
       if (!remote) return;
-      // Sync AR activation
       if (remote.arActivated && !state.arActivated) {
         state.arActivated = true;
         state.accessTier = remote.accessTier || state.accessTier;
         saveState(state);
-        updateARLockState(state);
+        playARBriefing(stage, state, onSolved);
       }
     });
   }
+
+  // AR already active but its briefing not yet seen (e.g. resuming after
+  // activation) → play it now; otherwise just show the scanner panel.
+  if (state.arActivated && !state.arBriefingDone) {
+    playARBriefing(stage, state, onSolved);
+  } else {
+    showScannerPanel(stage, state, onSolved);
+  }
+}
+
+/** Reveal the QR/AR tabbed panel and start the active tab's scanner. */
+function showScannerPanel(stage, state, onSolved) {
+  const introEl = document.getElementById(`${PREFIX}-intro`);
+  const panelEl = document.getElementById(`${PREFIX}-panel`);
+  if (introEl) introEl.classList.add('hidden');
+  if (panelEl) panelEl.classList.remove('hidden');
+  updateARLockState(state);
+  if (activeTab === 'ar' && state.arActivated) startARScanner(stage, state, onSolved);
+  else startQRScanner(stage, state, onSolved);
+}
+
+/** Play SEFY's AR-module briefing once (when AR is activated), then reveal the panel. */
+function playARBriefing(stage, state, onSolved) {
+  if (state.arBriefingDone) { showScannerPanel(stage, state, onSolved); return; }
+
+  stopQRScanner();
+  stopARScanner();
+
+  const introEl = document.getElementById(`${PREFIX}-intro`);
+  const panelEl = document.getElementById(`${PREFIX}-panel`);
+  if (panelEl) panelEl.classList.add('hidden');
+  if (introEl) introEl.classList.remove('hidden');
+
+  const briefing = startIntroCinematic(PREFIX, AR_BRIEFING_SEQUENCE, {
+    endBriefing() {
+      briefing.hide();
+      state.arBriefingDone = true;
+      saveState(state);
+      showScannerPanel(stage, state, onSolved);
+      return 'stop';
+    },
+  });
 }
 
 /* ═══════════════  Tabs  ═══════════════ */
@@ -392,20 +407,41 @@ function handleQRCode(data, stage, state) {
   }
 
   if (type === 'AUDIO') {
-    const audio = AUDIO_CATALOG[value];
-    if (!audio) { showQRFeedback('Audio non reconnu.', 'error'); return; }
+    const found = classifyAudioQR(value);
+    if (!found || !found.entry.src) { showQRFeedback('Audio non reconnu.', 'error'); return; }
+    const { kind, entry } = found;
+
+    // Room titles & AR cues — just play; never collected.
+    if (kind === 'play') {
+      playSFX(entry.src);
+      showQRFeedback(`🔊 ${entry.label}`, 'info');
+      return;
+    }
+
+    // Audio log — play + collect.
     if (!state.audioLogs) state.audioLogs = [];
     const isNew = !state.audioLogs.includes(value);
     if (isNew) {
       state.audioLogs.push(value);
       saveState(state);
       updateInventoryBadge(state);
-      playSFX(audio.src);
-      showQRFeedback(`🔊 ${audio.label}`, 'success');
+      playSFX(entry.src);
+      showQRFeedback(`🔊 ${entry.label}`, 'success');
     } else {
-      playSFX(audio.src);
-      showQRFeedback(`🔊 ${audio.label} — déjà collecté. Lecture…`, 'info');
+      playSFX(entry.src);
+      showQRFeedback(`🔊 ${entry.label} — déjà collecté. Lecture…`, 'info');
     }
+    return;
+  }
+
+  if (type === 'VIDEO') {
+    const entry = VIDEO_LOG_CATALOG[value];
+    if (!entry || !entry.src) { showQRFeedback('Vidéo non reconnue.', 'error'); return; }
+    if (!state.videoLogs) state.videoLogs = [];
+    const isNew = !state.videoLogs.includes(value);
+    if (isNew) { state.videoLogs.push(value); saveState(state); updateInventoryBadge(state); }
+    playVideo(entry.src);
+    showQRFeedback(`🎬 ${entry.label}${isNew ? '' : ' — déjà collecté'}`, isNew ? 'success' : 'info');
     return;
   }
 

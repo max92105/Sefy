@@ -20,6 +20,7 @@ import { INTRO_SEQUENCE as scannerRebootIntroSequence, ALL_CODES_AUDIO } from '.
 import { INTRO_SEQUENCE as fieldOpsIntroSequence } from './stages/field-ops/config.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
+import { createVideoPlayer } from './components/video-player.js';
 
 // -- Screens --
 import { createTerminalScreen, runBootSequence } from './intro/screens/boot.js';
@@ -49,6 +50,7 @@ function buildDOM() {
   // Components (injected at body level)
   createBanner();
   createBgMusic();
+  createVideoPlayer();
 
   // Screens (injected into #app container)
   app.appendChild(createTerminalScreen());

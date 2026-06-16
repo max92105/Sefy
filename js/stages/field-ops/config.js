@@ -12,43 +12,70 @@ const MEDIA = {
 
 /** Sound effects played during field-ops (QR item collected, AR object located). */
 export const SFX = {
-  cardFound:     'assets/field-ops/ar/serveurs/card_found.wav',
   positionFound: 'assets/scanner-reboot/loc_position_trouve.wav', // reused from scanner-reboot
 };
 
-/* ═══════════════  QR Item Catalogs  ═══════════════ */
+/* ═══════════════  QR Item Catalogs  ═══════════════
+   The catalog an id lives in defines what happens when its QR is scanned:
+     ROOM_TITLE_CATALOG → SEFY:AUDIO — plays to announce the room, NOT collected.
+     AR_CUE_CATALOG     → SEFY:AUDIO — plays an AR scan cue,      NOT collected.
+     AUDIO_CATALOG      → SEFY:AUDIO — plays the audio, collected + replayable.
+     VIDEO_LOG_CATALOG  → SEFY:VIDEO — plays the video, collected + replayable.
+   ════════════════════════════════════════════════════════════════ */
+
+/** Room-title cues — played so the player knows which room they entered. */
+export const ROOM_TITLE_CATALOG = {
+  'cmd-center':     { label: 'Centre de Commandement',        room: 'Centre de Commandement',        src: 'assets/field-ops/scanner/commandement/qr_title_centre_de_commande.wav' },
+  'lab-door':       { label: 'Laboratoire Chimique',          room: 'Laboratoire Chimique',          src: 'assets/field-ops/scanner/laboratoire/qr_title_laboratoire_chimique.wav' },
+  'infirmary-door': { label: 'Infirmerie',                    room: 'Infirmerie',                    src: 'assets/field-ops/scanner/infirmerie/qr_title_infirmerie.wav' },
+  'quarters-door':  { label: 'Quartier du Personnel',         room: 'Quartier du Personnel',         src: 'assets/field-ops/scanner/quartier_personnel/qr_title_quartier_du_personnel.wav' },
+  'science-door':   { label: 'Bureau Scientifique',           room: 'Bureau Scientifique',           src: 'assets/field-ops/scanner/science/qr_title_bureau_scientifique.wav' },
+  'decon-door':     { label: 'Module de Décontamination',     room: 'Module de Décontamination',     src: 'assets/field-ops/scanner/decontamination/qr_title_decontamination.wav' },
+  'chief-door':     { label: 'Quartier du Chef Scientifique', room: 'Quartier du Chef',              src: 'assets/field-ops/scanner/quartier_chef_scientifique/qr_title_quartier_chef_scientifique.wav' },
+  'security-door':  { label: 'Sécurité',                      room: 'Sécurité',                      src: 'assets/field-ops/scanner/securite/qr_title_securite.wav' },
+  'servers-door':   { label: 'Salle des Serveurs',            room: 'Salle des Serveurs',            src: 'assets/field-ops/scanner/serveurs/qr_title_serveurs.wav' },
+};
+
+/** Video logs — play a video, collected and replayable from the inventory. */
+export const VIDEO_LOG_CATALOG = {
+  'chief-adrian': { label: 'Adrian — Message Final', room: 'Quartier du Chef (AR)', src: 'assets/field-ops/ar/quartier_chef_scientifique/adrian_video_log.mp4' },
+};
+
+/** AR scan cues (qr_ar_*) — played during AR scanning. NOT collected. */
+export const AR_CUE_CATALOG = {
+  'cmd-clear':       { label: 'Rien à signaler',         room: 'Centre de Commandement (AR)',    src: 'assets/field-ops/ar/commandement/qr_ar_rien_a_signale.wav' },
+  'lab-virus':       { label: 'Présence Virus ARK-41',   room: 'Laboratoire Chimique (AR)',      src: 'assets/field-ops/ar/laboratoire/qr_ar_ark41.wav' },
+  'infirmary-virus': { label: 'Présence Virus ARK-41',   room: 'Infirmerie (AR)',                src: 'assets/field-ops/ar/infirmerie/qr_ar_ark41.wav' },
+  'quarters-clear':  { label: 'Rien à signaler',         room: 'Quartier du Personnel (AR)',     src: 'assets/field-ops/ar/quartier_personnel/qr_ar_rien_a_signale.wav' },
+  'science-hint':    { label: 'Trouvez la fausse bombe', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
+  'decon-virus':     { label: 'Présence Virus ARK-41',   room: 'Module de Décontamination (AR)', src: 'assets/field-ops/ar/decontamination/qr_ar_ark41.wav' },
+  'security-clear':  { label: 'Rien à signaler',         room: 'Sécurité (AR)',                  src: 'assets/field-ops/ar/securite/qr_ar_rien_a_signale.wav' },
+};
+
+/** Audio logs — play an audio clip, collected and replayable from the inventory. */
+export const AUDIO_CATALOG = {
+  'lab-battle':       { label: 'Bataille Infecté',                room: 'Laboratoire Chimique',      src: 'assets/field-ops/scanner/laboratoire/qr_audio_log_laboratoire_chimique.wav' },
+  'infirmary-julien': { label: 'Julien Park — Dissection',        room: 'Infirmerie',                src: 'assets/field-ops/scanner/infirmerie/qr_audio_log_infimerie.wav' },
+  'quarters-hana':    { label: 'Hana — Journal',                  room: 'Quartier du Personnel',     src: 'assets/field-ops/scanner/quartier_personnel/qr_audio_log_quartier_du_personnel.wav' },
+  'science-sofia':    { label: 'Sofia Ionescu — Dernier Message', room: 'Bureau Scientifique',       src: 'assets/field-ops/scanner/science/qr_audio_log_bureau_scientifique.wav' },
+  'decon-personnel':  { label: 'Décontamination du Personnel',    room: 'Module de Décontamination', src: 'assets/field-ops/scanner/decontamination/qr_audio_log_module_de_décontamination.wav' },
+  'security-victor':  { label: 'Victor — Protocole 5',            room: 'Sécurité',                  src: 'assets/field-ops/scanner/securite/qr_audio_log_securite.wav' },
+  'servers-elodie':   { label: 'Élodie — Désespoir',              room: 'Salle des Serveurs',        src: 'assets/field-ops/scanner/serveurs/qr_audio_log_salle_des_serveurs.wav' },
+};
 
 /**
- * Audio logs found via SEFY:AUDIO:<id> QR codes.
- * Each entry maps id → { label, room, src }
+ * Classify a SEFY:AUDIO:<id> code.
+ *   kind 'play'  → room titles & AR cues: played only, never collected.
+ *   kind 'audio' → collectable audio log.
+ * (Video logs use SEFY:VIDEO:<id> + VIDEO_LOG_CATALOG, handled separately.)
+ * @returns {{ kind: 'play'|'audio', entry: object } | null}
  */
-export const AUDIO_CATALOG = {
-  'cmd-center':       { label: 'Centre de Commandement',          room: 'Centre de Commandement',          src: 'assets/field-ops/scanner/commandement/qr_title_centre_de_commande.wav' },
-  'cmd-clear':        { label: 'Rien à signaler',                 room: 'Centre de Commandement (AR)',     src: 'assets/field-ops/ar/commandement/qr_ar_rien_a_signale.wav' },
-  'lab-door':         { label: 'Laboratoire Chimique',            room: 'Laboratoire Chimique',            src: 'assets/field-ops/scanner/laboratoire/qr_title_laboratoire_chimique.wav' },
-  'lab-battle':       { label: 'Bataille Infecté',                room: 'Laboratoire Chimique',            src: 'assets/field-ops/scanner/laboratoire/qr_audio_log_laboratoire_chimique.wav' },
-  'lab-virus':        { label: 'Présence Virus ARK-41',           room: 'Laboratoire Chimique (AR)',       src: 'assets/field-ops/ar/laboratoire/qr_ar_ark41.wav' },
-  'infirmary-door':   { label: 'Infirmerie',                      room: 'Infirmerie',                      src: 'assets/field-ops/scanner/infirmerie/qr_title_infirmerie.wav' },
-  'infirmary-julien': { label: 'Julien Park — Dissection',        room: 'Infirmerie',                      src: 'assets/field-ops/scanner/infirmerie/qr_audio_log_infimerie.wav' },
-  'infirmary-virus':  { label: 'Présence Virus ARK-41',           room: 'Infirmerie (AR)',                 src: 'assets/field-ops/ar/infirmerie/qr_ar_ark41.wav' },
-  'quarters-door':    { label: 'Quartier du Personnel',           room: 'Quartier du Personnel',           src: 'assets/field-ops/scanner/quartier_personnel/qr_title_quartier_du_personnel.wav' },
-  'quarters-thomas':  { label: 'Thomas — Journal',                room: 'Quartier du Personnel',           src: 'assets/field-ops/scanner/quartier_personnel/qr_audio_log_quartier_du_personnel.wav' },
-  'quarters-clear':   { label: 'Rien à signaler',                 room: 'Quartier du Personnel (AR)',      src: 'assets/field-ops/ar/quartier_personnel/qr_ar_rien_a_signale.wav' },
-  'science-door':     { label: 'Bureau Scientifique',             room: 'Bureau Scientifique',             src: 'assets/field-ops/scanner/science/qr_title_bureau_scientifique.wav' },
-  'science-sofia':    { label: 'Sofia Ionescu — Dernier Message', room: 'Bureau Scientifique',             src: 'assets/field-ops/scanner/science/qr_audio_log_bureau_scientifique.wav' },
-  'science-hint':     { label: 'Trouvez la fausse bombe',         room: 'Bureau Scientifique (AR)',        src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
-  'decon-door':       { label: 'Module de Décontamination',       room: 'Module de Décontamination',       src: 'assets/field-ops/scanner/decontamination/qr_title_decontamination.wav' },
-  'decon-personnel':  { label: 'Décontamination du Personnel',    room: 'Module de Décontamination',       src: 'assets/field-ops/scanner/decontamination/qr_audio_log_module_de_décontamination.wav' },
-  'decon-virus':      { label: 'Présence Virus ARK-41',           room: 'Module de Décontamination (AR)',  src: 'assets/field-ops/ar/decontamination/qr_ar_ark41.wav' },
-  'chief-door':       { label: 'Quartier du Chef Scientifique',   room: 'Quartier du Chef',                src: 'assets/field-ops/scanner/quartier_chef_scientifique/qr_title_quartier_chef_scientifique.wav' },
-  'chief-adrian':     { label: 'Adrian — Message Final',          room: 'Quartier du Chef (AR)',           src: null },
-  'security-door':    { label: 'Sécurité',                        room: 'Sécurité',                        src: 'assets/field-ops/scanner/securite/qr_title_securite.wav' },
-  'security-victor':  { label: 'Victor — Protocole 5',            room: 'Sécurité',                        src: 'assets/field-ops/scanner/securite/qr_audio_log_securite.wav' },
-  'security-clear':   { label: 'Rien à signaler',                 room: 'Sécurité (AR)',                   src: 'assets/field-ops/ar/securite/qr_ar_rien_a_signale.wav' },
-  'servers-door':     { label: 'Salle des Serveurs',              room: 'Salle des Serveurs',              src: 'assets/field-ops/scanner/serveurs/qr_title_serveurs.wav' },
-  'servers-elodie':   { label: 'Élodie — Désespoir',              room: 'Salle des Serveurs',              src: 'assets/field-ops/scanner/serveurs/qr_audio_log_salle_des_serveurs.wav' },
-  'servers-t4':       { label: 'Carte Dr. Adrian — Code T4',      room: 'Salle des Serveurs (AR)',         src: null },
-};
+export function classifyAudioQR(id) {
+  if (ROOM_TITLE_CATALOG[id]) return { kind: 'play',  entry: ROOM_TITLE_CATALOG[id] };
+  if (AR_CUE_CATALOG[id])     return { kind: 'play',  entry: AR_CUE_CATALOG[id] };
+  if (AUDIO_CATALOG[id])      return { kind: 'audio', entry: AUDIO_CATALOG[id] };
+  return null;
+}
 
 /**
  * Paper fragments — collected via SEFY:PAPER:<n>
@@ -97,9 +124,9 @@ export const AR_OBJECTS = [
     seekHint: 'Retournez-vous et regardez vers le bas…',
   },
   {
-    id: 'tier3-card',
+    id: 'tier4-card',
     qrCode: 'SEFY:AR:CARD',
-    label: 'CARTE ACCÈS TIER 3',
+    label: 'CARTE ACCÈS TIER 4',
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 3 obtenue.',
     seekDirection: { yaw: -90, pitch: 25 },

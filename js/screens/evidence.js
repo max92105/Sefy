@@ -9,8 +9,10 @@
  *    pieces can be dragged around like a jigsaw
  */
 
-import { AUDIO_CATALOG, PAPER_CATALOG, CARD_CODES } from '../stages/field-ops/config.js';
+import { AUDIO_CATALOG, VIDEO_LOG_CATALOG, PAPER_CATALOG, CARD_CODES, classifyAudioQR } from '../stages/field-ops/config.js';
 import { addKeycard, saveState } from '../state.js';
+import { playVideo } from '../components/video-player.js';
+import { playSFX } from '../ui.js';
 
 /* ═══════════════  Data  ═══════════════ */
 
@@ -57,18 +59,21 @@ export function createInventoryScreen() {
 
       <!-- Paper puzzle overlay -->
       <div class="inv-paper-overlay hidden" id="inv-paper-overlay">
+        <div class="inv-paper-area" id="inv-paper-area"></div>
         <div class="inv-paper-header">
           <span>FRAGMENTS DE PAPIER</span>
-          <button class="btn btn-outline btn-sm" id="inv-paper-close">✕ FERMER</button>
+          <div class="inv-paper-actions">
+            <button class="btn btn-outline btn-sm" id="inv-paper-reset">↺ POSITIONS</button>
+            <button class="btn btn-outline btn-sm" id="inv-paper-close">✕ FERMER</button>
+          </div>
         </div>
-        <div class="inv-paper-area" id="inv-paper-area"></div>
       </div>
 
       <!-- DEBUG: manual QR input (REMOVE BEFORE PROD) -->
       <div class="inv-debug" id="inv-debug">
         <div class="inv-debug-title">⚠ DEBUG QR</div>
         <div class="inv-debug-row">
-          <input type="text" id="inv-debug-input" class="inv-debug-input" placeholder="SEFY:KEY:RED, SEFY:AUDIO:cmd-center, SEFY:PAPER:1...">
+          <input type="text" id="inv-debug-input" class="inv-debug-input" placeholder="SEFY:KEY:RED, SEFY:AUDIO:cmd-center, SEFY:VIDEO:chief-adrian, SEFY:PAPER:1...">
           <button class="btn btn-outline btn-sm" id="inv-debug-btn">SCAN</button>
         </div>
         <div class="inv-debug-feedback" id="inv-debug-feedback"></div>
@@ -122,6 +127,17 @@ export function populateInventory(state) {
       const el = buildItem('🔊', a.label, '#00ccff', 'playable');
       el.dataset.audioSrc = a.src;
       el.addEventListener('click', () => playAudioLog(a.src, el));
+      return el;
+    })));
+  }
+
+  // --- Video Logs ---
+  if (state.videoLogs?.length) {
+    hasItems = true;
+    container.appendChild(buildSection('LOGS VIDÉO', state.videoLogs.map(id => {
+      const a = VIDEO_LOG_CATALOG[id] || { label: id, src: '' };
+      const el = buildItem('🎬', a.label, '#ff8c00', 'playable');
+      el.addEventListener('click', () => playVideo(a.src));
       return el;
     })));
   }
@@ -215,13 +231,24 @@ function hideZoom() {
 
 /* ═══════════════  Paper Puzzle  ═══════════════ */
 
+let paperState = null;
+
 function openPaperPuzzle(state) {
+  paperState = state;
   const overlay = document.getElementById('inv-paper-overlay');
   const area = document.getElementById('inv-paper-area');
   if (!overlay || !area) return;
+  renderPapers();
+  overlay.classList.remove('hidden');
+}
 
+/** (Re)render the paper pieces, restoring each piece's saved position. */
+function renderPapers() {
+  const area = document.getElementById('inv-paper-area');
+  if (!area || !paperState) return;
   area.innerHTML = '';
-  const papers = state.papers || [];
+  const papers = paperState.papers || [];
+  const positions = paperState.paperPositions || {};
 
   papers.forEach((id, i) => {
     const p = PAPER_CATALOG[id];
@@ -230,14 +257,27 @@ function openPaperPuzzle(state) {
     img.src = p.image;
     img.className = 'inv-paper-piece';
     img.draggable = false;
-    img.style.left = `${20 + (i % 2) * 40}%`;
-    img.style.top = `${10 + i * 20}%`;
     img.dataset.paperId = id;
+    const pos = positions[id];
+    if (pos) {
+      img.style.left = `${pos.x}px`;
+      img.style.top = `${pos.y}px`;
+    } else {
+      // Default scatter for pieces never moved yet.
+      img.style.left = `${20 + (i % 2) * 40}%`;
+      img.style.top = `${15 + i * 20}%`;
+    }
     makeDraggable(img);
     area.appendChild(img);
   });
+}
 
-  overlay.classList.remove('hidden');
+/** Forget all saved positions and re-scatter the pieces. */
+function resetPaperPositions() {
+  if (!paperState) return;
+  paperState.paperPositions = {};
+  saveState(paperState);
+  renderPapers();
 }
 
 function closePaperPuzzle() {
@@ -275,8 +315,19 @@ function makeDraggable(el) {
   };
 
   const onEnd = () => {
+    if (!dragging) return;
     dragging = false;
     el.classList.remove('dragging');
+    // Persist this piece's position (px relative to the drag area) so it stays
+    // put across sessions.
+    if (paperState && el.dataset.paperId) {
+      if (!paperState.paperPositions) paperState.paperPositions = {};
+      paperState.paperPositions[el.dataset.paperId] = {
+        x: parseFloat(el.style.left) || 0,
+        y: parseFloat(el.style.top) || 0,
+      };
+      saveState(paperState);
+    }
   };
 
   el.addEventListener('mousedown', onStart);
@@ -323,12 +374,27 @@ function processDebugQR(data, state) {
     return added ? `✓ Carte ${value} ajoutée` : `— Carte ${value} déjà possédée`;
   }
   if (type === 'AUDIO') {
-    if (!AUDIO_CATALOG[value]) return `✗ Audio inconnu: ${value}`;
+    const found = classifyAudioQR(value);
+    if (!found) return `✗ Audio inconnu: ${value}`;
+    const { kind, entry } = found;
+    // Play-only (room titles & AR cues): trigger the sound so it can be tested.
+    if (kind === 'play') {
+      playSFX(entry.src);
+      return `▶ Lecture : ${entry.label}`;
+    }
     if (!state.audioLogs) state.audioLogs = [];
     if (state.audioLogs.includes(value)) return `— Audio ${value} déjà collecté`;
     state.audioLogs.push(value);
     saveState(state);
-    return `✓ Audio ${AUDIO_CATALOG[value].label} ajouté`;
+    return `✓ Audio ${entry.label} ajouté`;
+  }
+  if (type === 'VIDEO') {
+    const entry = VIDEO_LOG_CATALOG[value];
+    if (!entry) return `✗ Vidéo inconnue: ${value}`;
+    if (!state.videoLogs) state.videoLogs = [];
+    if (!state.videoLogs.includes(value)) { state.videoLogs.push(value); saveState(state); }
+    playVideo(entry.src);
+    return `🎬 ${entry.label}`;
   }
   if (type === 'PAPER') {
     if (!PAPER_CATALOG[value]) return `✗ Papier inconnu: ${value}`;
@@ -367,6 +433,8 @@ function bindOverlays() {
   }
   const closeBtn = document.getElementById('inv-paper-close');
   if (closeBtn) closeBtn.onclick = closePaperPuzzle;
+  const resetBtn = document.getElementById('inv-paper-reset');
+  if (resetBtn) resetBtn.onclick = resetPaperPositions;
 }
 
 /* ═══════════════  Badge  ═══════════════ */
@@ -376,6 +444,7 @@ export function updateInventoryBadge(state) {
   const count = (state.keycards || []).length
               + (state.arFound || []).length
               + (state.audioLogs || []).length
+              + (state.videoLogs || []).length
               + (state.papers || []).length
               + (state.inventory || []).length;
   if (badge) {

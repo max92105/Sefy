@@ -10,13 +10,7 @@ import { delay } from '../../ui.js';
 import { showBanner, getDeadlineISO } from '../../components/banner.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { fbClaimAgent } from '../../firebase-config.js';
-import { INTRO_SEQUENCE } from './config.js';
-
-/* ───────── Media paths ───────── */
-const MEDIA = {
-  agentEmy: 'assets/images/agente_emy.png',
-  agentLea: 'assets/images/agente_lea.png',
-};
+import { INTRO_SEQUENCE, AGENT_IMAGES } from './config.js';
 
 const PREFIX = 'briefing';
 
@@ -42,7 +36,7 @@ export function createScreen() {
     <div class="agent-overlay hidden" id="agent-card-emy">
       <div class="agent-card">
         <div class="agent-photo">
-          <img src="${MEDIA.agentEmy}" alt="Agente Émy">
+          <img src="${AGENT_IMAGES.emy}" alt="Agente Émy">
         </div>
         <div class="agent-info">
           <span class="agent-rank">AGENTE</span>
@@ -54,7 +48,7 @@ export function createScreen() {
     <div class="agent-overlay hidden" id="agent-card-lea">
       <div class="agent-card">
         <div class="agent-photo">
-          <img src="${MEDIA.agentLea}" alt="Agente Léa">
+          <img src="${AGENT_IMAGES.lea}" alt="Agente Léa">
         </div>
         <div class="agent-info">
           <span class="agent-rank">AGENTE</span>
@@ -77,11 +71,11 @@ export function createScreen() {
       <p class="agent-select-prompt">QUI ÊTES-VOUS ?</p>
       <div class="agent-select-cards">
         <button class="agent-select-btn" data-agent="emy">
-          <img src="${MEDIA.agentEmy}" alt="Émy">
+          <img src="${AGENT_IMAGES.emy}" alt="Émy">
           <span>ÉMY</span>
         </button>
         <button class="agent-select-btn" data-agent="lea">
-          <img src="${MEDIA.agentLea}" alt="Léa">
+          <img src="${AGENT_IMAGES.lea}" alt="Léa">
           <span>LÉA</span>
         </button>
       </div>

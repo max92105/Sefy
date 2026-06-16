@@ -6,8 +6,7 @@
  */
 
 import { runIntroSequence } from '../intro-runner.js';
-
-const SEFY_VIDEO = 'assets/video/sefy_avatar.mp4';
+import { SEFY_AVATAR } from '../config.js';
 
 /**
  * Create the intro cinematic DOM block.
@@ -21,7 +20,7 @@ export function createIntroCinematicDOM(prefix) {
   el.innerHTML = `
     <div class="briefing-center" id="${prefix}-intro-center">
       <video id="${prefix}-avatar-video" class="ai-avatar-video" loop muted playsinline preload="auto">
-        <source src="${SEFY_VIDEO}" type="video/mp4">
+        <source src="${SEFY_AVATAR}" type="video/mp4">
       </video>
       <div class="briefing-bottom">
         <div class="briefing-terminal" id="${prefix}-terminal">

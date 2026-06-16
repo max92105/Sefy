@@ -7,6 +7,8 @@
  * type so the music starts the instant the user touches the screen.
  */
 
+import { APP_AUDIO } from '../config.js';
+
 let bgAudioEl = null;
 let started = false;
 let listenersAttached = false;
@@ -17,7 +19,7 @@ export function createBgMusic() {
   bgAudioEl.id = 'bg-music';
   bgAudioEl.loop = true;
   bgAudioEl.preload = 'auto';
-  bgAudioEl.innerHTML = `<source src="assets/audio/background_music.mp3" type="audio/mpeg">`;
+  bgAudioEl.innerHTML = `<source src="${APP_AUDIO.bgMusic}" type="audio/mpeg">`;
   document.body.appendChild(bgAudioEl);
 }
 

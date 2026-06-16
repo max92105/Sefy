@@ -4,8 +4,14 @@
  */
 
 const MEDIA = {
-  audio1: 'assets/audio/intro_1.wav',
-  audio2: 'assets/audio/intro_2.wav',
+  audio1: 'assets/briefings/intro_1.wav',
+  audio2: 'assets/briefings/intro_2.wav',
+};
+
+/** Agent identity photos shown during the briefing. */
+export const AGENT_IMAGES = {
+  emy: 'assets/briefings/agente_emy.png',
+  lea: 'assets/briefings/agente_lea.png',
 };
 
 export const INTRO_SEQUENCE = [

@@ -2,6 +2,8 @@
  * UI Helpers — screen transitions, modals, audio
  */
 
+import { APP_AUDIO } from './config.js';
+
 // ---- Screen Management ----
 
 /** Show a screen by id, hide all others */
@@ -144,13 +146,13 @@ export function stopMusic() {
 export function initButtonSounds() {
   document.addEventListener('pointerenter', (e) => {
     if (e.target.closest('button')) {
-      playSFX('assets/audio/button_hovered.mp3');
+      playSFX(APP_AUDIO.buttonHover);
     }
   }, true);
 
   document.addEventListener('click', (e) => {
     if (e.target.closest('button')) {
-      playSFX('assets/audio/button_clicked.mp3');
+      playSFX(APP_AUDIO.buttonClick);
     }
   }, true);
 }

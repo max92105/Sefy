@@ -4,7 +4,7 @@
  */
 
 const MEDIA = {
-  audio: 'assets/audio/briefing 4.wav',
+  audio: 'assets/briefings/briefing 4.wav',
 };
 
 export const INTRO_SEQUENCE = [

@@ -8,7 +8,7 @@
  *   { time: <ms>, type: 'action', action: '<name>', ...extra }
  *
  * Built-in actions:
- *   playAudio  — { action: 'playAudio', src: 'assets/audio/…' }
+ *   playAudio  — { action: 'playAudio', src: 'assets/briefings/…' }
  *
  * Custom actions are dispatched to the `actionHandlers` map.
  * If a handler returns a promise, the sequence waits for it.

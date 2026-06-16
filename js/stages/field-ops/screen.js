@@ -17,7 +17,7 @@ import { createIntroCinematicDOM, startIntroCinematic } from '../../components/i
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, AUDIO_CATALOG, PAPER_CATALOG } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, AUDIO_CATALOG, PAPER_CATALOG, SFX } from './config.js';
 
 const PREFIX = 'field-ops';
 
@@ -383,7 +383,7 @@ function handleQRCode(data, stage, state) {
 
     if (isNew) {
       showQRCardReveal(value);
-      playSFX('assets/audio/card_found.wav');
+      playSFX(SFX.cardFound);
       showQRFeedback(`${item?.label || value} collectée !`, 'success');
     } else {
       showQRFeedback(`${item?.label || value} — déjà en possession.`, 'info');
@@ -418,7 +418,7 @@ function handleQRCode(data, stage, state) {
       state.papers.push(value);
       saveState(state);
       updateInventoryBadge(state);
-      playSFX('assets/audio/card_found.wav');
+      playSFX(SFX.cardFound);
       showQRFeedback(`📜 ${paper.label} collecté !`, 'success');
     } else {
       showQRFeedback(`📜 ${paper.label} — déjà collecté.`, 'info');
@@ -434,7 +434,7 @@ function handleQRCode(data, stage, state) {
       saveState(state);
       updateInventoryBadge(state);
       showQRFeedback(`Objet collecté : ${value}`, 'success');
-      playSFX('assets/audio/card_found.wav');
+      playSFX(SFX.cardFound);
     } else {
       showQRFeedback(`${value} — déjà collecté.`, 'info');
     }
@@ -537,7 +537,7 @@ async function startARScanner(stage, state, onSolved) {
 
     cooldown = true;
     if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX('assets/audio/loc_position_trouve.wav');
+    playSFX(SFX.positionFound);
     startSeeking(obj, stage, state, onSolved);
   }, 250);
 }
@@ -625,7 +625,7 @@ function startSeeking(obj, stage, state, onSolved) {
       if (seekingEl) seekingEl.classList.add('hidden');
       objectRevealed = true;
       stopOrientationTracking();
-      playSFX('assets/audio/loc_position_trouve.wav');
+      playSFX(SFX.positionFound);
       showObjectOnCamera(obj, stage, state, onSolved, abort);
       return;
     }
@@ -646,7 +646,7 @@ function startSeeking(obj, stage, state, onSolved) {
         if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
         if (seekingEl) seekingEl.classList.add('hidden');
         stopOrientationTracking();
-        playSFX('assets/audio/loc_position_trouve.wav');
+        playSFX(SFX.positionFound);
         showObjectOnCamera(obj, stage, state, onSolved, abort);
       }
     }, 100);
@@ -703,7 +703,7 @@ function collectARObject(obj, stage, state, onSolved, abort) {
   state.arFound.push(obj.id);
   saveState(state);
 
-  playSFX('assets/audio/loc_position_trouve.wav');
+  playSFX(SFX.positionFound);
   showARReveal(obj);
   renderARObjectStatus();
   updateInventoryBadge(state);
@@ -727,7 +727,7 @@ function completeARScan(stage, state, onSolved) {
   stopARScanner();
   solvePuzzle(state, stage.id);
   showARFeedback('Tous les objets localisés !', 'success');
-  playSFX('assets/audio/loc_position_trouve.wav');
+  playSFX(SFX.positionFound);
   setTimeout(() => onSolved(stage), 3000);
 }
 
@@ -759,7 +759,7 @@ function resumeARQRScanning(stage, state, onSolved) {
     if (!obj || foundObjects.includes(obj.id)) return;
     cooldown = true;
     if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX('assets/audio/loc_position_trouve.wav');
+    playSFX(SFX.positionFound);
     startSeeking(obj, stage, state, onSolved);
   }, 250);
 }

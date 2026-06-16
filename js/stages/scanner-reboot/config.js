@@ -15,24 +15,24 @@
 
 const MEDIA = {
   // Intro / Briefing 2
-  briefing_1:         'assets/audio/briefing 2.1.wav',
-  briefing_2:         'assets/audio/briefing 2.2.wav',
+  briefing_1:         'assets/briefings/briefing 2.1.wav',
+  briefing_2:         'assets/briefings/briefing 2.2.wav',
 
   // Per-location arrival audio
-  serverRoom:       'assets/audio/loc_arrive_salle_serveur.wav',
-  security:         'assets/audio/loc_arrive_securite.wav',
+  serverRoom:       'assets/scanner-reboot/loc_arrive_salle_serveur.wav',
+  security:         'assets/scanner-reboot/loc_arrive_securite.wav',
 
 
   // Transition audio (directing player to next location)
-  toServerRoom:     'assets/audio/loc_quitte_centre_commandement.wav',
-  toSecurity:       'assets/audio/loc_fini_salle_serveur.wav',
-  toCommandCenter:  'assets/audio/loc_quitte_securite.wav',
+  toServerRoom:     'assets/scanner-reboot/loc_quitte_centre_commandement.wav',
+  toSecurity:       'assets/scanner-reboot/loc_fini_salle_serveur.wav',
+  toCommandCenter:  'assets/scanner-reboot/loc_quitte_securite.wav',
 
   // Geo permission + confirmation
-  geoConfirmed:     'assets/audio/loc_position_trouve.wav',
+  geoConfirmed:     'assets/scanner-reboot/loc_position_trouve.wav',
 
   // Played once the three codes are validated (entering the DECRYPT wait)
-  allCodes:         'assets/audio/loc_all_codes.wav',
+  allCodes:         'assets/scanner-reboot/loc_all_codes.wav',
 };
 
 /** Voice line played the moment all three codes are found and validated. */
@@ -44,14 +44,14 @@ export const ZONE_FOUND_AUDIO = MEDIA.geoConfirmed;
 /* ═══════════════  Proximity Zones (geo tracker)  ═══════════════
    Distance bands for the "hot / cold" radar, closest → farthest.
    `audio` plays once when the player FIRST enters that zone (movement cue).
-   Set audio to a .wav path in assets/audio/, or null for no cue.
+   Set audio to a .wav path in assets/scanner-reboot/, or null for no cue.
    ════════════════════════════════════════════════════════════════ */
 export const ZONES = [
-  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !',                 audio: 'assets/audio/loc_brulant.wav' },
-  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.',           audio: 'assets/audio/loc_chaud.wav' },
-  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.',            audio: 'assets/audio/loc_tiede.wav' },
-  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.',    audio: 'assets/audio/loc_froid.wav' },
-  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing', color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.', audio: 'assets/audio/loc_perdu.wav' },
+  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !',                 audio: 'assets/scanner-reboot/loc_brulant.wav' },
+  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.',           audio: 'assets/scanner-reboot/loc_chaud.wav' },
+  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.',            audio: 'assets/scanner-reboot/loc_tiede.wav' },
+  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.',    audio: 'assets/scanner-reboot/loc_froid.wav' },
+  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing', color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.', audio: 'assets/scanner-reboot/loc_perdu.wav' },
 ];
 
 /* ═══════════════  Intro Sequence (Briefing 2)  ═══════════════ */

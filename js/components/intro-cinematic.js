@@ -166,7 +166,9 @@ export function replayIntroCinematic(prefix, sequence, onEnd) {
 
   // Neutralize every custom flow action: skip it and keep the narration flowing.
   // (playAudio is handled internally by the runner, so voice still plays.)
-  const safeHandlers = new Proxy({}, { get: () => async () => { /* no-op, continue */ } });
+  // Returning 'reset-clock' mirrors the pause-then-resume actions (permission
+  // requests, agent select) so multi-part sequences keep their part-2 timing.
+  const safeHandlers = new Proxy({}, { get: () => async () => 'reset-clock' });
 
   _replayCtrl = { abortCtrl, end };
   // Full-screen cinematic during replay too.

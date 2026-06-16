@@ -11,12 +11,13 @@ import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
 import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
-import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setHintButton, setReplayVisible } from './components/nav.js';
+import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible } from './components/nav.js';
 import { replayIntroCinematic, clearIntroPlaying } from './components/intro-cinematic.js';
 import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from './screens/stage-briefing.js';
-import { getStageHints } from './stages/hints.js';
 import { INTRO_SEQUENCE as geoIntroSequence } from './stages/geo-activation/config.js';
 import { INTRO_SEQUENCE as sefyRogueIntroSequence } from './stages/sefy-rogue/config.js';
+import { INTRO_SEQUENCE as scannerRebootIntroSequence, ALL_CODES_AUDIO } from './stages/scanner-reboot/config.js';
+import { INTRO_SEQUENCE as fieldOpsIntroSequence } from './stages/field-ops/config.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 
@@ -24,7 +25,7 @@ import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './com
 import { createTerminalScreen, runBootSequence } from './intro/screens/boot.js';
 import { createLandingScreen, runLanding } from './intro/screens/landing.js';
 import { createScreen as createBriefingScreen, start as runBriefing } from './stages/mission-briefing/screen.js';
-import { createStageScreen, populateStage, openHintModal } from './screens/stage.js';
+import { createStageScreen, populateStage, openHintModal, syncHintBadge } from './screens/stage.js';
 import { createInventoryScreen, populateInventory, updateInventoryBadge, bindDebugQR } from './screens/evidence.js';
 import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
 import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
@@ -158,6 +159,8 @@ const stageStarters = {
 const introReplays = {
   'geo-activation': geoIntroSequence,
   'sefy-rogue':     sefyRogueIntroSequence,
+  'scanner-reboot': scannerRebootIntroSequence,
+  'field-ops':      fieldOpsIntroSequence,
 };
 
 /**
@@ -167,9 +170,7 @@ const introReplays = {
  */
 function updateStageTools(stage, { replayable = false } = {}) {
   if (!stage) return;
-  const hints = getStageHints(stage.id);
-  const used = (state.hintsUsed && state.hintsUsed[stage.id]) || 0;
-  setHintButton(hints.length - used, hints.length);
+  syncHintBadge(stage, state);
   setReplayVisible(replayable && !!introReplays[stage.id]);
 }
 
@@ -185,6 +186,20 @@ function replayCurrentIntro() {
   replayIntroCinematic(BRIEFING_PREFIX, sequence, () => {
     if (returnScreenId) showScreen(returnScreenId);
   });
+}
+
+/** Play a one-off SEFY voice line, independent of any stage's audio lifecycle. */
+let voiceAudio = null;
+function playVoice(src) {
+  if (!src) return;
+  try {
+    if (voiceAudio) voiceAudio.pause();
+    voiceAudio = new Audio(src);
+    voiceAudio.volume = 0.9;
+    voiceAudio.play().catch(() => {});
+  } catch {
+    // Audio unavailable — ignore.
+  }
 }
 
 function enterStage(stage) {
@@ -339,7 +354,8 @@ function logStageEntry(stageId) {
 }
 
 function onPuzzleSolved(stage) {
-  // scanner-reboot: after geo found, wait for terminal DECRYPT before advancing
+  // scanner-reboot: all three codes validated → play the "all codes" voice line,
+  // then wait for the terminal DECRYPT before advancing.
   if (stage.id === 'scanner-reboot') {
     goTerminalWait('decrypt', () => {
       state.decryptActivated = true;
@@ -351,6 +367,9 @@ function onPuzzleSolved(stage) {
         enterStage(next);
       }
     });
+    // Played after goTerminalWait (which runs the scanner cleanup) so the line
+    // isn't immediately stopped.
+    playVoice(ALL_CODES_AUDIO);
     return;
   }
 

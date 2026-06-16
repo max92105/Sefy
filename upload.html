@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>SEFY // TRANSFERT</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Upload page (spy terminal theme, reuses style.css variables) ── */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: var(--space-md);
+    }
+
+    .upload-panel {
+      width: 100%;
+      max-width: 520px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.06), inset 0 0 60px rgba(0, 0, 0, 0.4);
+      padding: var(--space-lg);
+      animation: panelIn var(--transition-slow) ease;
+    }
+    @keyframes panelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    /* Header */
+    .up-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+    .up-tag {
+      font-size: var(--font-size-xs);
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      color: var(--bg-dark);
+      background: var(--accent-green);
+      padding: 2px 8px;
+    }
+    .up-title {
+      font-size: var(--font-size-sm);
+      letter-spacing: 0.18em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    .up-status {
+      margin-left: auto;
+      font-size: var(--font-size-xs);
+      letter-spacing: 0.1em;
+      color: var(--accent-amber);
+    }
+    .up-status.online { color: var(--accent-green); }
+
+    /* File card */
+    .up-file {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin: var(--space-lg) 0;
+      padding: var(--space-md);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-green);
+    }
+    .up-file-icon { font-size: 1.8rem; line-height: 1; filter: drop-shadow(0 0 6px rgba(0,255,65,0.4)); }
+    .up-file-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .up-file-name {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+    .up-file-meta { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-dim); }
+    .up-file-class {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+      padding: 2px 5px;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    .up-phase { animation: panelIn var(--transition-normal) ease; }
+    .up-phase.hidden { display: none; }
+
+    .up-message {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-lg);
+    }
+    #btn-start { width: 100%; }
+
+    /* Progress */
+    .up-progress {
+      height: 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+    }
+    .up-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-green-dim), var(--accent-green));
+      box-shadow: 0 0 12px rgba(0, 255, 65, 0.6);
+      transition: width 120ms linear;
+    }
+    .up-progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      color: var(--accent-green);
+      margin-top: var(--space-sm);
+    }
+    .up-progress-meta .dim { color: var(--text-dim); }
+
+    /* Log */
+    .up-log {
+      margin-top: var(--space-md);
+      height: 150px;
+      overflow-y: auto;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      padding: var(--space-sm) var(--space-md);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      line-height: 1.7;
+      color: var(--accent-green);
+    }
+    .up-log-line { animation: panelIn 200ms ease; }
+    .up-log-line .ok { color: var(--accent-green); }
+    .up-log-line .err { color: var(--accent-red); }
+    .up-log-cursor::after { content: '_'; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Success */
+    #phase-success { text-align: center; padding-top: var(--space-md); }
+    .up-success-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto var(--space-md);
+      border: 2px solid var(--accent-green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: var(--accent-green);
+      box-shadow: 0 0 25px rgba(0, 255, 65, 0.4);
+      animation: pop 500ms cubic-bezier(.17,.89,.32,1.28);
+    }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    .up-success-title {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-lg);
+      letter-spacing: 0.2em;
+      color: var(--accent-green);
+      text-shadow: 0 0 12px rgba(0, 255, 65, 0.5);
+    }
+    .up-success-sub {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      margin-top: var(--space-sm);
+    }
+
+    /* Reward reveal */
+    .up-reward {
+      margin-top: var(--space-lg);
+      padding-top: var(--space-lg);
+      border-top: 1px solid var(--border);
+      animation: panelIn var(--transition-slow) ease;
+    }
+    .up-reward.hidden { display: none; }
+    .up-reward-label {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      letter-spacing: 0.15em;
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber);
+      padding: 3px 8px;
+      margin-bottom: var(--space-md);
+    }
+    .up-reward-media {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline-overlay" aria-hidden="true"></div>
+
+  <div class="upload-panel">
+    <div class="up-header">
+      <span class="up-tag">SEFY</span>
+      <span class="up-title">Transfert sécurisé</span>
+      <span class="up-status" id="up-status">CONNEXION…</span>
+    </div>
+
+    <div class="up-file">
+      <span class="up-file-icon">🗎</span>
+      <div class="up-file-info">
+        <span class="up-file-name" id="up-file-name">—</span>
+        <span class="up-file-meta" id="up-file-meta">—</span>
+      </div>
+      <span class="up-file-class" id="up-file-class">CONFIDENTIEL</span>
+    </div>
+
+    <!-- Phase 1: Prompt -->
+    <div class="up-phase hidden" id="phase-prompt">
+      <p class="up-message" id="up-prompt-msg"></p>
+      <button class="btn btn-primary btn-glow btn-large" id="btn-start">INITIER LE TRANSFERT</button>
+    </div>
+
+    <!-- Phase 2: Uploading -->
+    <div class="up-phase hidden" id="phase-upload">
+      <div class="up-progress"><div class="up-progress-bar" id="up-bar"></div></div>
+      <div class="up-progress-meta">
+        <span id="up-percent">0%</span>
+        <span class="dim" id="up-bytes">0 / 0 Mo</span>
+      </div>
+      <div class="up-log" id="up-log"></div>
+    </div>
+
+    <!-- Phase 3: Success -->
+    <div class="up-phase hidden" id="phase-success">
+      <div class="up-success-icon">✓</div>
+      <p class="up-success-title">TRANSFERT RÉUSSI</p>
+      <p class="up-success-sub" id="up-success-sub"></p>
+      <div class="up-reward hidden" id="up-reward"></div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    /* ════════════════════════════════════════════════════════════
+       CONFIG — defaults, overridable via URL query params so this one
+       page can reward different media. Examples:
+         upload.html?file=JOURNAL_DR_VARGA.dat&type=video&reward=assets/video/reward1.mp4
+         upload.html?type=image&reward=assets/images/declassified.png
+       ════════════════════════════════════════════════════════════ */
+    const P = new URLSearchParams(location.search);
+    const CONFIG = {
+      fileName:       P.get('file')   || 'TRANSMISSION_FINALE.dat',
+      fileSizeMo:     parseFloat(P.get('size')) || 47.3,
+      classification: P.get('class')  || 'CONFIDENTIEL — NIVEAU 5',
+      promptMsg:      P.get('msg')    ||
+        'Fichier détecté sur ce poste. Émetteur : Dr. [DONNÉES CORROMPUES] — signal vital perdu.\n\nLe fichier doit être transféré vers le serveur central avant qu\'il ne soit effacé. Confirmer le transfert ?',
+      successMsg:     P.get('done')   || 'Fichier livré au serveur central. Données préservées.',
+      durationMs:     Number(P.get('ms')) || 7000,
+      reward: {
+        type: (P.get('type') || 'none').toLowerCase(), // 'video' | 'image' | 'none'
+        src:  P.get('reward') || '',
+      },
+    };
+
+    const LOG_LINES = [
+      ['Établissement du canal sécurisé…', 'ok'],
+      ['Authentification de l\'agent… ACCÈS ACCORDÉ', 'ok'],
+      ['Chiffrement AES-256 activé', 'ok'],
+      ['Analyse de l\'intégrité du fichier…', 'ok'],
+      ['Compression des données…', 'ok'],
+      ['Transfert des blocs vers le serveur…', 'ok'],
+      ['Vérification distante des paquets…', 'ok'],
+      ['Synchronisation du serveur central…', 'ok'],
+      ['Finalisation du transfert…', 'ok'],
+    ];
+
+    /* ── Elements ── */
+    const el = (id) => document.getElementById(id);
+    const statusEl = el('up-status');
+    const barEl = el('up-bar');
+    const percentEl = el('up-percent');
+    const bytesEl = el('up-bytes');
+    const logEl = el('up-log');
+
+    function showPhase(name) {
+      ['prompt', 'upload', 'success'].forEach(p =>
+        el('phase-' + p).classList.toggle('hidden', p !== name));
+    }
+
+    function appendLog(text, cls) {
+      const line = document.createElement('div');
+      line.className = 'up-log-line';
+      line.innerHTML = `<span class="dim">&gt;</span> <span class="${cls || ''}">${text}</span>`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setBar(progress) {
+      const pct = Math.min(100, Math.round(progress));
+      barEl.style.width = pct + '%';
+      percentEl.textContent = pct + '%';
+      const sent = (progress / 100 * CONFIG.fileSizeMo).toFixed(1);
+      bytesEl.textContent = `${sent} / ${CONFIG.fileSizeMo.toFixed(1)} Mo`;
+    }
+
+    /* ── Arrival: brief "connecting", then the prompt ── */
+    function init() {
+      el('up-file-name').textContent = CONFIG.fileName;
+      el('up-file-meta').textContent = `${CONFIG.fileSizeMo.toFixed(1)} Mo · .dat chiffré`;
+      el('up-file-class').textContent = CONFIG.classification;
+      el('up-prompt-msg').textContent = CONFIG.promptMsg;
+      el('up-success-sub').textContent = CONFIG.successMsg;
+
+      setTimeout(() => {
+        statusEl.textContent = '● EN LIGNE';
+        statusEl.classList.add('online');
+        showPhase('prompt');
+      }, 1600);
+    }
+
+    /* ── Fake upload: eased + jittery progress with milestone logs ── */
+    function runUpload() {
+      showPhase('upload');
+      statusEl.textContent = '● TRANSFERT';
+      let progress = 0;
+      let nextLog = 0;
+      const start = Date.now();
+
+      const tick = () => {
+        const t = Math.min(1, (Date.now() - start) / CONFIG.durationMs);
+        // ease-out target, with a little jitter and occasional micro-stall
+        const target = (1 - Math.pow(1 - t, 2.2)) * 100;
+        if (Math.random() > 0.15) {
+          progress = Math.max(progress, Math.min(100, target - Math.random() * 3));
+        }
+        if (t >= 1) progress = 100;
+        setBar(progress);
+
+        // Reveal log lines spread across the progress.
+        const gate = (nextLog + 1) / (LOG_LINES.length + 1) * 100;
+        if (nextLog < LOG_LINES.length && progress >= gate) {
+          appendLog(LOG_LINES[nextLog][0], LOG_LINES[nextLog][1]);
+          nextLog++;
+        }
+
+        if (progress >= 100) {
+          while (nextLog < LOG_LINES.length) { appendLog(LOG_LINES[nextLog][0], LOG_LINES[nextLog][1]); nextLog++; }
+          appendLog('TRANSFERT TERMINÉ — 100%', 'ok');
+          setTimeout(showSuccess, 700);
+          return;
+        }
+        setTimeout(tick, 110 + Math.random() * 170);
+      };
+      tick();
+    }
+
+    /* ── Success + reward reveal ── */
+    function showSuccess() {
+      showPhase('success');
+      statusEl.textContent = '● TERMINÉ';
+
+      const r = CONFIG.reward;
+      if (r.type !== 'none' && r.src) {
+        const rewardEl = el('up-reward');
+        let media = '';
+        if (r.type === 'video') {
+          media = `<video class="up-reward-media" src="${r.src}" controls autoplay playsinline></video>`;
+        } else if (r.type === 'image') {
+          media = `<img class="up-reward-media" src="${r.src}" alt="Fichier déclassifié">`;
+        }
+        rewardEl.innerHTML = `<span class="up-reward-label">⚑ FICHIER DÉCLASSIFIÉ</span>${media}`;
+        setTimeout(() => rewardEl.classList.remove('hidden'), 900);
+      }
+    }
+
+    el('btn-start').addEventListener('click', runUpload, { once: true });
+    init();
+  </script>
+</body>
+</html>

@@ -24,12 +24,11 @@ const WAIT_CONFIGS = {
   },
   decrypt: {
     instructions: `
-      <p>Zone localisée avec succès.</p>
-      <p>Trouvez le code d'accès caché dans cette zone.</p>
-      <p>Connectez-vous à un terminal de l'installation et entrez le code pour augmenter votre niveau d'accès.</p>
-      <p>Utilisez ensuite la commande <strong>DECRYPT</strong> dans le terminal pour activer mon module de décryptage.</p>
+      <p>Nous avons maintenant les trois codes nécessaires.</p>
+      <p>Connectez-vous à un terminal avec le <strong>compte administrateur</strong> et augmentez vos accès au <strong>niveau Tier 2</strong>.</p>
+      <p>Ensuite, depuis votre compte, activez mon module de décryptage avec la commande <strong>DECRYPT</strong>.</p>
     `,
-    statusText: 'En attente de l\'activation via le terminal…',
+    statusText: 'En attente de la réactivation du module de décryptage…',
     field: 'decryptActivated',
     successText: '✓ Module de décryptage activé !',
   },

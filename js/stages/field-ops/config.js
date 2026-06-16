@@ -66,19 +66,17 @@ export const CARD_CODES = {
 
 export const INTRO_SEQUENCE = [
   { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
-  { time: 0,      type: 'text',  text: 'Module de décryptage activé avec succès.' },
-  { time: 3000,   type: 'text',  text: 'Analyse de l\'environnement en cours…' },
-  { time: 6000,   type: 'text',  text: 'Le scanner optique est prêt.' },
-  { time: 9000,   type: 'text',  text: 'Explorez l\'installation pour collecter les indices et objets nécessaires.' },
-  { time: 13000,  type: 'text',  text: 'Le module d\'analyse environnementale est encore verrouillé.' },
-  { time: 17000,  type: 'text',  text: 'Il faudra un accès Tier 3 pour l\'activer depuis le terminal.' },
-  { time: 21000,  type: 'text',  text: 'Autorisez l\'accès à la caméra pour commencer.' },
-  { time: 22000,  type: 'action', action: 'requestCamera' },
-  // — pauses until camera granted, then time resets to 0 —
-  { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
-  { time: 0,      type: 'text',  text: 'Accès caméra confirmé.' },
-  { time: 2000,   type: 'text',  text: 'Activation du scanner optique…' },
-  { time: 4000,   type: 'action', action: 'startScanner' },
+  { time: 0,      type: 'text',  text: 'Module de Décryption réactiver.' },
+  { time: 2000,   type: 'text',  text: 'Je peux maintenant facilement décrypter les notes des scientifiques.' },
+  { time: 5000,  type: 'text',  text: 'Donnez-moi votre approbation pour réactiver le module sur votre appareil.' },
+  { time: 9000,  type: 'action', action: 'requestCamera' },
+{   time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioConfirmed },
+  { time: 0,      type: 'text',  text: 'Accès confirmé.' },
+  { time: 1000,   type: 'text',  text: 'Activation du scanner' },
+  { time: 3000,   type: 'text',  text: 'Nous devons continuer d\’augmenter votre tier de sécurité pour pouvoir réactiver mon module environnementale.' },
+  { time: 8000,   type: 'text',  text: 'Vous allez devoir fouiller le laboratoire avec l\’aide de mon module Décryption pour trouver le code Tier 3 manquant' },
+  { time: 13000,   type: 'text',  text: 'A vous de jouer, agente.' },
+  { time: 15500,   type: 'action', action: 'startScanner' },
 ];
 
 export const AR_OBJECTS = [

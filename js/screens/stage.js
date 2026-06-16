@@ -6,7 +6,7 @@ import { setupCodeEntry, getAvailableHintTier, revealHint } from '../puzzles.js'
 import { hideFeedback } from '../ui.js';
 import { openModal } from '../components/modals.js';
 import { setHintButton } from '../components/nav.js';
-import { getStageHints } from '../stages/hints.js';
+import { getHintContext } from '../stages/hints.js';
 
 /** Create the stage screen DOM */
 export function createStageScreen() {
@@ -71,11 +71,14 @@ export function populateStage(stage, state, onPuzzleSolved) {
   return cleanup;
 }
 
-/** Refresh the nav hint badge for a stage. */
-function refreshHintBadge(stage, state) {
-  const total = getStageHints(stage.id).length;
-  const used = (state.hintsUsed && state.hintsUsed[stage.id]) || 0;
-  setHintButton(total - used, total);
+/**
+ * Sync the nav hint badge to the current hint context (stage, or current room
+ * for routes). Exported so route stages can refresh it when the room changes.
+ */
+export function syncHintBadge(stage, state) {
+  const { key, hints } = getHintContext(stage, state);
+  const used = (state.hintsUsed && state.hintsUsed[key]) || 0;
+  setHintButton(hints.length - used, hints.length);
 }
 
 /** Index of the revealed hint currently shown in the modal. */
@@ -89,9 +92,9 @@ let _hintView = 0;
 export function openHintModal(currentStage, state) {
   if (!currentStage) return;
 
-  const hints = getStageHints(currentStage.id);
+  const { key, hints } = getHintContext(currentStage, state);
   const total = hints.length;
-  let used = (state.hintsUsed && state.hintsUsed[currentStage.id]) || 0;
+  let used = (state.hintsUsed && state.hintsUsed[key]) || 0;
 
   const counterEl = document.getElementById('hint-counter');
   const textEl    = document.getElementById('hint-text');
@@ -137,9 +140,9 @@ export function openHintModal(currentStage, state) {
     revealBtn.onclick = () => {
       const hint = revealHint(currentStage, state);
       if (!hint) return;
-      used = (state.hintsUsed && state.hintsUsed[currentStage.id]) || used + 1;
+      used = (state.hintsUsed && state.hintsUsed[key]) || used + 1;
       _hintView = used - 1; // jump to the freshly revealed hint
-      refreshHintBadge(currentStage, state);
+      syncHintBadge(currentStage, state);
       render();
     };
   }

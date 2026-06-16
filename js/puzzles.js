@@ -5,7 +5,7 @@
 import { validateAnswer } from './stages.js';
 import { solvePuzzle, useHint } from './state.js';
 import { showFeedback, hideFeedback, glitch } from './ui.js';
-import { getStageHints } from './stages/hints.js';
+import { getHintContext } from './stages/hints.js';
 
 /* ── Active puzzle context (one at a time) ── */
 let _ctx = null;
@@ -129,18 +129,19 @@ function _cleanup() {
  * Get the current hint tier available for a puzzle
  */
 export function getAvailableHintTier(stage, state) {
-  const used = state.hintsUsed[stage.id] || 0;
-  const maxHints = getStageHints(stage.id).length;
-  if (used >= maxHints) return null; // all hints used
+  const { key, hints } = getHintContext(stage, state);
+  const used = state.hintsUsed[key] || 0;
+  if (used >= hints.length) return null; // all hints used
   return used; // index of next hint to reveal
 }
 
 /**
- * Reveal the next hint for a stage
+ * Reveal the next hint for a stage (or the current room, for routes)
  */
 export function revealHint(stage, state) {
-  const tier = getAvailableHintTier(stage, state);
-  if (tier === null) return null;
-  useHint(state, stage.id);
-  return getStageHints(stage.id)[tier];
+  const { key, hints } = getHintContext(stage, state);
+  const used = state.hintsUsed[key] || 0;
+  if (used >= hints.length) return null;
+  useHint(state, key);
+  return hints[used];
 }

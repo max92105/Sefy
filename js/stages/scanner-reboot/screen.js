@@ -14,18 +14,10 @@ import { validateAnswer } from '../../stages.js';
 import { showFeedback, glitch } from '../../ui.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestLocationWithRetry, GEO_OPTS } from '../../utils/geolocation.js';
-import { INTRO_SEQUENCE, ROUTES } from './config.js';
+import { syncHintBadge } from '../../screens/stage.js';
+import { INTRO_SEQUENCE, ROUTES, ZONES, ZONE_FOUND_AUDIO } from './config.js';
 
 const PREFIX = 'scanner-reboot';
-
-/* ───────── Distance zones ───────── */
-const ZONES = [
-  { maxDist: 5,        label: 'BRÛLANT', cls: 'geo-burning',  color: 'var(--accent-red)',   msg: 'Vous y êtes presque !' },
-  { maxDist: 10,       label: 'CHAUD',   cls: 'geo-hot',      color: '#ff6633',             msg: 'Très proche… cherchez bien.' },
-  { maxDist: 15,       label: 'TIÈDE',   cls: 'geo-warm',     color: 'var(--accent-amber)', msg: 'Vous approchez de la zone.' },
-  { maxDist: 20,       label: 'FROID',   cls: 'geo-cold',     color: '#66bbff',             msg: 'Encore loin… continuez à explorer.' },
-  { maxDist: Infinity, label: 'GLACIAL', cls: 'geo-freezing', color: '#4488ff',             msg: 'Aucun signal détecté dans ce secteur.' },
-];
 
 const POLL_INTERVAL_MS = 800;
 
@@ -76,6 +68,10 @@ export function createScreen() {
 
       <!-- DEBUG: Remove before production -->
       <button id="${PREFIX}-skip-geo" class="btn btn-outline" style="margin-top:1rem;border-color:var(--accent-red);color:var(--accent-red);font-size:0.7rem;">⚠ SKIP GEO (DEBUG)</button>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem;justify-content:center;">
+        <button id="${PREFIX}-sim-near" class="btn btn-outline" style="border-color:var(--accent-red);color:var(--accent-red);font-size:0.7rem;">⚠ −2 m (PRÈS)</button>
+        <button id="${PREFIX}-sim-far" class="btn btn-outline" style="border-color:var(--accent-red);color:var(--accent-red);font-size:0.7rem;">⚠ +2 m (LOIN)</button>
+      </div>
     </div>
   `;
   layout.appendChild(tracker);
@@ -202,6 +198,9 @@ function startStep(stage, state, route, stepIndex, onSolved) {
     return;
   }
 
+  // Refresh the hint button to this room's hints (state.routeStep === stepIndex here).
+  syncHintBadge(stage, state);
+
   const step = route[stepIndex];
 
   if (step.geo) {
@@ -243,20 +242,28 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
   const radius    = step.geo.radius || 4;
   let solved = false;
   let lastZoneCls = '';
+  let simulating = false; // once true, debug sim drives the distance (real GPS ignored)
 
-  function onPosition(pos) {
+  // Core proximity logic — applies a distance to the zone UI / radar / solve.
+  // Driven by real GPS (onPosition) or the debug sim buttons.
+  function applyDistance(dist) {
     if (solved) return;
-    const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, targetLat, targetLng);
     const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
 
     if (distanceEl) { distanceEl.textContent = `${Math.round(dist)} m`; distanceEl.style.color = zone.color; }
     if (zoneLabel)  zoneLabel.textContent = zone.label;
     if (zoneMsg)    { zoneMsg.textContent = zone.msg; zoneMsg.style.color = zone.color; }
 
-    if (radar && zone.cls !== lastZoneCls) {
-      if (lastZoneCls) radar.classList.remove(lastZoneCls);
-      radar.classList.add(zone.cls);
+    // Zone changed → update radar pulse and play this zone's proximity cue.
+    if (zone.cls !== lastZoneCls) {
+      const isFirstZone = lastZoneCls === ''; // initial landing — no cue
+      if (radar) {
+        if (lastZoneCls) radar.classList.remove(lastZoneCls);
+        radar.classList.add(zone.cls);
+      }
       lastZoneCls = zone.cls;
+      // Only play on actual movement, not on the first reading (always GLACIAL).
+      if (!isFirstZone) playAudio(zone.audio); // no-op if zone.audio is null
     }
 
     if (dot) dot.style.animationDuration = `${Math.max(0.3, Math.min(2, dist / 10))}s`;
@@ -270,11 +277,26 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
       if (distanceEl) distanceEl.style.color = 'var(--accent-green)';
       if (radar) radar.classList.add('geo-locked');
 
-      // Short delay then show code entry
-      setTimeout(() => {
+      // "Position trouvée" cue — wait for it to finish (plus a minimum lock-on
+      // display) before showing the code entry, so the line isn't cut off.
+      playAudio(ZONE_FOUND_AUDIO);
+      const minWait  = new Promise(resolve => setTimeout(resolve, 2000));
+      const audioEnd = currentAudio
+        ? new Promise(resolve => {
+            currentAudio.addEventListener('ended', resolve);
+            currentAudio.addEventListener('error', resolve);
+          })
+        : Promise.resolve();
+      Promise.all([minWait, audioEnd]).then(() => {
         showCodeEntry(stage, state, route, stepIndex, onSolved);
-      }, 2000);
+      });
     }
+  }
+
+  function onPosition(pos) {
+    if (solved || simulating) return;
+    const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, targetLat, targetLng);
+    applyDistance(dist);
   }
 
   function onError(err) {
@@ -305,6 +327,21 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
       showCodeEntry(stage, state, route, stepIndex, onSolved);
     };
   }
+
+  // DEBUG: Simulate movement (closer / farther) so proximity zones + audio can
+  // be tested on a PC without real GPS. First click takes over from real GPS.
+  let simDist = 25; // start "far" (GLACIAL) so you can walk in through every zone
+  function simStep(delta) {
+    if (solved) return;
+    simulating = true;
+    stopWatching(); // stop real GPS from fighting the simulation
+    simDist = Math.max(0, simDist + delta);
+    applyDistance(simDist);
+  }
+  const simNearBtn = document.getElementById(`${PREFIX}-sim-near`);
+  const simFarBtn  = document.getElementById(`${PREFIX}-sim-far`);
+  if (simNearBtn) simNearBtn.onclick = () => simStep(-2);
+  if (simFarBtn)  simFarBtn.onclick  = () => simStep(+2);
 }
 
 /* ═══════════════  Phase: Code Entry  ═══════════════ */
@@ -399,13 +436,20 @@ function showTransition(stage, state, route, nextStepIndex, prevStep, onSolved) 
   const textEl = document.getElementById(`${PREFIX}-transition-text`);
   if (textEl) textEl.textContent = prevStep.transitionText;
 
-  // Play transition audio
   playAudio(prevStep.transitionAudio);
 
-  // After a delay, start the next step
-  setTimeout(() => {
+  // Wait for the audio to finish (plus a minimum display time) before advancing.
+  const minWait  = new Promise(resolve => setTimeout(resolve, 2000));
+  const audioEnd = currentAudio
+    ? new Promise(resolve => {
+        currentAudio.addEventListener('ended', resolve);
+        currentAudio.addEventListener('error', resolve);
+      })
+    : Promise.resolve();
+
+  Promise.all([minWait, audioEnd]).then(() => {
     startStep(stage, state, route, nextStepIndex, onSolved);
-  }, 4000);
+  });
 }
 
 /* ═══════════════  Helpers  ═══════════════ */

@@ -11,14 +11,13 @@
  */
 
 import { HINTS as geoActivation }  from './geo-activation/config.js';
-import { HINTS as fieldOps }       from './field-ops/config.js';
 import { HINTS as sefyRogue }      from './sefy-rogue/config.js';
 import { HINTS as deactivateSefy } from './deactivate-sefy/config.js';
 import { ROUTES as scannerRoutes, ROOM_HINTS as scannerRoomHints } from './scanner-reboot/config.js';
+import { PHASE_HINTS as fieldOpsPhaseHints } from './field-ops/config.js';
 
 const HINT_REGISTRY = {
   'geo-activation':  geoActivation,
-  'field-ops':       fieldOps,
   'sefy-rogue':      sefyRogue,
   'deactivate-sefy': deactivateSefy,
 };
@@ -31,8 +30,9 @@ export function getStageHints(stageId) {
 /**
  * Resolve the active hint set + tracking key for a stage given current state.
  * - Most stages: one hint set, keyed by stage id.
- * - scanner-reboot: the current room's hints, keyed by `scanner-reboot:<roomId>`
- *   so each room's reveals are tracked independently.
+ * - scanner-reboot: the current room's hints, keyed by `scanner-reboot:<roomId>`.
+ * - field-ops: the current phase's hints (scanner / ar), keyed by `field-ops:<phase>`.
+ *   Each context's reveals are tracked independently by its key.
  * @returns {{ key: string, hints: Array }}
  */
 export function getHintContext(stage, state) {
@@ -45,6 +45,10 @@ export function getHintContext(stage, state) {
       key: roomId ? `scanner-reboot:${roomId}` : 'scanner-reboot',
       hints: (roomId && scannerRoomHints[roomId]) || [],
     };
+  }
+  if (stage.id === 'field-ops') {
+    const phase = (state && state.arActivated) ? 'ar' : 'scanner';
+    return { key: `field-ops:${phase}`, hints: fieldOpsPhaseHints[phase] || [] };
   }
   return { key: stage.id, hints: HINT_REGISTRY[stage.id] || [] };
 }

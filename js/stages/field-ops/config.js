@@ -7,7 +7,7 @@
 const MEDIA = {
   audioIntro:     'assets/briefings/briefing 3.1.wav',
   audioConfirmed: 'assets/briefings/briefing 3.2.wav',
-  audioAR:        'assets/briefings/briefing 3.1.wav',
+  audioAR:        'assets/briefings/briefing 4.wav',
 };
 
 /** Sound effects played during field-ops (QR item collected, AR object located). */
@@ -89,11 +89,11 @@ export const PAPER_CATALOG = {
 };
 
 /**
- * AR card with code (found in Puzzle 4 AR scan).
+ * AR card with code — the Tier 4 card found via the AR scanner.
  * When clicked in inventory, zooms to reveal the code.
+ * (There is no Tier 3 card: the paper clues give the info to escalate to Tier 3.)
  */
 export const CARD_CODES = {
-  'tier3-card': { label: 'CARTE TIER 3', code: '110819805', description: 'Code PROMOTE Tier 3' },
   'tier4-card': { label: 'CARTE DR. ADRIAN', code: '999999999', description: 'Code PROMOTE Tier 4' },
 };
 
@@ -128,7 +128,7 @@ export const AR_OBJECTS = [
     qrCode: 'SEFY:AR:CARD',
     label: 'CARTE ACCÈS TIER 4',
     icon: '🪪',
-    description: 'Carte d\'accès reconstruite. Autorisation tier 3 obtenue.',
+    description: 'Carte d\'accès reconstruite. Autorisation tier 4 obtenue.',
     seekDirection: { yaw: -90, pitch: 25 },
     seekTolerance: 25,
     seekHint: 'Tournez à gauche et regardez vers le bas…',
@@ -141,24 +141,27 @@ export const AR_OBJECTS = [
    ════════════════════════════════════════════════════ */
 
 export const AR_BRIEFING_SEQUENCE = [
-  { time: 0,     type: 'action', action: 'playAudio', src: MEDIA.audioAR },
-  { time: 0,     type: 'text',  text: 'Le scanner QR est opérationnel. Mais ce n\'est pas suffisant.' },
-  { time: 4000,  type: 'text',  text: 'L\'installation contient des éléments invisibles à l\'œil nu.' },
-  { time: 8000,  type: 'text',  text: 'Le module d\'analyse environnementale AR peut les révéler…' },
-  { time: 11000, type: 'text',  text: '…mais il nécessite un accès Tier 3.' },
-  { time: 14000, type: 'text',  text: 'Trouvez un membre du personnel autorisé.' },
-  { time: 17000, type: 'text',  text: 'Il devra se connecter au terminal et utiliser la commande PROMOTE pour élever votre niveau d\'accès.' },
-  { time: 22000, type: 'text',  text: 'Ensuite, la commande AR déverrouillera le scanner.' },
-  { time: 26000, type: 'text',  text: 'En attendant, utilisez le scanner QR pour collecter les cartes d\'accès.' },
+  { time: 0, type: 'action', action: 'playAudio', src: MEDIA.audioAR },
+  { time: 0, type: 'text',  text: 'Module Environnementale réactiver.' },
+  { time: 0, type: 'text',  text: 'Nous pouvons maintenant trouver la bombe, mais je vais avoir besoin d\'accès tier 4 pour pouvoir la désamorcer.' },
+  { time: 0, type: 'text',  text: 'Avec mon module opérationnel je suis aussi capable de reconstruire des objets qui ne sont plus présents.' },
+  { time: 0, type: 'text',  text: 'Trouvé la carte d\'accès d\'Adrian et augmenter votre accès au Tier 4.' },
   { time: 30000, type: 'action', action: 'endBriefing' },
 ];
 
-/* ═══════════════  Hints  ═══════════════
-   Tiered hints for this puzzle, shown in order (vague → précis).
-   Add or remove entries to give this puzzle more or fewer hints.
+/* ═══════════════  Hints (per phase)  ═══════════════
+   field-ops has two phases, each with its own hint list (vague → précis):
+     'scanner' → before AR is activated (QR scanning / reach Tier 3).
+     'ar'      → after AR is activated (AR scanning).
+   Reveals are tracked separately per phase.
    ════════════════════════════════════════════════════════════ */
-export const HINTS = [
-  { text: '[À COMPLÉTER — indice vague]' },
-  { text: '[À COMPLÉTER — indice plus direct]' },
-  { text: '[À COMPLÉTER — indice quasi-solution]' },
-];
+export const PHASE_HINTS = {
+  scanner: [
+    { text: '[À COMPLÉTER — phase scanner QR, indice vague]' },
+    { text: '[À COMPLÉTER — phase scanner QR, indice plus direct]' },
+  ],
+  ar: [
+    { text: '[À COMPLÉTER — phase scanner AR, indice vague]' },
+    { text: '[À COMPLÉTER — phase scanner AR, indice plus direct]' },
+  ],
+};

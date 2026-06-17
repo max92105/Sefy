@@ -332,7 +332,7 @@ async function handleActivateAR() {
   await delay(400);
   printLine('Activation requise — code de confirmation nécessaire.', 'dim');
   printBlank();
-  askConfirmCode('1619', async () => {
+  askConfirmCode('1657', async () => {
     state.arActivated = true;
     appendLog(state, 'MODULE AR ACTIVÉ.');
     appendLog(state, 'SEFY - Scanner environnemental en ligne.');

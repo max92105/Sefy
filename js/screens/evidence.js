@@ -3,7 +3,7 @@
  *
  * Features:
  *  - Keycards: displayed as colored cards
- *  - AR Objects: tap to zoom & reveal code (tier3-card, tier4-card)
+ *  - AR Objects: tap to zoom & reveal code (tier4-card)
  *  - Audio Logs: tap to replay audio
  *  - Paper Fragments: tap any piece → opens puzzle overlay where all found
  *    pieces can be dragged around like a jigsaw
@@ -24,7 +24,6 @@ const KEYCARD_COLORS = {
 
 const AR_ITEM_INFO = {
   bomb:         { label: 'BOMBE',             icon: '💣', css: '#ff0040' },
-  'tier3-card': { label: 'CARTE TIER 3',     icon: '🪪', css: '#00ff41' },
   'tier4-card': { label: 'CARTE DR. ADRIAN', icon: '🪪', css: '#ffd700' },
 };
 
@@ -75,6 +74,11 @@ export function createInventoryScreen() {
         <div class="inv-debug-row">
           <input type="text" id="inv-debug-input" class="inv-debug-input" placeholder="SEFY:KEY:RED, SEFY:AUDIO:cmd-center, SEFY:VIDEO:chief-adrian, SEFY:PAPER:1...">
           <button class="btn btn-outline btn-sm" id="inv-debug-btn">SCAN</button>
+        </div>
+        <div class="inv-debug-row">
+          <button class="btn btn-outline btn-sm" id="inv-debug-bomb">+ 💣 BOMBE</button>
+          <button class="btn btn-outline btn-sm" id="inv-debug-card">+ 🪪 CARTE T4</button>
+          <button class="btn btn-danger btn-sm" id="inv-debug-reset">🗑 RESET</button>
         </div>
         <div class="inv-debug-feedback" id="inv-debug-feedback"></div>
       </div>
@@ -344,23 +348,46 @@ let debugState = null;
 
 export function bindDebugQR(state) {
   debugState = state;
-  const btn = document.getElementById('inv-debug-btn');
   const input = document.getElementById('inv-debug-input');
-  if (!btn || !input) return;
 
-  const handle = () => {
-    const val = input.value.trim();
+  // Process a debug code string, show feedback, and refresh the inventory.
+  const run = (val) => {
     if (!val) return;
     const msg = processDebugQR(val, state);
     const fb = document.getElementById('inv-debug-feedback');
-    if (fb) { fb.textContent = msg; setTimeout(() => fb.textContent = '', 3000); }
-    input.value = '';
+    if (fb) { fb.textContent = msg; setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 3000); }
     populateInventory(state);
     updateInventoryBadge(state);
   };
 
-  btn.onclick = handle;
-  input.onkeydown = (e) => { if (e.key === 'Enter') handle(); };
+  const btn = document.getElementById('inv-debug-btn');
+  if (btn && input) {
+    btn.onclick = () => { run(input.value.trim()); input.value = ''; };
+    input.onkeydown = (e) => { if (e.key === 'Enter') { run(input.value.trim()); input.value = ''; } };
+  }
+
+  // Quick-add AR objects (normally found via the orientation-seek AR scanner).
+  const bombBtn = document.getElementById('inv-debug-bomb');
+  const cardBtn = document.getElementById('inv-debug-card');
+  if (bombBtn) bombBtn.onclick = () => run('SEFY:AR:BOMB');
+  if (cardBtn) cardBtn.onclick = () => run('SEFY:AR:CARD');
+
+  // Clear every collected item (keeps mission progress, only empties inventory).
+  const resetBtn = document.getElementById('inv-debug-reset');
+  if (resetBtn) resetBtn.onclick = () => {
+    state.keycards = [];
+    state.arFound = [];
+    state.audioLogs = [];
+    state.videoLogs = [];
+    state.papers = [];
+    state.paperPositions = {};
+    state.inventory = [];
+    saveState(state);
+    const fb = document.getElementById('inv-debug-feedback');
+    if (fb) { fb.textContent = '✓ Inventaire réinitialisé'; setTimeout(() => { if (fb.textContent === '✓ Inventaire réinitialisé') fb.textContent = ''; }, 3000); }
+    populateInventory(state);
+    updateInventoryBadge(state);
+  };
 }
 
 function processDebugQR(data, state) {
@@ -406,7 +433,7 @@ function processDebugQR(data, state) {
   }
   if (type === 'AR') {
     if (!state.arFound) state.arFound = [];
-    const id = value === 'BOMB' ? 'bomb' : value === 'CARD' ? 'tier3-card' : value.toLowerCase();
+    const id = value === 'BOMB' ? 'bomb' : value === 'CARD' ? 'tier4-card' : value.toLowerCase();
     if (state.arFound.includes(id)) return `— AR ${id} déjà collecté`;
     state.arFound.push(id);
     saveState(state);

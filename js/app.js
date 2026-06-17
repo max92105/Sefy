@@ -17,7 +17,7 @@ import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from '
 import { INTRO_SEQUENCE as geoIntroSequence } from './stages/geo-activation/config.js';
 import { INTRO_SEQUENCE as sefyRogueIntroSequence } from './stages/sefy-rogue/config.js';
 import { INTRO_SEQUENCE as scannerRebootIntroSequence, ALL_CODES_AUDIO } from './stages/scanner-reboot/config.js';
-import { INTRO_SEQUENCE as fieldOpsIntroSequence } from './stages/field-ops/config.js';
+import { INTRO_SEQUENCE as fieldOpsIntroSequence, AR_BRIEFING_SEQUENCE as fieldOpsARBriefingSequence } from './stages/field-ops/config.js';
 import { createModals, initModals, openModal, closeModal } from './components/modals.js';
 import { createBgMusic, startBgMusic, stopBgMusic, setBgMusicMuted } from './components/music.js';
 import { createVideoPlayer } from './components/video-player.js';
@@ -157,12 +157,16 @@ const stageStarters = {
   'sefy-rogue':          (stage, state, onSolved) => startSefyRogue(stage, state, onSolved),
 };
 
-/** Stages whose briefing intro can be replayed via the nav button. */
+/**
+ * Stages whose briefing intro can be replayed via the nav button.
+ * A value can be a sequence, or a function(state) → sequence for stages whose
+ * briefing depends on progress (field-ops: AR briefing once AR is activated).
+ */
 const introReplays = {
   'geo-activation': geoIntroSequence,
   'sefy-rogue':     sefyRogueIntroSequence,
   'scanner-reboot': scannerRebootIntroSequence,
-  'field-ops':      fieldOpsIntroSequence,
+  'field-ops':      (st) => (st.arActivated ? fieldOpsARBriefingSequence : fieldOpsIntroSequence),
 };
 
 /**
@@ -179,7 +183,8 @@ function updateStageTools(stage, { replayable = false } = {}) {
 /** Replay the current stage's briefing on the shared briefing screen (no flow side-effects). */
 function replayCurrentIntro() {
   if (!currentStage) return;
-  const sequence = introReplays[currentStage.id];
+  let sequence = introReplays[currentStage.id];
+  if (typeof sequence === 'function') sequence = sequence(state);
   if (!sequence) return;
 
   // Navigate to the briefing screen, replay, then return where the player was.

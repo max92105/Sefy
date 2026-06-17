@@ -19,6 +19,7 @@ import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
 import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG } from './config.js';
 import { playVideo } from '../../components/video-player.js';
+import { syncHintBadge } from '../../screens/stage.js';
 
 const PREFIX = 'field-ops';
 
@@ -244,6 +245,7 @@ function showScannerPanel(stage, state, onSolved) {
   if (introEl) introEl.classList.add('hidden');
   if (panelEl) panelEl.classList.remove('hidden');
   updateARLockState(state);
+  syncHintBadge(stage, state); // reflect the current phase's hints (scanner / ar)
   if (activeTab === 'ar' && state.arActivated) startARScanner(stage, state, onSolved);
   else startQRScanner(stage, state, onSolved);
 }

@@ -157,7 +157,7 @@ async function jumpToStage(stages, stage, phase) {
     state.arActivated = true;
     // Populate arFound with all AR objects so field-ops counts as complete
     if (!state.arFound || state.arFound.length === 0) {
-      state.arFound = ['bomb', 'tier3-card'];
+      state.arFound = ['bomb', 'tier4-card'];
     }
   }
 

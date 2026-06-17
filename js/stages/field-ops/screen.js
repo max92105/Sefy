@@ -11,24 +11,17 @@
  * The stage solves when ALL AR objects are found.
  */
 
-import { playSFX } from '../../ui.js';
-import { solvePuzzle, addKeycard, addInventoryItem, saveState, fetchState } from '../../state.js';
+import { playSFX, showScreen } from '../../ui.js';
+import { solvePuzzle, addInventoryItem, saveState, fetchState } from '../../state.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG, CARD_CODES } from './config.js';
 import { playVideo } from '../../components/video-player.js';
 import { syncHintBadge } from '../../screens/stage.js';
 
 const PREFIX = 'field-ops';
-
-/* ───────── ITEM_CATALOG for QR:ITEM codes ───────── */
-const ITEM_CATALOG = {
-  RED:    { label: 'Carte Rouge',  icon: '🔑', css: '#ff3040' },
-  BLUE:   { label: 'Carte Bleue',  icon: '🔑', css: '#4488ff' },
-  YELLOW: { label: 'Carte Jaune',  icon: '🔑', css: '#f5c542' },
-};
 
 /* ───────── jsQR lazy-load ───────── */
 
@@ -82,7 +75,7 @@ export function createScreen() {
       </button>
       <button class="fo-tab" data-tab="ar" id="${PREFIX}-tab-ar">
         <span class="fo-tab-icon">🔒</span> SCANNER AR
-        <span class="fo-tab-lock" id="${PREFIX}-ar-lock">TIER 3</span>
+        <span class="fo-tab-lock" id="${PREFIX}-ar-lock">OFF</span>
       </button>
     </div>
 
@@ -99,8 +92,8 @@ export function createScreen() {
     <div class="fo-content hidden" id="${PREFIX}-ar-content">
       <div class="fo-ar-locked" id="${PREFIX}-ar-locked">
         <div class="fo-ar-locked-icon">🔒</div>
-        <div class="fo-ar-locked-title">MODULE AR VERROUILLÉ</div>
-        <div class="fo-ar-locked-msg">Accès Tier 3 requis.<br>Activez le module AR depuis le terminal.</div>
+        <div class="fo-ar-locked-title">MODULE AR DÉSACTIVÉ</div>
+        <div class="fo-ar-locked-msg">Activez le module AR depuis un terminal pour le débloquer.<br><span class="fo-ar-locked-note">(La commande AR nécessite l'accès Tier 3.)</span></div>
       </div>
       <div class="fo-ar-active hidden" id="${PREFIX}-ar-active">
         <div class="arscan-camera-wrap">
@@ -204,27 +197,41 @@ async function transitionToPanel(stage, state, onSolved) {
   state.stagePhase[stage.id] = 'scanner';
   saveState(state);
 
-  // Sync AR state from Firebase before showing anything
+  // Sync AR + access tier from Firebase before showing anything
   if (state.playerAgent) {
     const remote = await fetchState(state.playerAgent);
-    if (remote && remote.arActivated && !state.arActivated) {
-      state.arActivated = true;
-      state.accessTier = remote.accessTier || state.accessTier;
+    if (remote) {
+      if (remote.arActivated && !state.arActivated) state.arActivated = true;
+      if ((remote.accessTier || 1) > (state.accessTier || 1)) state.accessTier = remote.accessTier;
       saveState(state);
     }
   }
 
+  // Tier 4 already granted (e.g. resuming after promotion) → field-ops is done.
+  if ((state.accessTier || 1) >= 4 && !state.solvedPuzzles.includes(stage.id)) {
+    advanceFromFieldOps(stage, state, onSolved);
+    return;
+  }
+
   bindTabs(stage, state, onSolved);
 
-  // Listen for AR activation from the terminal → play the AR briefing, then unlock.
+  // Watch the terminal: AR activation → AR briefing + unlock; Tier 4 → advance.
   if (state.playerAgent) {
     stateUnsubscribe = fbOnStateChange(state.playerAgent, (remote) => {
       if (!remote) return;
+      if ((remote.accessTier || 1) > (state.accessTier || 1)) {
+        state.accessTier = remote.accessTier;
+        saveState(state);
+      }
       if (remote.arActivated && !state.arActivated) {
         state.arActivated = true;
-        state.accessTier = remote.accessTier || state.accessTier;
         saveState(state);
         playARBriefing(stage, state, onSolved);
+        return;
+      }
+      // Tier 4 granted (player promoted with the card code) → next puzzle.
+      if ((state.accessTier || 1) >= 4 && !state.solvedPuzzles.includes(stage.id)) {
+        advanceFromFieldOps(stage, state, onSolved);
       }
     });
   }
@@ -238,16 +245,78 @@ async function transitionToPanel(stage, state, onSolved) {
   }
 }
 
+/** Field-ops completes once Tier 4 is granted (not merely when AR objects are found). */
+function advanceFromFieldOps(stage, state, onSolved) {
+  if (state.solvedPuzzles.includes(stage.id)) return;
+  if (stateUnsubscribe) { stateUnsubscribe(); stateUnsubscribe = null; }
+  stopQRScanner();
+  stopARScanner();
+  solvePuzzle(state, stage.id);
+  onSolved(stage);
+}
+
 /** Reveal the QR/AR tabbed panel and start the active tab's scanner. */
 function showScannerPanel(stage, state, onSolved) {
   const introEl = document.getElementById(`${PREFIX}-intro`);
   const panelEl = document.getElementById(`${PREFIX}-panel`);
   if (introEl) introEl.classList.add('hidden');
   if (panelEl) panelEl.classList.remove('hidden');
+  document.getElementById(`${PREFIX}-tab-ar`)?.classList.remove('hidden'); // AR tab belongs to field-ops
   updateARLockState(state);
   syncHintBadge(stage, state); // reflect the current phase's hints (scanner / ar)
   if (activeTab === 'ar' && state.arActivated) startARScanner(stage, state, onSolved);
   else startQRScanner(stage, state, onSolved);
+}
+
+/* ═══════════════  PURGE colour-card hunt (reused by sefy-rogue)  ═══════════════ */
+
+let colorHuntUnsub = null;
+
+/**
+ * Reuse the field-ops QR scanner for the PURGE colour-card hunt.
+ * Only the QR scanner is shown (the AR tab — and thus the bomb — is hidden, since
+ * the bomb is revealed as a decoy). Completes once the 3 terminal OVERRIDEs are done.
+ * @param {Function} onComplete — called when state.overrides reaches 3/3
+ * @returns {Function} cleanup
+ */
+export function startColorHunt(stage, state, onComplete) {
+  foundObjects = state.arFound || [];
+  activeTab = 'qr';
+
+  showScreen(`screen-${PREFIX}`);
+  document.getElementById(`${PREFIX}-intro`)?.classList.add('hidden');
+  document.getElementById(`${PREFIX}-panel`)?.classList.remove('hidden');
+
+  // QR scanner only — hide the AR tab/content (no bomb objective in PURGE).
+  document.getElementById(`${PREFIX}-tab-ar`)?.classList.add('hidden');
+  document.getElementById(`${PREFIX}-tab-qr`)?.classList.add('active');
+  document.getElementById(`${PREFIX}-qr-content`)?.classList.remove('hidden');
+  document.getElementById(`${PREFIX}-ar-content`)?.classList.add('hidden');
+
+  startQRScanner(stage, state, () => {});
+
+  const done = (st) => Object.keys((st && st.overrides) || {}).length >= 3;
+
+  const finish = () => {
+    if (colorHuntUnsub) { colorHuntUnsub(); colorHuntUnsub = null; }
+    cleanup();
+    onComplete();
+  };
+
+  if (done(state)) { finish(); return () => {}; }
+
+  if (state.playerAgent) {
+    colorHuntUnsub = fbOnStateChange(state.playerAgent, (remote) => {
+      if (!remote) return;
+      if (remote.overrides) { state.overrides = remote.overrides; saveState(state); }
+      if (done(state)) finish();
+    });
+  }
+
+  return () => {
+    if (colorHuntUnsub) { colorHuntUnsub(); colorHuntUnsub = null; }
+    cleanup();
+  };
 }
 
 /** Play SEFY's AR-module briefing once (when AR is activated), then reveal the panel. */
@@ -393,17 +462,27 @@ function handleQRCode(data, stage, state) {
   const type  = parts[0];
   const value = parts[1];
 
-  if (type === 'KEY') {
-    const isNew = addKeycard(state, value);
-    updateInventoryBadge(state);
-    const item = ITEM_CATALOG[value];
+  if (type === 'CARD') {
+    const card = CARD_CODES[value];
+    if (!card) { showQRFeedback('Carte non reconnue.', 'error'); return; }
 
+    // The Adrian (Tier-4) card is reconstructed via the AR module, not QR-scanned.
+    if (AR_OBJECTS.some(o => o.id === value)) {
+      showQRFeedback('Utilisez le module AR pour reconstruire cette carte.', 'info');
+      return;
+    }
+
+    if (!state.cards) state.cards = [];
+    const isNew = !state.cards.includes(value);
     if (isNew) {
+      state.cards.push(value);
+      saveState(state);
+      updateInventoryBadge(state);
       showQRCardReveal(value);
-      playSFX(SFX.cardFound);
-      showQRFeedback(`${item?.label || value} collectée !`, 'success');
+      playSFX(SFX.positionFound);
+      showQRFeedback(`${card.label} collectée !`, 'success');
     } else {
-      showQRFeedback(`${item?.label || value} — déjà en possession.`, 'info');
+      showQRFeedback(`${card.label} — déjà en possession.`, 'info');
     }
     return;
   }
@@ -500,7 +579,7 @@ function showQRCardReveal(color) {
   const colorEl = document.getElementById(`${PREFIX}-card-color`);
   if (!overlay) return;
 
-  const item = ITEM_CATALOG[color] || { label: color, css: '#888' };
+  const item = CARD_CODES[color] || { label: color, css: '#888' };
   if (titleEl) titleEl.textContent = item.label;
   if (colorEl) colorEl.style.background = item.css;
 
@@ -737,8 +816,15 @@ function collectARObject(obj, stage, state, onSolved, abort) {
   if (foundObjects.includes(obj.id)) return;
   abort.aborted = true; // cancel lingering seek/marker timeouts
   foundObjects.push(obj.id);
-  if (!state.arFound) state.arFound = [];
-  state.arFound.push(obj.id);
+  // A card AR object (the Adrian Tier-4 card) goes to the unified cards list;
+  // everything else (the bomb) goes to arFound.
+  if (CARD_CODES[obj.id]) {
+    if (!state.cards) state.cards = [];
+    if (!state.cards.includes(obj.id)) state.cards.push(obj.id);
+  } else {
+    if (!state.arFound) state.arFound = [];
+    state.arFound.push(obj.id);
+  }
   saveState(state);
 
   playSFX(SFX.positionFound);
@@ -762,11 +848,11 @@ function collectARObject(obj, stage, state, onSolved, abort) {
 }
 
 function completeARScan(stage, state, onSolved) {
+  // All AR objects found — but the stage only advances once Tier 4 is granted
+  // (the player promotes with the card code via a terminal). See transitionToPanel.
   stopARScanner();
-  solvePuzzle(state, stage.id);
-  showARFeedback('Tous les objets localisés !', 'success');
+  showARFeedback('Tous les objets localisés ! Utilisez le code de la carte pour passer au Tier 4 depuis un terminal.', 'success');
   playSFX(SFX.positionFound);
-  setTimeout(() => onSolved(stage), 3000);
 }
 
 function resumeARQRScanning(stage, state, onSolved) {

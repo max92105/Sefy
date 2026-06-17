@@ -168,6 +168,52 @@ export function playMedia(name) {
     return;
   }
 
-  printLine(`Lecture de ${name}…`, 'bright');
-  printLine('(Fonctionnalité en développement)', 'warning');
+  const target = resolvePath(name);
+  const entry = getEntry(target);
+  if (!entry || entry.type !== 'file' || !entry.media || !entry.src) {
+    printLine(`Fichier média non trouvé: ${name}`, 'error');
+    return;
+  }
+
+  const tier = getAgentState()?.accessTier || 1;
+  if (entry.tier && entry.tier > tier) {
+    printLine(`✗ ACCÈS REFUSÉ — Tier ${entry.tier} requis.`, 'error');
+    printLine(`Votre niveau actuel: Tier ${tier}`, 'dim');
+    return;
+  }
+
+  printLine(`▶ Lecture de ${name}…`, 'bright');
+  showTerminalVideo(entry.src);
+}
+
+/* ═══════════════  Video overlay (self-contained for the terminal page)  ═══════════════ */
+
+function showTerminalVideo(src) {
+  let overlay = document.getElementById('term-video-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'term-video-overlay';
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);' +
+      'display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML =
+      '<button id="term-video-close" aria-label="Fermer" style="position:absolute;top:1rem;right:1rem;' +
+      'width:44px;height:44px;font-size:1.4rem;background:rgba(0,20,0,0.85);color:#00ff41;' +
+      'border:1px solid #00ff41;border-radius:4px;cursor:pointer;">&times;</button>' +
+      '<video id="term-video-el" playsinline controls style="max-width:100%;max-height:88vh;' +
+      'border:1px solid #00ff41;background:#000;"></video>';
+    document.body.appendChild(overlay);
+    const close = () => {
+      const v = document.getElementById('term-video-el');
+      if (v) v.pause();
+      overlay.style.display = 'none';
+    };
+    overlay.querySelector('#term-video-close').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+  overlay.style.display = 'flex';
+  const video = document.getElementById('term-video-el');
+  video.src = src;
+  video.currentTime = 0;
+  video.play().catch(() => {});
 }

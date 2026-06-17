@@ -2,32 +2,25 @@
  * Screen: Inventory — shows all collected items organized by category.
  *
  * Features:
- *  - Keycards: displayed as colored cards
- *  - AR Objects: tap to zoom & reveal code (tier4-card)
+ *  - Cards (SEFY:CARD:*): colour cards + the Adrian Tier-4 card; tap to zoom & reveal code
+ *  - AR Objects: the bomb
  *  - Audio Logs: tap to replay audio
  *  - Paper Fragments: tap any piece → opens puzzle overlay where all found
  *    pieces can be dragged around like a jigsaw
  */
 
 import { AUDIO_CATALOG, VIDEO_LOG_CATALOG, PAPER_CATALOG, CARD_CODES, classifyAudioQR } from '../stages/field-ops/config.js';
-import { addKeycard, saveState } from '../state.js';
+import { saveState } from '../state.js';
 import { playVideo } from '../components/video-player.js';
 import { playSFX } from '../ui.js';
 
 /* ═══════════════  Data  ═══════════════ */
 
-const KEYCARD_COLORS = {
-  RED:    { label: 'ROUGE',  css: '#ff3040', icon: '🔑', code: '524544' },
-  BLUE:   { label: 'BLEUE',  css: '#4488ff', icon: '🔑', code: '424C5545' },
-  YELLOW: { label: 'JAUNE',  css: '#f5c542', icon: '🔑', code: '59454C4C4F57' },
-};
-
+// AR objects shown in the inventory. Cards (incl. Adrian) live in `state.cards`
+// and render from CARD_CODES; only the bomb stays an AR object here.
 const AR_ITEM_INFO = {
-  bomb:         { label: 'BOMBE',             icon: '💣', css: '#ff0040' },
-  'tier4-card': { label: 'CARTE DR. ADRIAN', icon: '🪪', css: '#ffd700' },
+  bomb: { label: 'BOMBE', icon: '💣', css: '#ff0040' },
 };
-
-export { KEYCARD_COLORS };
 
 /* ═══════════════  DOM  ═══════════════ */
 
@@ -72,13 +65,18 @@ export function createInventoryScreen() {
       <div class="inv-debug" id="inv-debug">
         <div class="inv-debug-title">⚠ DEBUG QR</div>
         <div class="inv-debug-row">
-          <input type="text" id="inv-debug-input" class="inv-debug-input" placeholder="SEFY:KEY:RED, SEFY:AUDIO:cmd-center, SEFY:VIDEO:chief-adrian, SEFY:PAPER:1...">
+          <input type="text" id="inv-debug-input" class="inv-debug-input" placeholder="SEFY:CARD:RED, SEFY:AUDIO:cmd-center, SEFY:VIDEO:chief-adrian, SEFY:PAPER:1...">
           <button class="btn btn-outline btn-sm" id="inv-debug-btn">SCAN</button>
         </div>
         <div class="inv-debug-row">
           <button class="btn btn-outline btn-sm" id="inv-debug-bomb">+ 💣 BOMBE</button>
-          <button class="btn btn-outline btn-sm" id="inv-debug-card">+ 🪪 CARTE T4</button>
+          <button class="btn btn-outline btn-sm" id="inv-debug-card">+ 🪪 ADRIAN</button>
           <button class="btn btn-danger btn-sm" id="inv-debug-reset">🗑 RESET</button>
+        </div>
+        <div class="inv-debug-row">
+          <button class="btn btn-outline btn-sm" id="inv-debug-red">+ 🟥 ROUGE</button>
+          <button class="btn btn-outline btn-sm" id="inv-debug-blue">+ 🟦 BLEUE</button>
+          <button class="btn btn-outline btn-sm" id="inv-debug-yellow">+ 🟨 JAUNE</button>
         </div>
         <div class="inv-debug-feedback" id="inv-debug-feedback"></div>
       </div>
@@ -98,13 +96,13 @@ export function populateInventory(state) {
 
   let hasItems = false;
 
-  // --- Keycards ---
-  if (state.keycards?.length) {
+  // --- Cards (SEFY:CARD:* — colour cards + Adrian Tier-4 card) ---
+  if (state.cards?.length) {
     hasItems = true;
-    container.appendChild(buildSection('CARTES D\'ACCÈS', state.keycards.map(id => {
-      const c = KEYCARD_COLORS[id] || { label: id, css: '#888', icon: '🔑', code: '' };
-      const el = buildItem(c.icon, `Carte ${c.label}`, c.css, 'zoomable');
-      el.addEventListener('click', () => showZoom(c.icon, `Carte ${c.label}`, c.code, `Code carte ${c.label}`));
+    container.appendChild(buildSection('CARTES', state.cards.map(id => {
+      const c = CARD_CODES[id] || { label: id, css: '#888', code: '', description: '' };
+      const el = buildItem('🪪', c.label, c.css, 'zoomable');
+      el.addEventListener('click', () => showZoom('🪪', c.label, c.code, c.description));
       return el;
     })));
   }
@@ -115,9 +113,11 @@ export function populateInventory(state) {
     container.appendChild(buildSection('OBJETS AR', state.arFound.map(id => {
       const info = AR_ITEM_INFO[id] || { label: id, icon: '📦', css: '#888' };
       const code = CARD_CODES[id];
-      const el = buildItem(info.icon, info.label, info.css, code ? 'zoomable' : null);
+      // After the PURGE reveal, the bomb is known to be a decoy.
+      const label = (id === 'bomb' && state.purgeActive) ? 'FAUSSE BOMBE' : info.label;
+      const el = buildItem(info.icon, label, info.css, code ? 'zoomable' : null);
       if (code) {
-        el.addEventListener('click', () => showZoom(info.icon, info.label, code.code, code.description));
+        el.addEventListener('click', () => showZoom(info.icon, label, code.code, code.description));
       }
       return el;
     })));
@@ -366,16 +366,20 @@ export function bindDebugQR(state) {
     input.onkeydown = (e) => { if (e.key === 'Enter') { run(input.value.trim()); input.value = ''; } };
   }
 
-  // Quick-add AR objects (normally found via the orientation-seek AR scanner).
+  // Quick-add the bomb (AR) and the cards (normally found via scanner/AR).
   const bombBtn = document.getElementById('inv-debug-bomb');
-  const cardBtn = document.getElementById('inv-debug-card');
   if (bombBtn) bombBtn.onclick = () => run('SEFY:AR:BOMB');
-  if (cardBtn) cardBtn.onclick = () => run('SEFY:AR:CARD');
+  const quickCards = { 'inv-debug-card': 'ADRIAN', 'inv-debug-red': 'RED', 'inv-debug-blue': 'BLUE', 'inv-debug-yellow': 'YELLOW' };
+  for (const [btnId, cardId] of Object.entries(quickCards)) {
+    const b = document.getElementById(btnId);
+    if (b) b.onclick = () => run(`SEFY:CARD:${cardId}`);
+  }
 
   // Clear every collected item (keeps mission progress, only empties inventory).
   const resetBtn = document.getElementById('inv-debug-reset');
   if (resetBtn) resetBtn.onclick = () => {
     state.keycards = [];
+    state.cards = [];
     state.arFound = [];
     state.audioLogs = [];
     state.videoLogs = [];
@@ -396,9 +400,13 @@ function processDebugQR(data, state) {
   const type = parts[0];
   const value = parts[1];
 
-  if (type === 'KEY') {
-    const added = addKeycard(state, value);
-    return added ? `✓ Carte ${value} ajoutée` : `— Carte ${value} déjà possédée`;
+  if (type === 'CARD') {
+    if (!CARD_CODES[value]) return `✗ Carte inconnue: ${value}`;
+    if (!state.cards) state.cards = [];
+    if (state.cards.includes(value)) return `— Carte ${value} déjà possédée`;
+    state.cards.push(value);
+    saveState(state);
+    return `✓ ${CARD_CODES[value].label} ajoutée`;
   }
   if (type === 'AUDIO') {
     const found = classifyAudioQR(value);
@@ -433,7 +441,7 @@ function processDebugQR(data, state) {
   }
   if (type === 'AR') {
     if (!state.arFound) state.arFound = [];
-    const id = value === 'BOMB' ? 'bomb' : value === 'CARD' ? 'tier4-card' : value.toLowerCase();
+    const id = value === 'BOMB' ? 'bomb' : value.toLowerCase();
     if (state.arFound.includes(id)) return `— AR ${id} déjà collecté`;
     state.arFound.push(id);
     saveState(state);
@@ -468,7 +476,7 @@ function bindOverlays() {
 
 export function updateInventoryBadge(state) {
   const badge = document.getElementById('inv-badge');
-  const count = (state.keycards || []).length
+  const count = (state.cards || []).length
               + (state.arFound || []).length
               + (state.audioLogs || []).length
               + (state.videoLogs || []).length

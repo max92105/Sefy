@@ -10,7 +10,7 @@ import { loadStageData, getFirstStage, getStageById, getNextStage } from './stag
 import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
-import { createBanner, showBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
+import { createBanner, showBanner, resetBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
 import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible } from './components/nav.js';
 import { replayIntroCinematic, clearIntroPlaying } from './components/intro-cinematic.js';
 import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from './screens/stage-briefing.js';
@@ -28,7 +28,7 @@ import { createLandingScreen, runLanding } from './intro/screens/landing.js';
 import { createScreen as createBriefingScreen, start as runBriefing } from './stages/mission-briefing/screen.js';
 import { createStageScreen, populateStage, openHintModal, syncHintBadge } from './screens/stage.js';
 import { createInventoryScreen, populateInventory, updateInventoryBadge, bindDebugQR } from './screens/evidence.js';
-import { createSuccessScreen, createFailureScreen, populateSuccess } from './screens/results.js';
+import { createSuccessScreen, createFailureScreen, populateSuccess, showFailureScreen } from './screens/results.js';
 import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
 import { createScreen as createScannerRebootScreen, start as startScannerReboot } from './stages/scanner-reboot/screen.js';
 import { createScreen as createFieldOpsScreen, start as startFieldOps } from './stages/field-ops/screen.js';
@@ -187,8 +187,10 @@ function replayCurrentIntro() {
   if (typeof sequence === 'function') sequence = sequence(state);
   if (!sequence) return;
 
-  // Navigate to the briefing screen, replay, then return where the player was.
-  const returnScreenId = lastActiveScreen;
+  // Navigate to the briefing screen, replay, then return to whatever screen was
+  // actually showing (e.g. the field-ops scanner during the PURGE colour hunt).
+  const active = document.querySelector('.screen.active');
+  const returnScreenId = active ? active.id : lastActiveScreen;
   showScreen(BRIEFING_SCREEN_ID);
   replayIntroCinematic(BRIEFING_PREFIX, sequence, () => {
     if (returnScreenId) showScreen(returnScreenId);
@@ -217,29 +219,24 @@ function enterStage(stage) {
   // Log stage progression events
   logStageEntry(stage.id);
 
-  // Show inventory button during field-ops or if player has items
-  const needsInventory = stage.id === 'field-ops'
-    || (state.keycards && state.keycards.length > 0)
-    || (state.arFound && state.arFound.length > 0)
-    || (state.inventory && state.inventory.length > 0);
-  setInventoryVisible(needsInventory);
+  // Show inventory during field-ops, or whenever the player holds any item
+  // (so the inventory stays available in later puzzles).
+  const hasItems = ['cards', 'arFound', 'audioLogs', 'videoLogs', 'papers', 'inventory']
+    .some(k => Array.isArray(state[k]) && state[k].length > 0);
+  // The scanner/PURGE/final stages always keep the inventory available.
+  const inventoryStages = ['field-ops', 'sefy-rogue', 'deactivate-sefy'];
+  setInventoryVisible(inventoryStages.includes(stage.id) || hasItems);
 
   const screenId = `screen-${stage.id}`;
 
-  // deactivate-sefy: code entry with back button to field-ops
+  // deactivate-sefy: final, LOCKED code entry. No nav, no back button — the
+  // player is held here while the deactivation code loops on audio. Only the
+  // PURGE timer banner stays visible.
   if (stage.id === 'deactivate-sefy') {
-    puzzleCleanup = startDeactivateSefy(stage, state, onPuzzleSolved, () => {
-      const fieldStage = getStageById('field-ops');
-      if (fieldStage) {
-        state = setStage(state, fieldStage.id);
-        enterStage(fieldStage);
-      }
-    });
+    puzzleCleanup = startDeactivateSefy(stage, state, onPuzzleSolved);
     lastActiveScreen = screenId;
     showScreen(screenId);
-    showNav();
-    setInventoryVisible(true);
-    updateStageTools(stage, { replayable: true });
+    hideNav();
     return;
   }
 
@@ -444,7 +441,11 @@ async function resumeMission() {
 
   const stage = getStageById(state.currentStage);
   if (stage) {
-    if (state.timestamps.deadline) resumeBanner(state.timestamps.deadline);
+    if (state.timestamps.deadline) {
+      // PURGE in progress → 20-min timer that ends the game at zero.
+      if (state.purgeActive) resumeBanner(state.timestamps.deadline, { onZero: showFailureScreen, totalMs: 20 * 60 * 1000 });
+      else resumeBanner(state.timestamps.deadline);
+    }
     if (state.playerAgent) setAgentBadge(state.playerAgent);
     enterStage(stage);
   } else {
@@ -456,21 +457,28 @@ async function resumeMission() {
 
 function missionSuccess() {
   hideNav();
+  hideBanner(); // stop the PURGE countdown so it can't trigger after a win
   populateSuccess(getElapsedMs(state), getTotalHints(state));
   showScreen('screen-success');
 }
 
 // ---- Inventory ----
 
+let preInventoryScreen = null;
+
 function showInventory() {
+  // Remember the screen we came from (e.g. the field-ops scanner during the
+  // PURGE colour hunt) so we return there, not to the stage's host screen.
+  const active = document.querySelector('.screen.active');
+  preInventoryScreen = active ? active.id : lastActiveScreen;
   populateInventory(state);
   bindDebugQR(state);
   showScreen('screen-inventory');
 }
 
 function returnFromInventory() {
-  if (lastActiveScreen) {
-    showScreen(lastActiveScreen);
+  if (preInventoryScreen) {
+    showScreen(preInventoryScreen);
   } else if (currentStage) {
     enterStage(currentStage);
   }

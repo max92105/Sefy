@@ -1,76 +1,69 @@
 /**
- * Screen: SEFY Rogue — dramatic reveal intro + bypass code entry.
+ * Screen: SEFY Rogue — "Protocole PURGE".
  *
- * Composes intro-cinematic and code-entry-form components.
- * Same structure as geo-activation but with different config/narrative.
+ * Plays the reveal (briefing 5), starts the real 20-min countdown, then reuses
+ * the field-ops scanner for the 3-colour-card hunt. The player reads each card's
+ * code (zoom in inventory) and runs OVERRIDE on the matching-colour terminal;
+ * once all 3 overrides are done the stage advances to deactivate-sefy.
  */
 
 import { playBriefing } from '../../screens/stage-briefing.js';
-import { createCodeEntryFormDOM, setupCodeEntryForm } from '../../components/code-entry-form.js';
-import { saveState } from '../../state.js';
-import { showScreen } from '../../ui.js';
+import { saveState, solvePuzzle } from '../../state.js';
+import { resetBanner, getDeadlineISO } from '../../components/banner.js';
+import { showFailureScreen } from '../../screens/results.js';
+import { startColorHunt } from '../field-ops/screen.js';
 import { INTRO_SEQUENCE } from './config.js';
 
 const PREFIX = 'sefy-rogue';
+const PURGE_MINUTES = 20;
 
 /* ═══════════════  DOM  ═══════════════ */
 
 export function createScreen() {
+  // Host screen only — the puzzle reuses the field-ops scanner and the shared
+  // briefing screen, so it needs no markup of its own.
   const section = document.createElement('section');
   section.id = `screen-${PREFIX}`;
   section.className = 'screen stage-screen';
-
-  const layout = document.createElement('div');
-  layout.className = 'stage-layout codeentry-layout';
-
-  // Briefing plays on the shared overlay; this screen holds the bypass code form.
-  layout.appendChild(createCodeEntryFormDOM(PREFIX));
-
-  section.appendChild(layout);
+  section.innerHTML = '<div class="stage-layout"></div>';
   return section;
 }
 
 /* ═══════════════  Start  ═══════════════ */
 
 export function start(stage, state, onSolved) {
-  if (!INTRO_SEQUENCE || (state.stagePhase && state.stagePhase[stage.id] === 'code-entry')) {
-    return resumeCodeEntry(stage, state, onSolved);
+  const onHuntComplete = () => {
+    solvePuzzle(state, stage.id);
+    onSolved(stage);
+  };
+
+  // Resume: the reveal already played → straight to the colour hunt.
+  // (app.js resumes the 20-min PURGE timer from the saved deadline.)
+  if (state.purgeActive) {
+    return startColorHunt(stage, state, onHuntComplete);
   }
 
-  const puzzleEl = document.getElementById(`${PREFIX}-puzzle`);
-  if (puzzleEl) puzzleEl.classList.add('hidden');
-
+  // First time: play briefing 5 (the reveal). The real countdown starts
+  // mid-briefing (showCountdown); the colour hunt starts when it ends (complete).
+  let huntCleanup = null;
   let intro;
   intro = playBriefing(INTRO_SEQUENCE, {
-    showCodeEntry() {
+    showCountdown() {
+      state.purgeActive = true; // reveal done → fake bomb + PURGE countdown
+      resetBanner(PURGE_MINUTES, showFailureScreen);
+      state.timestamps = state.timestamps || {};
+      state.timestamps.deadline = getDeadlineISO(); // persist the 20-min deadline
+      saveState(state);
+    },
+    complete() {
       intro.hide();
-      transitionToCodeEntry(stage, state, onSolved);
+      huntCleanup = startColorHunt(stage, state, onHuntComplete);
       return 'stop';
     },
   });
 
-  return () => { intro.cleanup(); };
-}
-
-/* ═══════════════  Phase transitions  ═══════════════ */
-
-function resumeCodeEntry(stage, state, onSolved) {
-  const puzzleEl = document.getElementById(`${PREFIX}-puzzle`);
-  if (puzzleEl) puzzleEl.classList.remove('hidden');
-
-  return setupCodeEntryForm(stage, state, onSolved, PREFIX);
-}
-
-function transitionToCodeEntry(stage, state, onSolved) {
-  if (!state.stagePhase) state.stagePhase = {};
-  state.stagePhase[stage.id] = 'code-entry';
-  saveState(state);
-
-  // Briefing played on the shared briefing screen — navigate back to this stage.
-  showScreen(`screen-${PREFIX}`);
-
-  const puzzleEl = document.getElementById(`${PREFIX}-puzzle`);
-  if (puzzleEl) puzzleEl.classList.remove('hidden');
-
-  setupCodeEntryForm(stage, state, onSolved, PREFIX);
+  return () => {
+    if (intro) intro.cleanup();
+    if (huntCleanup) huntCleanup();
+  };
 }

@@ -5,9 +5,10 @@
 
 /** Generic UI / app audio (assets/app/). */
 export const APP_AUDIO = {
-  buttonHover: 'assets/app/button_hovered.mp3',
-  buttonClick: 'assets/app/button_clicked.mp3',
-  bgMusic:     'assets/app/background_music.mp3',
+  buttonHover:  'assets/app/button_hovered.mp3',
+  buttonClick:  'assets/app/button_clicked.mp3',
+  bgMusic:      'assets/app/background_music.mp3',
+  countdownZero: 'assets/app/countdown_0_before_purge.wav', // mission timer hits 0 (flavor)
 };
 
 /** SEFY talking-head avatar video, shared by every briefing. */

@@ -1830,6 +1830,13 @@ body.intro-playing .briefing-bottom {
   line-height: 1.6;
 }
 
+.fo-ar-locked-note {
+  display: inline-block;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+}
+
 .fo-ar-active {
   flex: 1;
   display: flex;

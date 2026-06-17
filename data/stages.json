@@ -113,12 +113,12 @@
       "title": "Désactivation de SEFY",
       "type": "code-entry",
       "narrative": {
-        "text": "SEFY doit être désactivée. Entrez le code de désactivation pour reprendre le contrôle total de l'installation.",
+        "text": "Le code de désactivation est diffusé en boucle. Écoutez attentivement et entrez-le avant la fin du compte à rebours pour arrêter le Protocole PURGE.",
         "media": null
       },
       "puzzle": {
         "type": "code-entry",
-        "prompt": "Entrez le code de désactivation de SEFY :",
+        "prompt": "Entrez le code de désactivation :",
         "answerHash": "693218ec59379a6e3d2865e196e56826d403f601549fd817c7f6b574e2e7f295",
         "inputType": "text",
         "maxLength": 20

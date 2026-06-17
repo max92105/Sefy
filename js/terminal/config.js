@@ -92,7 +92,18 @@ export const ACTION_CODES = [
 export const FILE_SYSTEM = {
   '/': {
     type: 'dir',
-    children: ['logs', 'audio', 'documents'],
+    children: ['logs', 'audio', 'documents', 'MESSAGE_ADRIAN.mp4'],
+  },
+  // Dr. Adrian's final video — only visible/playable at Tier 4. PLAY to watch.
+  '/MESSAGE_ADRIAN.mp4': {
+    type: 'file',
+    tier: 4,
+    media: true,
+    src: 'assets/terminal/adrian_final_video_log.mp4',
+    content: [
+      'Fichier vidéo — instructions d\'urgence du Dr. Adrian.',
+      'Utilisez : PLAY MESSAGE_ADRIAN.mp4',
+    ],
   },
   '/admin_login.txt': {
     type: 'file',

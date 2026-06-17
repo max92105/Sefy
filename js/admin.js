@@ -155,10 +155,13 @@ async function jumpToStage(stages, stage, phase) {
     // Past field-ops → tier 4, AR done
     state.accessTier = Math.max(state.accessTier || 1, 4);
     state.arActivated = true;
-    // Populate arFound with all AR objects so field-ops counts as complete
+    // Seed the field-ops finds so it counts as complete: bomb (AR object) +
+    // the Adrian Tier-4 card (now lives in cards).
     if (!state.arFound || state.arFound.length === 0) {
-      state.arFound = ['bomb', 'tier4-card'];
+      state.arFound = ['bomb'];
     }
+    if (!state.cards) state.cards = [];
+    if (!state.cards.includes('ADRIAN')) state.cards.push('ADRIAN');
   }
 
   // Handle terminal-wait-geo: at geo-activation stage, waiting for GEO command

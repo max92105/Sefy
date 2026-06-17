@@ -51,7 +51,8 @@ function createDefaultState() {
     solvedPuzzles: [],
     hintsUsed: {},
     inventory: [],
-    keycards: [],
+    keycards: [], // retired (replaced by `cards`); kept so old saves merge cleanly
+    cards: [],    // SEFY:CARD:<id> — colour cards + the Adrian (Tier-4) card
     arFound: [],
     audioLogs: [],
     videoLogs: [],
@@ -63,6 +64,8 @@ function createDefaultState() {
     stagePhase: {},
     timestamps: {},
     finalModeUnlocked: false,
+    purgeActive: false, // true once the PURGE reveal (briefing 5) has played
+
     settings: {
       soundEnabled: true,
       musicEnabled: true,

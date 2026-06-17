@@ -50,6 +50,7 @@ export const AR_CUE_CATALOG = {
   'science-hint':    { label: 'Trouvez la fausse bombe', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
   'decon-virus':     { label: 'Présence Virus ARK-41',   room: 'Module de Décontamination (AR)', src: 'assets/field-ops/ar/decontamination/qr_ar_ark41.wav' },
   'security-clear':  { label: 'Rien à signaler',         room: 'Sécurité (AR)',                  src: 'assets/field-ops/ar/securite/qr_ar_rien_a_signale.wav' },
+  'servers-card4':   { label: 'Carte d\'accès 4',        room: 'Salle des Serveurs (AR)',        src: 'assets/field-ops/ar/serveurs/card_found.wav' },
 };
 
 /** Audio logs — play an audio clip, collected and replayable from the inventory. */
@@ -89,12 +90,18 @@ export const PAPER_CATALOG = {
 };
 
 /**
- * AR card with code — the Tier 4 card found via the AR scanner.
- * When clicked in inventory, zooms to reveal the code.
+ * Cards with codes — all scanned via SEFY:CARD:<id>. Tapping one in the
+ * inventory zooms it to reveal the code.
+ *   ADRIAN → Tier-4 card, found via the AR module (SEFY:CARD:ADRIAN).
+ *   RED / BLUE / YELLOW → colour cards for the PURGE terminal OVERRIDEs,
+ *     found by QR scan (SEFY:CARD:RED, etc.).
  * (There is no Tier 3 card: the paper clues give the info to escalate to Tier 3.)
  */
 export const CARD_CODES = {
-  'tier4-card': { label: 'CARTE DR. ADRIAN', code: '999999999', description: 'Code PROMOTE Tier 4' },
+  'ADRIAN': { label: 'CARTE DR. ADRIAN', code: '999999999',   description: 'Code PROMOTE Tier 4',            css: '#7CFC00' },
+  'RED':    { label: 'CARTE ROUGE',      code: '524544',       description: 'Code OVERRIDE — terminal rouge', css: '#ff3040' },
+  'BLUE':   { label: 'CARTE BLEUE',      code: '424C5545',     description: 'Code OVERRIDE — terminal bleu',  css: '#4488ff' },
+  'YELLOW': { label: 'CARTE JAUNE',      code: '59454C4C4F57', description: 'Code OVERRIDE — terminal jaune', css: '#f5c542' },
 };
 
 export const INTRO_SEQUENCE = [
@@ -124,8 +131,8 @@ export const AR_OBJECTS = [
     seekHint: 'Retournez-vous et regardez vers le bas…',
   },
   {
-    id: 'tier4-card',
-    qrCode: 'SEFY:AR:CARD',
+    id: 'ADRIAN',
+    qrCode: 'SEFY:CARD:ADRIAN',
     label: 'CARTE ACCÈS TIER 4',
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 4 obtenue.',
@@ -143,10 +150,10 @@ export const AR_OBJECTS = [
 export const AR_BRIEFING_SEQUENCE = [
   { time: 0, type: 'action', action: 'playAudio', src: MEDIA.audioAR },
   { time: 0, type: 'text',  text: 'Module Environnementale réactiver.' },
-  { time: 0, type: 'text',  text: 'Nous pouvons maintenant trouver la bombe, mais je vais avoir besoin d\'accès tier 4 pour pouvoir la désamorcer.' },
-  { time: 0, type: 'text',  text: 'Avec mon module opérationnel je suis aussi capable de reconstruire des objets qui ne sont plus présents.' },
-  { time: 0, type: 'text',  text: 'Trouvé la carte d\'accès d\'Adrian et augmenter votre accès au Tier 4.' },
-  { time: 30000, type: 'action', action: 'endBriefing' },
+  { time: 3000, type: 'text',  text: 'Nous pouvons maintenant trouver la bombe, mais je vais avoir besoin d\'accès tier 4 pour pouvoir la désamorcer.' },
+  { time: 8000, type: 'text',  text: 'Avec mon module opérationnel je suis aussi capable de reconstruire des objets qui ne sont plus présents.' },
+  { time: 13000, type: 'text',  text: 'Trouvé la carte d\'accès d\'Adrian et augmenter votre accès au Tier 4.' },
+  { time: 20000, type: 'action', action: 'endBriefing' },
 ];
 
 /* ═══════════════  Hints (per phase)  ═══════════════

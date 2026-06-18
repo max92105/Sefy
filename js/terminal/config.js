@@ -185,7 +185,18 @@ export const FILE_SYSTEM = {
   },
   '/audio': {
     type: 'dir',
-    children: [],
+    children: ['ADRIAN_CONFESSION.wav'],
+  },
+  // Dr. Adrian's last confession — Tier 4. Explains the single vaccine dose.
+  '/audio/ADRIAN_CONFESSION.wav': {
+    type: 'file',
+    tier: 4,
+    media: true,
+    src: 'assets/terminal/adrian_last_confession.wav',
+    content: [
+      'Confession audio — Dr. Adrian Voss.',
+      'Utilisez : PLAY ADRIAN_CONFESSION.wav',
+    ],
   },
   '/documents': {
     type: 'dir',

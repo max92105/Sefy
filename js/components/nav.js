@@ -22,9 +22,6 @@ export function createNav() {
     <button class="nav-btn" data-action="sound-toggle" title="Son">
       <span class="nav-icon" id="sound-icon">🔊</span>
     </button>
-    <button class="nav-btn" data-action="settings" title="Paramètres">
-      <span class="nav-icon">⚙</span>
-    </button>
   `;
   document.body.appendChild(nav);
 }

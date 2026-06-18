@@ -9,10 +9,10 @@
  *    pieces can be dragged around like a jigsaw
  */
 
-import { AUDIO_CATALOG, VIDEO_LOG_CATALOG, PAPER_CATALOG, CARD_CODES, classifyAudioQR } from '../stages/field-ops/config.js';
+import { AUDIO_CATALOG, VIDEO_LOG_CATALOG, PAPER_CATALOG, CARD_CODES, classifyAudioQR, SERINGE } from '../stages/field-ops/config.js';
 import { saveState } from '../state.js';
 import { playVideo } from '../components/video-player.js';
-import { playSFX } from '../ui.js';
+import { playSFX, openModal, closeModal } from '../ui.js';
 
 /* ═══════════════  Data  ═══════════════ */
 
@@ -78,6 +78,9 @@ export function createInventoryScreen() {
           <button class="btn btn-outline btn-sm" id="inv-debug-blue">+ 🟦 BLEUE</button>
           <button class="btn btn-outline btn-sm" id="inv-debug-yellow">+ 🟨 JAUNE</button>
         </div>
+        <div class="inv-debug-row">
+          <button class="btn btn-outline btn-sm" id="inv-debug-syringe">+ 💉 SERINGE</button>
+        </div>
         <div class="inv-debug-feedback" id="inv-debug-feedback"></div>
       </div>
 
@@ -95,6 +98,12 @@ export function populateInventory(state) {
   container.innerHTML = '';
 
   let hasItems = false;
+
+  // --- Syringe (Adrian's single vaccine dose) ---
+  if (state.hasSyringe) {
+    hasItems = true;
+    container.appendChild(buildSyringeSection(state));
+  }
 
   // --- Cards (SEFY:CARD:* — colour cards + Adrian Tier-4 card) ---
   if (state.cards?.length) {
@@ -184,6 +193,53 @@ function buildSection(title, itemEls) {
   for (const el of itemEls) grid.appendChild(el);
   sec.appendChild(grid);
   return sec;
+}
+
+/**
+ * The strange syringe: presented as an UNKNOWN substance — injecting it looks
+ * like a gamble until the player hears Adrian's confession. (Mechanically it's
+ * the vaccine: using it cures the agent and unlocks the true ending.)
+ */
+function buildSyringeSection(state) {
+  const sec = document.createElement('div');
+  sec.className = 'inv-section';
+  sec.innerHTML = `<div class="inv-section-title">OBJET INCONNU</div>`;
+  const grid = document.createElement('div');
+  grid.className = 'inv-items';
+
+  const used = !!state.vaccinated;
+  const label = used ? `${SERINGE.label} ✓` : SERINGE.label;
+  // Murky violet while its nature is unknown; green once injected (revealed good).
+  const el = buildItem('💉', label, used ? '#2a7d2a' : '#b388ff', used ? null : 'clickable');
+  if (used) {
+    el.title = 'Seringue déjà utilisée.';
+  } else {
+    el.title = 'Touchez pour injecter le contenu (effet inconnu).';
+    el.addEventListener('click', () => useSyringe(state));
+  }
+  grid.appendChild(el);
+  sec.appendChild(grid);
+  return sec;
+}
+
+function useSyringe(state) {
+  if (state.vaccinated) return;
+  openModal('modal-syringe');
+
+  const confirmBtn = document.getElementById('btn-syringe-confirm');
+  const cancelBtn  = document.getElementById('btn-syringe-cancel');
+
+  if (confirmBtn) confirmBtn.onclick = () => {
+    closeModal('modal-syringe');
+    state.vaccinated = true;
+    saveState(state);
+    populateInventory(state);
+    updateInventoryBadge(state);
+    openModal('modal-syringe-done');
+    const okBtn = document.getElementById('btn-syringe-ok');
+    if (okBtn) okBtn.onclick = () => closeModal('modal-syringe-done');
+  };
+  if (cancelBtn) cancelBtn.onclick = () => closeModal('modal-syringe');
 }
 
 function buildItem(icon, label, color, extraClass) {
@@ -374,6 +430,7 @@ export function bindDebugQR(state) {
     const b = document.getElementById(btnId);
     if (b) b.onclick = () => run(`SEFY:CARD:${cardId}`);
   }
+  document.getElementById('inv-debug-syringe')?.addEventListener('click', () => run('SEFY:SERINGE'));
 
   // Clear every collected item (keeps mission progress, only empties inventory).
   const resetBtn = document.getElementById('inv-debug-reset');
@@ -386,6 +443,8 @@ export function bindDebugQR(state) {
     state.papers = [];
     state.paperPositions = {};
     state.inventory = [];
+    state.hasSyringe = false;
+    state.vaccinated = false;
     saveState(state);
     const fb = document.getElementById('inv-debug-feedback');
     if (fb) { fb.textContent = '✓ Inventaire réinitialisé'; setTimeout(() => { if (fb.textContent === '✓ Inventaire réinitialisé') fb.textContent = ''; }, 3000); }
@@ -399,6 +458,13 @@ function processDebugQR(data, state) {
   const parts = data.replace('SEFY:', '').split(':');
   const type = parts[0];
   const value = parts[1];
+
+  if (type === 'SERINGE') {
+    if (state.hasSyringe) return '— Seringe déjà en possession';
+    state.hasSyringe = true;
+    saveState(state);
+    return '✓ Seringe étrange ajoutée';
+  }
 
   if (type === 'CARD') {
     if (!CARD_CODES[value]) return `✗ Carte inconnue: ${value}`;
@@ -476,7 +542,8 @@ function bindOverlays() {
 
 export function updateInventoryBadge(state) {
   const badge = document.getElementById('inv-badge');
-  const count = (state.cards || []).length
+  const count = (state.hasSyringe ? 1 : 0)
+              + (state.cards || []).length
               + (state.arFound || []).length
               + (state.audioLogs || []).length
               + (state.videoLogs || []).length

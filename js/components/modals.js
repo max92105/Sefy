@@ -46,6 +46,41 @@ export function createModals() {
         </div>
       </div>
     </div>
+
+    <!-- MODAL: Inject unknown syringe (confirm) -->
+    <div id="modal-syringe" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="header-tag warning">OBJET INCONNU</span>
+        </div>
+        <div class="modal-body">
+          <p>Vous injecter le contenu de cette seringue ?</p>
+          <p class="hint-warning">Vous ignorez ce qu'elle contient et ses effets. Ce choix est définitif.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-syringe-confirm" class="btn btn-danger">INJECTER</button>
+          <button id="btn-syringe-cancel" class="btn btn-outline">ANNULER</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Injection result -->
+    <div id="modal-syringe-done" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="header-tag">INJECTION</span>
+        </div>
+        <div class="modal-body">
+          <p>Une chaleur se répand dans vos veines…</p>
+          <p>Votre organisme se stabilise. Le virus ARK-41 reflue.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-syringe-ok" class="btn btn-primary">FERMER</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // Append each modal to body

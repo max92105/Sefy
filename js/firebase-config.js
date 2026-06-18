@@ -66,6 +66,9 @@ function createDefaultState() {
     timestamps: {},
     finalModeUnlocked: false,
     purgeActive: false, // true once the PURGE reveal (briefing 5) has played
+    hasSyringe: false,  // found Adrian's single vaccine dose (SEFY:SERINGE)
+    vaccinated: false,  // used the vaccine on self → unlocks the true ending
+    ending: null,       // 'choice' | 'victory' | 'survive' | 'death' — set when an end screen is reached
 
     settings: {
       soundEnabled: true,

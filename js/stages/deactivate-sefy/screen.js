@@ -20,10 +20,14 @@ function startCodeLoop() {
   stopCodeLoop();
   loopAudio = new Audio(MEDIA.codeLoop);
   loopAudio.addEventListener('ended', () => {
-    // Self-stop if we're no longer on this screen (e.g. PURGE timer fired).
-    const active = document.querySelector('.screen.active');
-    if (!active || active.id !== `screen-${PREFIX}`) { stopCodeLoop(); return; }
-    loopTimer = setTimeout(() => { loopAudio?.play().catch(() => {}); }, MEDIA.loopGapMs);
+    // Keep looping while on the final screen OR while the player is in the
+    // inventory (deciding on the syringe). Stop once we leave for an end screen.
+    const id = document.querySelector('.screen.active')?.id;
+    if (id === `screen-${PREFIX}` || id === 'screen-inventory') {
+      loopTimer = setTimeout(() => { loopAudio?.play().catch(() => {}); }, MEDIA.loopGapMs);
+    } else {
+      stopCodeLoop();
+    }
   });
   const tryPlay = () => loopAudio?.play().catch(() => {
     // Autoplay blocked — start on the next tap anywhere.

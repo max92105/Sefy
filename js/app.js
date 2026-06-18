@@ -11,7 +11,7 @@ import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
 import { createBanner, showBanner, resetBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
-import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible } from './components/nav.js';
+import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible, setHintButton } from './components/nav.js';
 import { replayIntroCinematic, clearIntroPlaying } from './components/intro-cinematic.js';
 import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from './screens/stage-briefing.js';
 import { INTRO_SEQUENCE as geoIntroSequence } from './stages/geo-activation/config.js';
@@ -28,7 +28,7 @@ import { createLandingScreen, runLanding } from './intro/screens/landing.js';
 import { createScreen as createBriefingScreen, start as runBriefing } from './stages/mission-briefing/screen.js';
 import { createStageScreen, populateStage, openHintModal, syncHintBadge } from './screens/stage.js';
 import { createInventoryScreen, populateInventory, updateInventoryBadge, bindDebugQR } from './screens/evidence.js';
-import { createSuccessScreen, createFailureScreen, populateSuccess, showFailureScreen } from './screens/results.js';
+import { createSuccessScreen, createFailureScreen, createTrueVictoryScreen, createEndChoiceScreen, populateSuccess } from './screens/results.js';
 import { createScreen as createGeoActivationScreen, start as startGeoActivation } from './stages/geo-activation/screen.js';
 import { createScreen as createScannerRebootScreen, start as startScannerReboot } from './stages/scanner-reboot/screen.js';
 import { createScreen as createFieldOpsScreen, start as startFieldOps } from './stages/field-ops/screen.js';
@@ -67,6 +67,8 @@ function buildDOM() {
   app.appendChild(createTerminalWaitScreen());
   app.appendChild(createSuccessScreen());
   app.appendChild(createFailureScreen());
+  app.appendChild(createTrueVictoryScreen());
+  app.appendChild(createEndChoiceScreen());
 
   // Components that go after screens
   createModals();
@@ -221,7 +223,7 @@ function enterStage(stage) {
 
   // Show inventory during field-ops, or whenever the player holds any item
   // (so the inventory stays available in later puzzles).
-  const hasItems = ['cards', 'arFound', 'audioLogs', 'videoLogs', 'papers', 'inventory']
+  const hasItems = !!state.hasSyringe || ['cards', 'arFound', 'audioLogs', 'videoLogs', 'papers', 'inventory']
     .some(k => Array.isArray(state[k]) && state[k].length > 0);
   // The scanner/PURGE/final stages always keep the inventory available.
   const inventoryStages = ['field-ops', 'sefy-rogue', 'deactivate-sefy'];
@@ -236,7 +238,12 @@ function enterStage(stage) {
     puzzleCleanup = startDeactivateSefy(stage, state, onPuzzleSolved);
     lastActiveScreen = screenId;
     showScreen(screenId);
-    hideNav();
+    // Locked screen, but keep the inventory reachable so the player can still
+    // decide whether to use the syringe until the very last second.
+    showNav();
+    setInventoryVisible(true);
+    setHintButton(0, 0);     // no hints here
+    setReplayVisible(false); // no briefing to replay
     return;
   }
 
@@ -382,10 +389,49 @@ function onPuzzleSolved(stage) {
     state = setStage(state, next.id);
     enterStage(next);
   } else {
-    // Final puzzle solved → the PURGE is stopped.
+    // Final code entered → resolve the ending (vaccine → true victory; otherwise a choice).
+    endGame();
+  }
+}
+
+/**
+ * The deactivation code has been entered. The countdown stops; the outcome now
+ * depends on the vaccine:
+ *   - vaccinated  → cured + deactivated → TRUE VICTORY (no choice).
+ *   - otherwise   → infected → the player must choose to leave (survive, carry
+ *                   the virus) or let themselves die (contain it).
+ */
+function endGame() {
+  if (state.vaccinated) {
     addLogEntry(state, 'PROTOCOLE 11 INTERROMPU.');
-    addLogEntry(state, 'SEFY - Contrôle rétabli.');
-    missionSuccess();
+    addLogEntry(state, 'SEFY - Contrôle rétabli. Agent immunisé — ARK-41 neutralisé.');
+    setEnding('victory');
+  } else {
+    setEnding('choice');
+  }
+}
+
+/** Persist the reached ending (so a refresh resumes here) and show its screen. */
+function setEnding(ending) {
+  state.ending = ending;
+  saveState(state);
+  showEnding(ending);
+}
+
+/** Render an end screen for a given ending value. */
+function showEnding(ending) {
+  hideBanner();
+  hideNav();
+  if (ending === 'victory') {
+    populateSuccess(getElapsedMs(state), getTotalHints(state), 'victory');
+    showScreen('screen-victory');
+  } else if (ending === 'survive') {
+    populateSuccess(getElapsedMs(state), getTotalHints(state), 'score');
+    showScreen('screen-success');
+  } else if (ending === 'choice') {
+    showScreen('screen-end-choice');
+  } else {
+    showScreen('screen-failure'); // 'death'
   }
 }
 
@@ -442,11 +488,28 @@ async function resumeMission() {
     }
   }
 
+  // An ending was already reached → re-show it (final save point).
+  if (state.ending) {
+    if (state.playerAgent) setAgentBadge(state.playerAgent);
+    showEnding(state.ending);
+    return;
+  }
+
   const stage = getStageById(state.currentStage);
   if (stage) {
-    if (state.timestamps.deadline) {
+    const finalSolved = (state.solvedPuzzles || []).includes('deactivate-sefy');
+    const deadlineMs = state.timestamps.deadline ? new Date(state.timestamps.deadline).getTime() : 0;
+
+    // PURGE countdown already ran out while the page was away (and the game
+    // isn't finished) → go straight to the end-game, not the stale stage screen.
+    if (state.purgeActive && !finalSolved && deadlineMs && deadlineMs <= Date.now()) {
+      setEnding('death');
+      return;
+    }
+
+    if (deadlineMs && !finalSolved) {
       // PURGE in progress → 20-min timer that ends the game at zero.
-      if (state.purgeActive) resumeBanner(state.timestamps.deadline, { onZero: showFailureScreen, totalMs: 20 * 60 * 1000 });
+      if (state.purgeActive) resumeBanner(state.timestamps.deadline, { onZero: () => setEnding('death'), totalMs: 20 * 60 * 1000 });
       else resumeBanner(state.timestamps.deadline);
     }
     if (state.playerAgent) setAgentBadge(state.playerAgent);
@@ -454,15 +517,6 @@ async function resumeMission() {
   } else {
     goTerminal();
   }
-}
-
-// ---- Mission End ----
-
-function missionSuccess() {
-  hideNav();
-  hideBanner(); // stop the PURGE countdown so it can't trigger after a win
-  populateSuccess(getElapsedMs(state), getTotalHints(state));
-  showScreen('screen-success');
 }
 
 // ---- Inventory ----
@@ -502,12 +556,12 @@ function toggleSound() {
 function bindGlobalEvents() {
   // Hint modal opens from the nav hint button (see bindNav below).
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-close-hint')) closeModal('modal-hint');
+    if (e.target instanceof Element && e.target.closest('#btn-close-hint')) closeModal('modal-hint');
   });
 
   // Inventory
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-inventory-back')) returnFromInventory();
+    if (e.target instanceof Element && e.target.closest('#btn-inventory-back')) returnFromInventory();
   });
 
   // Nav
@@ -518,15 +572,31 @@ function bindGlobalEvents() {
     onReplayIntro: () => replayCurrentIntro(),
   });
 
+  // Final-choice flow (deactivation code entered without the vaccine)
+  document.addEventListener('click', (e) => {
+    if (!(e.target instanceof Element)) return;
+    if (e.target.closest('#btn-end-leave')) {
+      // Deactivate SEFY and walk out — alive, but carrying the virus.
+      addLogEntry(state, 'PROTOCOLE 11 INTERROMPU.');
+      addLogEntry(state, 'SEFY - Contrôle rétabli.');
+      setEnding('survive');
+    } else if (e.target.closest('#btn-end-die')) {
+      // Stay behind — the virus dies with you. Same outcome as the timer hitting zero.
+      addLogEntry(state, 'AGENT - Refus d\'évacuation. Confinement accepté.');
+      setEnding('death');
+    }
+  });
+
   // Reset flow
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-restart') || e.target.closest('#btn-retry')) {
+    if (!(e.target instanceof Element)) return;
+    if (e.target.closest('#btn-restart') || e.target.closest('#btn-retry') || e.target.closest('#btn-victory-restart')) {
       openModal('modal-reset');
     }
   });
 
   document.addEventListener('click', async (e) => {
-    if (e.target.closest('#btn-confirm-reset')) {
+    if (e.target instanceof Element && e.target.closest('#btn-confirm-reset')) {
       // Wipe the agent's Firebase node too — otherwise the stale missionStarted
       // state resurfaces when the agent is re-selected and causes weird resumes.
       const agent = state.playerAgent;
@@ -539,7 +609,7 @@ function bindGlobalEvents() {
   });
 
   document.addEventListener('click', (e) => {
-    if (e.target.closest('#btn-cancel-reset')) closeModal('modal-reset');
+    if (e.target instanceof Element && e.target.closest('#btn-cancel-reset')) closeModal('modal-reset');
   });
 }
 

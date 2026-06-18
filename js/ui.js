@@ -145,13 +145,13 @@ export function stopMusic() {
 /** Attach hover + click sounds to all buttons (event delegation) */
 export function initButtonSounds() {
   document.addEventListener('pointerenter', (e) => {
-    if (e.target.closest('button')) {
+    if (e.target instanceof Element && e.target.closest('button')) {
       playSFX(APP_AUDIO.buttonHover);
     }
   }, true);
 
   document.addEventListener('click', (e) => {
-    if (e.target.closest('button')) {
+    if (e.target instanceof Element && e.target.closest('button')) {
       playSFX(APP_AUDIO.buttonClick);
     }
   }, true);

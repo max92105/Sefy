@@ -104,6 +104,18 @@ export const CARD_CODES = {
   'YELLOW': { label: 'CARTE JAUNE',      code: '59454C4C4F57', description: 'Code OVERRIDE — terminal jaune', css: '#f5c542' },
 };
 
+/**
+ * Adrian's single vaccine dose — found by QR scan (SEFY:SERINGE), added to the
+ * inventory as "SERINGE ÉTRANGE". Using it from the inventory cures the agent of
+ * ARK-41 and unlocks the true ending. Its meaning is explained by the Tier-4
+ * audio confession in the terminal (PLAY ADRIAN_CONFESSION.wav).
+ */
+export const SERINGE = {
+  qr: 'SEFY:SERINGE',
+  label: 'SERINGE ÉTRANGE',
+  description: 'Une seringue contenant une dose d\'un liquide inconnu.',
+};
+
 export const INTRO_SEQUENCE = [
   { time: 0,      type: 'action', action: 'playAudio', src: MEDIA.audioIntro },
   { time: 0,      type: 'text',  text: 'Module de Décryption réactiver.' },

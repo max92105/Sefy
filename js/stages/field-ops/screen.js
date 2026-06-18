@@ -17,7 +17,7 @@ import { createIntroCinematicDOM, startIntroCinematic } from '../../components/i
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
-import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG, CARD_CODES } from './config.js';
+import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG, CARD_CODES, SERINGE } from './config.js';
 import { playVideo } from '../../components/video-player.js';
 import { syncHintBadge } from '../../screens/stage.js';
 
@@ -469,6 +469,17 @@ function handleQRCode(data, stage, state) {
   const parts = data.replace('SEFY:', '').split(':');
   const type  = parts[0];
   const value = parts[1];
+
+  if (type === 'SERINGE') {
+    const isNew = !state.hasSyringe;
+    state.hasSyringe = true;
+    saveState(state);
+    updateInventoryBadge(state);
+    playSFX(SFX.positionFound);
+    logScan(state, 'syringe', 'SEFY - Objet non répertorié récupéré par agent.');
+    showQRFeedback(isNew ? `${SERINGE.label} récupérée !` : `${SERINGE.label} — déjà en possession.`, isNew ? 'success' : 'info');
+    return;
+  }
 
   if (type === 'CARD') {
     const card = CARD_CODES[value];

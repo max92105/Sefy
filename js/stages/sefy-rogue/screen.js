@@ -50,7 +50,12 @@ export function start(stage, state, onSolved) {
   intro = playBriefing(INTRO_SEQUENCE, {
     showCountdown() {
       state.purgeActive = true; // reveal done → fake bomb + PURGE countdown
-      resetBanner(PURGE_MINUTES, showFailureScreen);
+      resetBanner(PURGE_MINUTES, () => {
+        // Timer reached zero → death ending (persisted as a final save point).
+        state.ending = 'death';
+        saveState(state);
+        showFailureScreen();
+      });
       state.timestamps = state.timestamps || {};
       state.timestamps.deadline = getDeadlineISO(); // persist the 20-min deadline
       saveState(state);

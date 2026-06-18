@@ -200,7 +200,14 @@ export function playMedia(name) {
 
 /* ═══════════════  Video overlay (self-contained for the terminal page)  ═══════════════ */
 
+let termMediaEl = null;
+
+function stopTermMedia() {
+  if (termMediaEl) { try { termMediaEl.pause(); } catch { /* ignore */ } termMediaEl = null; }
+}
+
 function showTerminalVideo(src) {
+  const isAudio = /\.(wav|mp3|ogg|m4a|aac)$/i.test(src);
   let overlay = document.getElementById('term-video-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -212,25 +219,39 @@ function showTerminalVideo(src) {
       '<button id="term-video-close" aria-label="Fermer" style="position:absolute;top:1rem;right:1rem;' +
       'width:44px;height:44px;font-size:1.4rem;background:rgba(0,20,0,0.85);color:#00ff41;' +
       'border:1px solid #00ff41;border-radius:4px;cursor:pointer;">&times;</button>' +
-      '<video id="term-video-el" playsinline controls style="max-width:100%;max-height:88vh;' +
-      'border:1px solid #00ff41;background:#000;"></video>';
+      '<div id="term-media-host" style="display:flex;flex-direction:column;align-items:center;gap:1rem;max-width:100%;"></div>';
     document.body.appendChild(overlay);
-    const close = () => {
-      const v = document.getElementById('term-video-el');
-      if (v) v.pause();
-      overlay.style.display = 'none';
-      resumeInactivityTimer(); // re-arm auto-logout once the video is dismissed
-    };
+    const close = () => { stopTermMedia(); overlay.style.display = 'none'; resumeInactivityTimer(); };
     overlay.querySelector('#term-video-close').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    // When the clip finishes on its own, re-arm the timer too (but leave the
-    // overlay up so the player can rewatch or close it manually).
-    overlay.querySelector('#term-video-el').addEventListener('ended', resumeInactivityTimer);
   }
-  suspendInactivityTimer(); // don't auto-logout while the video plays (no keyboard input)
+
+  const host = overlay.querySelector('#term-media-host');
+  stopTermMedia();
+  host.innerHTML = '';
+
+  let media;
+  if (isAudio) {
+    const label = document.createElement('div');
+    label.textContent = '♪ LECTURE AUDIO';
+    label.style.cssText = 'color:#00ff41;font-family:monospace;letter-spacing:3px;';
+    media = document.createElement('audio');
+    media.controls = true;
+    media.style.cssText = 'width:min(420px,80vw);';
+    host.appendChild(label);
+    host.appendChild(media);
+  } else {
+    media = document.createElement('video');
+    media.playsInline = true;
+    media.controls = true;
+    media.style.cssText = 'max-width:100%;max-height:88vh;border:1px solid #00ff41;background:#000;';
+    host.appendChild(media);
+  }
+  media.src = src;
+  termMediaEl = media;
+  media.addEventListener('ended', resumeInactivityTimer); // re-arm auto-logout when it finishes
+
+  suspendInactivityTimer(); // don't auto-logout while media plays (no keyboard input)
   overlay.style.display = 'flex';
-  const video = document.getElementById('term-video-el');
-  video.src = src;
-  video.currentTime = 0;
-  video.play().catch(() => {});
+  media.play().catch(() => {});
 }

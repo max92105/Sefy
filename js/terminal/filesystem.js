@@ -6,7 +6,7 @@
 
 import { FILE_SYSTEM } from './config.js';
 import { printLine, printLines, printBlank } from './io.js';
-import { getCurrentDir, setCurrentDir, getAgentState, setPendingConfirm, clearPendingConfirm } from './state.js';
+import { getCurrentDir, setCurrentDir, getAgentState, setPendingConfirm, clearPendingConfirm, suspendInactivityTimer, resumeInactivityTimer } from './state.js';
 
 /* ═══════════════  Dynamic log file  ═══════════════ */
 
@@ -207,10 +207,15 @@ function showTerminalVideo(src) {
       const v = document.getElementById('term-video-el');
       if (v) v.pause();
       overlay.style.display = 'none';
+      resumeInactivityTimer(); // re-arm auto-logout once the video is dismissed
     };
     overlay.querySelector('#term-video-close').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    // When the clip finishes on its own, re-arm the timer too (but leave the
+    // overlay up so the player can rewatch or close it manually).
+    overlay.querySelector('#term-video-el').addEventListener('ended', resumeInactivityTimer);
   }
+  suspendInactivityTimer(); // don't auto-logout while the video plays (no keyboard input)
   overlay.style.display = 'flex';
   const video = document.getElementById('term-video-el');
   video.src = src;

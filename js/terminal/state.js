@@ -65,10 +65,24 @@ export function setAgentState(state) { agentState = state; }
 
 /* ═══════════════  Inactivity Timer  ═══════════════ */
 
+let inactivitySuspended = false;
+
 export function resetInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
-  if (!loggedIn) return;
+  if (!loggedIn || inactivitySuspended) return;
   inactivityTimer = setTimeout(() => doLogout(true), INACTIVITY_TIMEOUT);
+}
+
+/** Pause auto-logout (e.g. while a video plays with no keyboard input). */
+export function suspendInactivityTimer() {
+  inactivitySuspended = true;
+  if (inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
+}
+
+/** Resume auto-logout and restart the countdown. */
+export function resumeInactivityTimer() {
+  inactivitySuspended = false;
+  resetInactivityTimer();
 }
 
 /* ═══════════════  Logout  ═══════════════ */

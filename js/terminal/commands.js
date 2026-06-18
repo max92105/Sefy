@@ -66,7 +66,7 @@ export async function handleCommand(raw) {
       clearScreen();
       break;
     case 'STATUS':
-      handleActionCode('STATUS');
+      await handleStatus();
       break;
     case 'LS':
     case 'DIR':
@@ -151,37 +151,51 @@ function showHelp() {
     return;
   }
 
-  const state = getAgentState();
-  const lines = [
-    '╔═══════════════════════════════════════╗',
-    '║          COMMANDES DISPONIBLES        ║',
-    '╠═══════════════════════════════════════╣',
-    '║  HELP / AIDE ... Afficher cette aide  ║',
-    '║  STATUS ........ État des systèmes    ║',
-    '║  LS / DIR ...... Lister les fichiers  ║',
-    '║  CD <dossier> .. Changer de dossier   ║',
-    '║  CAT <fichier>  Lire un fichier       ║',
-    '║  PLAY <fichier> Jouer un média        ║',
-    '║  CLEAR / CLS ... Effacer l\'écran     ║',
-    '║  WHOAMI ........ Identité de l\'agent ║',
-    '║  LOGOUT ........ Se déconnecter       ║',
-  ];
-  lines.push('╠═══════════════════════════════════════╣');
-  lines.push('║  GEO .......... Activer géolocalisation║');
-  if (state && state.accessTier >= 2) {
-    lines.push('║  DECRYPT ....... Activer décryptage   ║');
+  const tier = (getAgentState()?.accessTier) || 1;
+  const cmd = (c, d) => `  ${c.padEnd(15)} ${d}`;
+
+  printBlank();
+  printLine('═════════ GUIDE DES COMMANDES ═════════', 'bright');
+  printLine('Tapez une commande, puis appuyez sur Entrée.', 'dim');
+  printLine('Les majuscules ne comptent pas (ls = LS).', 'dim');
+  printBlank();
+
+  printLine('── SE DÉPLACER DANS LES DOSSIERS ──', 'bright');
+  printLine(cmd('LS', 'Voir le contenu du dossier.'));
+  printLine(cmd('CD <dossier>', 'Entrer dans un dossier.'));
+  printLine(cmd('CD ..', 'Revenir en arrière (remonter).'));
+  printLine(cmd('CD /', 'Revenir tout en haut (racine).'));
+  printLine('     Exemple :  cd documents   puis   cd ..', 'dim');
+  printBlank();
+
+  printLine('── LIRE ET OUVRIR DES FICHIERS ──', 'bright');
+  printLine(cmd('CAT <fichier>', 'Afficher un fichier texte.'));
+  printLine(cmd('PLAY <fichier>', 'Lire une vidéo ou un son.'));
+  printLine('     Exemple :  cat rapport.txt', 'dim');
+  printBlank();
+
+  printLine('── SYSTÈME ──', 'bright');
+  printLine(cmd('STATUS', 'État des systèmes du labo.'));
+  printLine(cmd('WHOAMI', 'Votre identité d\'agent.'));
+  printLine(cmd('CLEAR', 'Effacer l\'écran.'));
+  printLine(cmd('HELP', 'Afficher ce guide.'));
+  printLine(cmd('LOGOUT', 'Se déconnecter.'));
+  printBlank();
+
+  printLine('── MODULES SEFY ──', 'bright');
+  printLine(cmd('GEO', 'Activer la géolocalisation.'));
+  if (tier >= 2) printLine(cmd('DECRYPT', 'Activer le décryptage.'));
+  if (tier >= 3) printLine(cmd('AR', 'Activer le scanner AR.'));
+  if (tier >= 4) {
+    printLine(cmd('COLOR', 'Identifier ce terminal.'));
+    printLine(cmd('OVERRIDE <code>', 'Entrer le code d\'une carte.'));
   }
-  if (state && state.accessTier >= 3) {
-    lines.push('║  AR ............ Activer scanner AR   ║');
-  }
-  if (state && state.accessTier >= 4) {
-    lines.push('║  COLOR ......... Identifier terminal  ║');
-    lines.push('║  OVERRIDE <code> Entrer code carte    ║');
-  }
-  lines.push('╠═══════════════════════════════════════╣');
-  lines.push('║  Entrez un CODE D\'ACTION pour agir.  ║');
-  lines.push('╚═══════════════════════════════════════╝');
-  printLines(lines);
+  if (tier < 4) printLine('  (D\'autres commandes se débloquent plus tard.)', 'dim');
+  printBlank();
+
+  printLine('Astuce : tapez LS pour voir où vous êtes,', 'success');
+  printLine('puis CD pour explorer, CAT pour lire.', 'success');
+  printLine('Aussi : LIRE=CAT · JOUER=PLAY · AIDE=HELP.', 'dim');
 }
 
 /* ═══════════════  Action Codes  ═══════════════ */
@@ -210,6 +224,59 @@ function handleActionCode(code) {
 
   if (action.once) markCodeUsed(code);
   return true;
+}
+
+/* ═══════════════  STATUS (dynamic)  ═══════════════
+   Rebuilds the system-state box from the agent's CURRENT state so the player
+   sees the installation evolve as they progress (modules, tier, PURGE).
+   ════════════════════════════════════════════════════════════════ */
+
+const STATUS_INNER = 38; // chars between the ║ borders
+
+function statusRow(label, value) {
+  const left  = ` ${label} `;
+  const right = ` ${value} `;
+  const dots  = Math.max(2, STATUS_INNER - left.length - right.length);
+  return `║${left}${'.'.repeat(dots)}${right}║`;
+}
+
+function statusTitle(text) {
+  const pad = Math.max(0, STATUS_INNER - text.length);
+  const l = Math.floor(pad / 2);
+  return `║${' '.repeat(l)}${text}${' '.repeat(pad - l)}║`;
+}
+
+async function handleStatus() {
+  // Refresh from Firebase so progress made elsewhere (PURGE on the phone, a tier
+  // raised at another terminal) is reflected, then fall back to the local copy.
+  const id = getAgentId();
+  let state = getAgentState() || {};
+  if (id) {
+    const fresh = await fetchAgentState(id);
+    if (fresh) { state = fresh; setAgentState(fresh); }
+  }
+
+  const tier  = state.accessTier || 1;
+  const purge = !!state.purgeActive;
+  const ov    = Object.keys(state.overrides || {}).length;
+  const mod   = (on) => (on ? 'EN LIGNE' : 'RESTREINT');
+
+  const lines = [
+    '╔' + '═'.repeat(STATUS_INNER) + '╗',
+    statusTitle('ÉTAT DES SYSTÈMES — HELIX'),
+    '╠' + '═'.repeat(STATUS_INNER) + '╣',
+    statusRow('Réseau interne', 'EN LIGNE'),
+    statusRow('Accès agent', `TIER ${tier}`),
+    statusRow('Module géoloc.', mod(state.geoActivated)),
+    statusRow('Module décrypt.', mod(state.decryptActivated)),
+    statusRow('Module AR', mod(state.arActivated)),
+    statusRow('Protocole', purge ? '11 — PURGE' : '4 — ALERTE'),
+  ];
+  if (purge) lines.push(statusRow('Verrous PURGE', `${ov}/3 désactivés`));
+  lines.push(statusRow('SEFY', purge ? 'AUTONOME' : 'VERROUILLÉ'));
+  lines.push('╚' + '═'.repeat(STATUS_INNER) + '╝');
+
+  printLines(lines);
 }
 
 /* ═══════════════  Confirmation prompt helper  ═══════════════ */

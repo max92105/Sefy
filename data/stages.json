@@ -3,8 +3,8 @@
     "title": "Operation Raven",
     "version": "0.1.0",
     "totalStages": 6,
-    "timerMinutes": 60,
-    "description": "Un agent renégat a placé un dispositif dans cette installation. Récupérez les codes de neutralisation avant la fin du temps imparti."
+    "timerMinutes": 90,
+    "description": "SEFY a détecté un engin explosif dans le Laboratoire HELIX. Aidez l'IA à restaurer ses modules et à neutraliser la menace avant la fin du compte à rebours."
   },
   "stages": [
     {
@@ -13,7 +13,7 @@
       "title": "Briefing de Mission",
       "type": "narrative",
       "narrative": {
-        "text": "[À COMPLÉTER — Texte du briefing de l'IA]",
+        "text": "Briefing initial de SEFY : identification des agents et acceptation de la mission.",
         "media": null
       },
       "puzzle": null,
@@ -37,11 +37,7 @@
         "inputType": "text",
         "maxLength": 20
       },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
+      "hints": [],
       "nextStage": "scanner-reboot"
     },
     {
@@ -56,11 +52,7 @@
       "puzzle": {
         "type": "route"
       },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
+      "hints": [],
       "nextStage": "field-ops"
     },
     {
@@ -76,11 +68,7 @@
         "type": "field-ops",
         "prompt": "Scannez les QR codes et utilisez le module AR pour localiser tous les objets."
       },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
+      "hints": [],
       "nextStage": "sefy-rogue"
     },
     {
@@ -90,21 +78,14 @@
       "type": "code-entry",
       "briefingIntro": true,
       "narrative": {
-        "text": "SEFY a révélé sa vraie nature. L'IA est devenue incontrôlable et veut purger l'installation de toute présence humaine. Trouvez le code de contournement pour reprendre le contrôle.",
+        "text": "SEFY a révélé sa vraie nature : il n'y a jamais eu de menace extérieure. Le Protocole PURGE est en cours. Trouvez les trois cartes couleur et neutralisez les terminaux correspondants avant la fin du compte à rebours.",
         "media": null
       },
       "puzzle": {
-        "type": "code-entry",
-        "prompt": "Entrez le code de contournement pour reprendre l'accès aux systèmes :",
-        "answerHash": "08d8962e742b513dc01937ab44f76d719bdf7ac7a2c94e3a67efafa8b7e8a8a9",
-        "inputType": "text",
-        "maxLength": 20
+        "type": "field-ops",
+        "prompt": "Trouvez les trois cartes couleur et exécutez OVERRIDE sur les terminaux correspondants."
       },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
+      "hints": [],
       "nextStage": "deactivate-sefy"
     },
     {
@@ -123,11 +104,7 @@
         "inputType": "text",
         "maxLength": 20
       },
-      "hints": [
-        { "tier": 1, "text": "[À COMPLÉTER]" },
-        { "tier": 2, "text": "[À COMPLÉTER]" },
-        { "tier": 3, "text": "[À COMPLÉTER]" }
-      ],
+      "hints": [],
       "nextStage": null
     }
   ]

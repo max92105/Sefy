@@ -7,6 +7,16 @@
 import { FILE_SYSTEM } from './config.js';
 import { printLine, printLines, printBlank } from './io.js';
 import { getCurrentDir, setCurrentDir, getAgentState, setPendingConfirm, clearPendingConfirm, suspendInactivityTimer, resumeInactivityTimer } from './state.js';
+import { logEvent } from './log.js';
+
+/** Log a file consultation once (classified reads are flagged). */
+function logRead(entry, name, path) {
+  const classified = !!entry.tier && entry.tier >= 2;
+  const text = classified
+    ? `SEFY - ALERTE: Accès données classifiées — ${name}.`
+    : `SEFY - Consultation : ${name}.`;
+  logEvent(text, `read:${path}`); // fire-and-forget, deduped per file
+}
 
 /* ═══════════════  Dynamic log file  ═══════════════ */
 
@@ -150,6 +160,7 @@ export function readFile(name) {
         printLine(`── ${name} ──`, 'bright');
         printLines(entry.content);
         printLine('── fin ──', 'dim');
+        logRead(entry, name, target);
       } else {
         printLine('✗ Réponse incorrecte. Accès refusé.', 'error');
       }
@@ -160,6 +171,7 @@ export function readFile(name) {
   printLine(`── ${name} ──`, 'bright');
   printLines(entry.content);
   printLine('── fin ──', 'dim');
+  logRead(entry, name, target);
 }
 
 export function playMedia(name) {

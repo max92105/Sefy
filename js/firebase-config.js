@@ -58,6 +58,7 @@ function createDefaultState() {
     videoLogs: [],
     papers: [],
     paperPositions: {},
+    loggedScans: [], // dedup keys for one-time system-log entries (scans, file reads)
     overrides: {},
     routeStep: 0,
     systemLog: [],
@@ -122,6 +123,17 @@ async function fbResetAgent(agent) {
 }
 
 /**
+ * Force-overwrite an agent's full state in Firebase (NO merge).
+ * Used by the admin checkpoint tool so a backward reset can actually lower
+ * accessTier / clear flags (fbSaveState would refuse to).
+ * @param {string} agent
+ * @param {object} state
+ */
+async function fbForceState(agent, state) {
+  await agentRef(agent).set(state);
+}
+
+/**
  * Listen for real-time changes on an agent's state.
  * @param {string} agent
  * @param {Function} callback — receives the state object on each change
@@ -166,6 +178,7 @@ export {
   fbLoadState,
   fbSaveState,
   fbResetAgent,
+  fbForceState,
   fbOnStateChange,
   fbClaimAgent,
 };

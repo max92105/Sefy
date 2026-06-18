@@ -65,19 +65,7 @@ export const BOOT_LINES = [
 /* ═══════════════  Action Codes  ═══════════════ */
 
 export const ACTION_CODES = [
-  {
-    code: 'STATUS',
-    response: [
-      '╔══════════════════════════════════════╗',
-      '║ ÉTAT DES SYSTÈMES DE L\'INSTALLATION ║',
-      '╠══════════════════════════════════════╣',
-      '║ Réseau interne .......... EN LIGNE   ║',
-      '║ HELIX ............. COMPROMIS        ║',
-      '║ Protocole ACTIF ......... 3   ║',
-      '║ SEFY ........ VERROUILLÉ             ║',
-      '╚══════════════════════════════════════╝',
-    ],
-  },
+  // STATUS is now rendered dynamically (see handleStatus in commands.js).
   {
     code: 'AIDE',
     response: ['Alias pour HELP.'],

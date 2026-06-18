@@ -69,6 +69,16 @@ export function resetState() {
 }
 
 /**
+ * Overwrite local state directly, WITHOUT the Firebase merge-push.
+ * Used by the admin checkpoint tool (which force-pushes Firebase separately)
+ * so a backward reset isn't undone by fbSaveState's "keep higher" merge.
+ */
+export function setLocalState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage issue */ }
+  return state;
+}
+
+/**
  * Reset a specific agent's state in Firebase AND locally.
  * @param {string} agent — 'emy' or 'lea'
  */

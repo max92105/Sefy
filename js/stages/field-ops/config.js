@@ -47,7 +47,7 @@ export const AR_CUE_CATALOG = {
   'lab-virus':       { label: 'Présence Virus ARK-41',   room: 'Laboratoire Chimique (AR)',      src: 'assets/field-ops/ar/laboratoire/qr_ar_ark41.wav' },
   'infirmary-virus': { label: 'Présence Virus ARK-41',   room: 'Infirmerie (AR)',                src: 'assets/field-ops/ar/infirmerie/qr_ar_ark41.wav' },
   'quarters-clear':  { label: 'Rien à signaler',         room: 'Quartier du Personnel (AR)',     src: 'assets/field-ops/ar/quartier_personnel/qr_ar_rien_a_signale.wav' },
-  'science-hint':    { label: 'Trouvez la fausse bombe', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
+  'science-hint':    { label: 'Engin explosif localisé', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
   'decon-virus':     { label: 'Présence Virus ARK-41',   room: 'Module de Décontamination (AR)', src: 'assets/field-ops/ar/decontamination/qr_ar_ark41.wav' },
   'security-clear':  { label: 'Rien à signaler',         room: 'Sécurité (AR)',                  src: 'assets/field-ops/ar/securite/qr_ar_rien_a_signale.wav' },
   'servers-card4':   { label: 'Carte d\'accès 4',        room: 'Salle des Serveurs (AR)',        src: 'assets/field-ops/ar/serveurs/card_found.wav' },
@@ -72,9 +72,9 @@ export const AUDIO_CATALOG = {
  * @returns {{ kind: 'play'|'audio', entry: object } | null}
  */
 export function classifyAudioQR(id) {
-  if (ROOM_TITLE_CATALOG[id]) return { kind: 'play',  entry: ROOM_TITLE_CATALOG[id] };
-  if (AR_CUE_CATALOG[id])     return { kind: 'play',  entry: AR_CUE_CATALOG[id] };
-  if (AUDIO_CATALOG[id])      return { kind: 'audio', entry: AUDIO_CATALOG[id] };
+  if (ROOM_TITLE_CATALOG[id]) return { kind: 'play',  cat: 'room', entry: ROOM_TITLE_CATALOG[id] };
+  if (AR_CUE_CATALOG[id])     return { kind: 'play',  cat: 'cue',  entry: AR_CUE_CATALOG[id] };
+  if (AUDIO_CATALOG[id])      return { kind: 'audio', cat: 'log',  entry: AUDIO_CATALOG[id] };
   return null;
 }
 
@@ -125,7 +125,7 @@ export const AR_OBJECTS = [
     qrCode: 'SEFY:AR:BOMB',
     label: 'BOMBE DÉTECTÉE',
     icon: '💣',
-    description: 'Dispositif explosif localisé. Accès tier 3 requis pour le désamorçage.',
+    description: 'Dispositif explosif localisé. Accès tier 4 requis pour le désamorçage.',
     seekDirection: { yaw: 180, pitch: 30 },
     seekTolerance: 25,
     seekHint: 'Retournez-vous et regardez vers le bas…',

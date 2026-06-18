@@ -12,7 +12,7 @@
  */
 
 import { playSFX, showScreen } from '../../ui.js';
-import { solvePuzzle, addInventoryItem, saveState, fetchState } from '../../state.js';
+import { solvePuzzle, addInventoryItem, saveState, fetchState, addLogEntry } from '../../state.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
 import { requestCameraWithRetry } from '../../utils/camera.js';
 import { updateInventoryBadge } from '../../screens/evidence.js';
@@ -452,6 +452,14 @@ function stopQRScanner() {
   if (qrScanLoop) { clearInterval(qrScanLoop); qrScanLoop = null; }
 }
 
+/** Append a SEFY system-log line for a scan, once per unique key. */
+function logScan(state, key, text) {
+  if (!state.loggedScans) state.loggedScans = [];
+  if (state.loggedScans.includes(key)) return;
+  state.loggedScans.push(key);
+  addLogEntry(state, text); // persists via saveState
+}
+
 function handleQRCode(data, stage, state) {
   if (!data.startsWith('SEFY:')) {
     showQRFeedback('QR non reconnu.', 'error');
@@ -480,6 +488,7 @@ function handleQRCode(data, stage, state) {
       updateInventoryBadge(state);
       showQRCardReveal(value);
       playSFX(SFX.positionFound);
+      logScan(state, `card:${value}`, `SEFY - Carte récupérée : ${card.label}.`);
       showQRFeedback(`${card.label} collectée !`, 'success');
     } else {
       showQRFeedback(`${card.label} — déjà en possession.`, 'info');
@@ -490,12 +499,14 @@ function handleQRCode(data, stage, state) {
   if (type === 'AUDIO') {
     const found = classifyAudioQR(value);
     if (!found || !found.entry.src) { showQRFeedback('Audio non reconnu.', 'error'); return; }
-    const { kind, entry } = found;
+    const { kind, cat, entry } = found;
 
     // Room titles & AR cues — just play; never collected.
     if (kind === 'play') {
       playSFX(entry.src);
       showQRFeedback(`🔊 ${entry.label}`, 'info');
+      if (cat === 'room') logScan(state, `room:${value}`, `SEFY - Agent localisé : ${entry.room}.`);
+      else                logScan(state, `cue:${value}`, `SEFY - Analyse environnementale — ${entry.room} : ${entry.label}.`);
       return;
     }
 
@@ -507,6 +518,7 @@ function handleQRCode(data, stage, state) {
       saveState(state);
       updateInventoryBadge(state);
       playSFX(entry.src);
+      logScan(state, `audio:${value}`, `SEFY - Enregistrement récupéré : ${entry.label}.`);
       showQRFeedback(`🔊 ${entry.label}`, 'success');
     } else {
       playSFX(entry.src);
@@ -520,7 +532,12 @@ function handleQRCode(data, stage, state) {
     if (!entry || !entry.src) { showQRFeedback('Vidéo non reconnue.', 'error'); return; }
     if (!state.videoLogs) state.videoLogs = [];
     const isNew = !state.videoLogs.includes(value);
-    if (isNew) { state.videoLogs.push(value); saveState(state); updateInventoryBadge(state); }
+    if (isNew) {
+      state.videoLogs.push(value);
+      saveState(state);
+      updateInventoryBadge(state);
+      logScan(state, `video:${value}`, `SEFY - Journal vidéo récupéré : ${entry.label}.`);
+    }
     playVideo(entry.src);
     showQRFeedback(`🎬 ${entry.label}${isNew ? '' : ' — déjà collecté'}`, isNew ? 'success' : 'info');
     return;
@@ -536,6 +553,7 @@ function handleQRCode(data, stage, state) {
       saveState(state);
       updateInventoryBadge(state);
       playSFX(SFX.cardFound);
+      logScan(state, `paper:${value}`, `SEFY - Document physique numérisé : ${paper.label}.`);
       showQRFeedback(`📜 ${paper.label} collecté !`, 'success');
     } else {
       showQRFeedback(`📜 ${paper.label} — déjà collecté.`, 'info');
@@ -821,9 +839,11 @@ function collectARObject(obj, stage, state, onSolved, abort) {
   if (CARD_CODES[obj.id]) {
     if (!state.cards) state.cards = [];
     if (!state.cards.includes(obj.id)) state.cards.push(obj.id);
+    logScan(state, `ar:${obj.id}`, `SEFY - Carte reconstruite par module AR : ${CARD_CODES[obj.id].label}.`);
   } else {
     if (!state.arFound) state.arFound = [];
     state.arFound.push(obj.id);
+    logScan(state, `ar:${obj.id}`, 'SEFY - Dispositif explosif localisé par agent terrain.');
   }
   saveState(state);
 

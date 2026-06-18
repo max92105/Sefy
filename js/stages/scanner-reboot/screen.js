@@ -9,7 +9,7 @@
  * After all steps completed → stage solves → app routes to terminal-wait.
  */
 
-import { solvePuzzle, saveState } from '../../state.js';
+import { solvePuzzle, saveState, addLogEntry } from '../../state.js';
 import { validateAnswer } from '../../stages.js';
 import { showFeedback, glitch } from '../../ui.js';
 import { createIntroCinematicDOM, startIntroCinematic } from '../../components/intro-cinematic.js';
@@ -394,6 +394,7 @@ function showCodeEntry(stage, state, route, stepIndex, onSolved) {
       // Advance to next step
       const nextStep = stepIndex + 1;
       state.routeStep = nextStep;
+      addLogEntry(state, `SEFY - Code validé : ${step.label}.`);
       saveState(state);
 
       setTimeout(() => {

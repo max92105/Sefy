@@ -3,7 +3,7 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
+import { loadState, saveState, resetState, resetAgent, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
@@ -335,13 +335,13 @@ const stageLogEntries = {
     'SEFY - RESTRICTION DES COMMUNICATIONS.',
   ],
   'sefy-rogue': [
-    'SEFY - ALERTE CRITIQUE: Agents terrain hors contrôle.',
+    'SEFY - Accès Tier 4 confirmé. Intervention humaine complète.',
     'SEFY - INITIALISATION DU PROTOCOLE 11',
-    'PROTOCOLE 11 EN ATTENTE',
+    'PROTOCOLE 11 ACTIVÉ',
   ],
   'deactivate-sefy': [
     'SEFY - TENTATIVE DE DÉSACTIVATION DÉTECTÉE.',
-    'SEFY - PROTOCOLE 11 — ACTIF.',
+    'SEFY - Signal d\'urgence détecté sur le réseau interne.',
   ],
 };
 
@@ -382,6 +382,9 @@ function onPuzzleSolved(stage) {
     state = setStage(state, next.id);
     enterStage(next);
   } else {
+    // Final puzzle solved → the PURGE is stopped.
+    addLogEntry(state, 'PROTOCOLE 11 INTERROMPU.');
+    addLogEntry(state, 'SEFY - Contrôle rétabli.');
     missionSuccess();
   }
 }
@@ -522,11 +525,15 @@ function bindGlobalEvents() {
     }
   });
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     if (e.target.closest('#btn-confirm-reset')) {
-      state = resetState();
+      // Wipe the agent's Firebase node too — otherwise the stale missionStarted
+      // state resurfaces when the agent is re-selected and causes weird resumes.
+      const agent = state.playerAgent;
       closeModal('modal-reset');
       hideBanner();
+      if (agent) { try { await resetAgent(agent); } catch { /* offline — local reset still applies */ } }
+      state = resetState();
       goTerminal();
     }
   });

@@ -109,7 +109,10 @@ export function createScreen() {
             <div class="arscan-searching-hint">Explorez avec la caméra</div>
           </div>
           <div class="arscan-seeking hidden" id="${PREFIX}-ar-seeking">
-            <div class="arscan-seeking-arrow" id="${PREFIX}-ar-seeking-arrow">➤</div>
+            <div class="arscan-seeking-guide">
+              <span class="arscan-seek-axis"><span class="arscan-seek-arrow" id="${PREFIX}-ar-seek-v">▲</span><span class="arscan-seek-cap">haut / bas</span></span>
+              <span class="arscan-seek-axis"><span class="arscan-seek-arrow" id="${PREFIX}-ar-seek-h">◀</span><span class="arscan-seek-cap">gauche / droite</span></span>
+            </div>
             <div class="arscan-seeking-text" id="${PREFIX}-ar-seeking-text">Signal détecté !</div>
           </div>
           <div class="arscan-markers hidden" id="${PREFIX}-ar-markers"></div>
@@ -707,7 +710,6 @@ async function startARScanner(stage, state, onSolved) {
       cooldown = true;
       if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
       stopArCue();
-      playSFX(SFX.positionFound);
       startSeeking(obj, stage, state, onSolved);
       return;
     }
@@ -782,7 +784,8 @@ function startSeeking(obj, stage, state, onSolved) {
   const searchingEl = document.getElementById(`${PREFIX}-ar-searching`);
   const seekingEl   = document.getElementById(`${PREFIX}-ar-seeking`);
   const seekTextEl  = document.getElementById(`${PREFIX}-ar-seeking-text`);
-  const seekArrowEl = document.getElementById(`${PREFIX}-ar-seeking-arrow`);
+  const seekVEl     = document.getElementById(`${PREFIX}-ar-seek-v`); // up / down
+  const seekHEl     = document.getElementById(`${PREFIX}-ar-seek-h`); // left / right
   const markersEl   = document.getElementById(`${PREFIX}-ar-markers`);
 
   if (searchingEl) searchingEl.classList.add('hidden');
@@ -804,7 +807,6 @@ function startSeeking(obj, stage, state, onSolved) {
       if (seekingEl) seekingEl.classList.add('hidden');
       objectRevealed = true;
       stopOrientationTracking();
-      playSFX(SFX.positionFound);
       showObjectOnCamera(obj, stage, state, onSolved, abort);
       return;
     }
@@ -815,9 +817,22 @@ function startSeeking(obj, stage, state, onSolved) {
       if (abort.aborted || objectRevealed) return;
       const result = isAimedAtTarget(origin, obj.seekDirection, obj.seekTolerance);
 
-      if (seekArrowEl && result.deltaYaw != null) {
-        const arrowAngle = obj.seekDirection.yaw - result.deltaYaw;
-        seekArrowEl.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}deg)`;
+      // Two separate guides: one for left/right (yaw), one for up/down (pitch).
+      if (result.deltaYaw != null) {
+        const tol = obj.seekTolerance;
+        const yawError   = ((obj.seekDirection.yaw - result.deltaYaw + 540) % 360) - 180; // signed
+        const pitchError = obj.seekDirection.pitch - result.deltaPitch;                   // signed
+
+        if (seekHEl) {
+          const ok = Math.abs(yawError) <= tol;
+          seekHEl.textContent = ok ? '✓' : (yawError > 0 ? '▶' : '◀'); // flip ▶/◀ if reversed on device
+          seekHEl.classList.toggle('aligned', ok);
+        }
+        if (seekVEl) {
+          const ok = Math.abs(pitchError) <= tol;
+          seekVEl.textContent = ok ? '✓' : (pitchError > 0 ? '▼' : '▲'); // flip ▼/▲ if reversed on device
+          seekVEl.classList.toggle('aligned', ok);
+        }
       }
 
       if (result.aimed) {
@@ -825,7 +840,6 @@ function startSeeking(obj, stage, state, onSolved) {
         if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
         if (seekingEl) seekingEl.classList.add('hidden');
         stopOrientationTracking();
-        playSFX(SFX.positionFound);
         showObjectOnCamera(obj, stage, state, onSolved, abort);
       }
     }, 100);
@@ -891,7 +905,6 @@ function collectARObject(obj, stage, state, onSolved, abort) {
   }
   saveState(state);
 
-  playSFX(SFX.positionFound);
   showARReveal(obj);
   renderARObjectStatus();
   updateInventoryBadge(state);
@@ -916,7 +929,6 @@ function completeARScan(stage, state, onSolved) {
   // (the player promotes with the card code via a terminal). See transitionToPanel.
   stopARScanner();
   showARFeedback('Tous les objets localisés ! Utilisez le code de la carte pour passer au Tier 4 depuis un terminal.', 'success');
-  playSFX(SFX.positionFound);
 }
 
 function resumeARQRScanning(stage, state, onSolved) {
@@ -952,7 +964,6 @@ function resumeARQRScanning(stage, state, onSolved) {
       cooldown = true;
       if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
       stopArCue();
-      playSFX(SFX.positionFound);
       startSeeking(obj, stage, state, onSolved);
       return;
     }

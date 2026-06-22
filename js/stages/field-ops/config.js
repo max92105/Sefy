@@ -143,7 +143,7 @@ export const AR_OBJECTS = [
     icon: '💣',
     description: 'Dispositif explosif localisé. Accès tier 4 requis pour le désamorçage.',
     seekDirection: { yaw: 180, pitch: 30 },
-    seekTolerance: 25,
+    seekTolerance: 40,
     seekHint: 'Retournez-vous et regardez vers le bas…',
   },
   {
@@ -153,7 +153,7 @@ export const AR_OBJECTS = [
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 4 obtenue.',
     seekDirection: { yaw: -90, pitch: 25 },
-    seekTolerance: 25,
+    seekTolerance: 40,
     seekHint: 'Tournez à gauche et regardez vers le bas…',
   },
 ];

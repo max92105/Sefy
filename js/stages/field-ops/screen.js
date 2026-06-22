@@ -840,6 +840,7 @@ function startSeeking(obj, stage, state, onSolved) {
     }
 
     const origin = { ...currentOrientation };
+    let aimedTicks = 0;
 
     seekLoop = setInterval(() => {
       if (abort.aborted || objectRevealed) return;
@@ -865,12 +866,20 @@ function startSeeking(obj, stage, state, onSolved) {
         }
       }
 
+      // Require the aim to be HELD briefly (~400ms) so a fly-by doesn't count.
       if (result.aimed) {
-        objectRevealed = true;
-        if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
-        if (seekingEl) seekingEl.classList.add('hidden');
-        stopOrientationTracking();
-        showObjectOnCamera(obj, stage, state, onSolved, abort);
+        aimedTicks++;
+        if (seekTextEl) seekTextEl.textContent = 'Cible verrouillée…';
+        if (aimedTicks >= 4) {
+          objectRevealed = true;
+          if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+          if (seekingEl) seekingEl.classList.add('hidden');
+          stopOrientationTracking();
+          showObjectOnCamera(obj, stage, state, onSolved, abort);
+        }
+      } else {
+        if (aimedTicks > 0 && seekTextEl) seekTextEl.textContent = seekHintFor(obj.seekDirection);
+        aimedTicks = 0;
       }
     }, 100);
   }, 500);

@@ -142,9 +142,11 @@ export const AR_OBJECTS = [
     label: 'BOMBE DÉTECTÉE',
     icon: '💣',
     description: 'Dispositif explosif localisé. Accès tier 4 requis pour le désamorçage.',
-    seekDirection: { yaw: 180, pitch: 30 },
-    seekTolerance: 40,
-    seekHint: 'Retournez-vous et regardez vers le bas…',
+    // Convention: +yaw = turn LEFT, +pitch = look UP. The hint text is generated
+    // from this (seekHintFor), so it always matches the arrows. Keep both offsets
+    // well beyond seekTolerance so each axis needs a deliberate move.
+    seekDirection: { yaw: 180, pitch: -45 }, // turn around, look down
+    seekTolerance: 35,
   },
   {
     id: 'ADRIAN',
@@ -152,9 +154,8 @@ export const AR_OBJECTS = [
     label: 'CARTE ACCÈS TIER 4',
     icon: '🪪',
     description: 'Carte d\'accès reconstruite. Autorisation tier 4 obtenue.',
-    seekDirection: { yaw: -90, pitch: 25 },
-    seekTolerance: 40,
-    seekHint: 'Tournez à gauche et regardez vers le bas…',
+    seekDirection: { yaw: -75, pitch: 50 }, // turn right, look up
+    seekTolerance: 35,
   },
 ];
 

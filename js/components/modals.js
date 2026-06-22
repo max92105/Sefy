@@ -81,12 +81,65 @@ export function createModals() {
         </div>
       </div>
     </div>
+
+    <!-- MODAL: Item collected (uniform pop-up for every QR-scanned collectable) -->
+    <div id="modal-collected" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="header-tag">OBJET COLLECTÉ</span>
+        </div>
+        <div class="modal-body collected-body">
+          <div class="collected-icon" id="collected-icon">📦</div>
+          <div class="collected-label" id="collected-label">—</div>
+          <p class="collected-note">Ajouté à votre inventaire.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-collected-action" class="btn btn-secondary hidden"></button>
+          <button id="btn-collected-close" class="btn btn-outline">FERMER</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // Append each modal to body
   while (wrapper.firstElementChild) {
     document.body.appendChild(wrapper.firstElementChild);
   }
+}
+
+/**
+ * Show the uniform "collected" pop-up for a scanned collectable.
+ * @param {object} opts
+ * @param {string} opts.icon
+ * @param {string} opts.label
+ * @param {string} [opts.actionLabel] — optional action button text (e.g. "▶ ÉCOUTER")
+ * @param {Function} [opts.onAction] — handler for the action button (modal stays open)
+ */
+export function showCollectedModal({ icon, label, actionLabel, onAction } = {}) {
+  const modal = document.getElementById('modal-collected');
+  if (!modal) return;
+  const iconEl   = document.getElementById('collected-icon');
+  const labelEl  = document.getElementById('collected-label');
+  const actionEl = document.getElementById('btn-collected-action');
+  const closeEl  = document.getElementById('btn-collected-close');
+
+  if (iconEl)  iconEl.textContent = icon || '📦';
+  if (labelEl) labelEl.textContent = label || '';
+
+  if (actionEl) {
+    if (actionLabel && typeof onAction === 'function') {
+      actionEl.textContent = actionLabel;
+      actionEl.classList.remove('hidden');
+      actionEl.onclick = onAction; // leave the modal open so it can be repeated
+    } else {
+      actionEl.classList.add('hidden');
+      actionEl.onclick = null;
+    }
+  }
+  if (closeEl) closeEl.onclick = () => modal.classList.add('hidden');
+
+  modal.classList.remove('hidden');
 }
 
 /** Setup close-on-backdrop-click and close buttons for all modals */

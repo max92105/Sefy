@@ -1495,6 +1495,31 @@ body.intro-playing .briefing-bottom {
   color: var(--accent-red);
 }
 
+/* Collected-item pop-up */
+.collected-body {
+  text-align: center;
+}
+
+.collected-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: var(--space-sm);
+}
+
+.collected-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  color: var(--accent-green);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+.collected-note {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
 /* Emphasized total row */
 .score-row.score-total {
   border-top: 1px solid var(--accent-green);

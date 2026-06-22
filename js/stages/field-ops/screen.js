@@ -19,6 +19,7 @@ import { updateInventoryBadge } from '../../screens/evidence.js';
 import { fbOnStateChange } from '../../state.js';
 import { INTRO_SEQUENCE, AR_OBJECTS, AR_BRIEFING_SEQUENCE, PAPER_CATALOG, SFX, classifyAudioQR, VIDEO_LOG_CATALOG, CARD_CODES, SERINGE } from './config.js';
 import { playVideo } from '../../components/video-player.js';
+import { showCollectedModal } from '../../components/modals.js';
 import { syncHintBadge } from '../../screens/stage.js';
 
 const PREFIX = 'field-ops';
@@ -475,9 +476,9 @@ function handleQRCode(data, stage, state) {
     state.hasSyringe = true;
     saveState(state);
     updateInventoryBadge(state);
-    playSFX(SFX.positionFound);
     logScan(state, 'syringe', 'SEFY - Objet non répertorié récupéré par agent.');
-    showQRFeedback(isNew ? `${SERINGE.label} récupérée !` : `${SERINGE.label} — déjà en possession.`, isNew ? 'success' : 'info');
+    if (isNew) showCollectedModal({ icon: '💉', label: SERINGE.label });
+    else showQRFeedback(`${SERINGE.label} — déjà en possession.`, 'info');
     return;
   }
 
@@ -497,10 +498,8 @@ function handleQRCode(data, stage, state) {
       state.cards.push(value);
       saveState(state);
       updateInventoryBadge(state);
-      showQRCardReveal(value);
-      playSFX(SFX.positionFound);
       logScan(state, `card:${value}`, `SEFY - Carte récupérée : ${card.label}.`);
-      showQRFeedback(`${card.label} collectée !`, 'success');
+      showCollectedModal({ icon: '🪪', label: card.label });
     } else {
       showQRFeedback(`${card.label} — déjà en possession.`, 'info');
     }
@@ -512,28 +511,32 @@ function handleQRCode(data, stage, state) {
     if (!found || !found.entry.src) { showQRFeedback('Audio non reconnu.', 'error'); return; }
     const { kind, cat, entry } = found;
 
-    // Room titles & AR cues — just play; never collected.
-    if (kind === 'play') {
-      playSFX(entry.src);
-      showQRFeedback(`🔊 ${entry.label}`, 'info');
-      if (cat === 'room') logScan(state, `room:${value}`, `SEFY - Agent localisé : ${entry.room}.`);
-      else                logScan(state, `cue:${value}`, `SEFY - Analyse environnementale — ${entry.room} : ${entry.label}.`);
+    // AR environmental cues are NOT readable with the plain QR scanner — they
+    // require the AR module (handled in the AR scanner loop).
+    if (kind === 'play' && cat === 'cue') {
+      showQRFeedback('Signal AR détecté — activez le module AR pour l\'analyser.', 'info');
       return;
     }
 
-    // Audio log — play + collect.
+    // Room titles — announce the room; never collected.
+    if (kind === 'play') {
+      playSFX(entry.src);
+      showQRFeedback(`🔊 ${entry.label}`, 'info');
+      logScan(state, `room:${value}`, `SEFY - Agent localisé : ${entry.room}.`);
+      return;
+    }
+
+    // Audio log — collect; the player listens from the pop-up or the inventory.
     if (!state.audioLogs) state.audioLogs = [];
     const isNew = !state.audioLogs.includes(value);
     if (isNew) {
       state.audioLogs.push(value);
       saveState(state);
       updateInventoryBadge(state);
-      playSFX(entry.src);
       logScan(state, `audio:${value}`, `SEFY - Enregistrement récupéré : ${entry.label}.`);
-      showQRFeedback(`🔊 ${entry.label}`, 'success');
+      showCollectedModal({ icon: '🔊', label: entry.label, actionLabel: '▶ ÉCOUTER', onAction: () => playSFX(entry.src) });
     } else {
-      playSFX(entry.src);
-      showQRFeedback(`🔊 ${entry.label} — déjà collecté. Lecture…`, 'info');
+      showQRFeedback(`${entry.label} — déjà collecté (voir inventaire).`, 'info');
     }
     return;
   }
@@ -548,9 +551,10 @@ function handleQRCode(data, stage, state) {
       saveState(state);
       updateInventoryBadge(state);
       logScan(state, `video:${value}`, `SEFY - Journal vidéo récupéré : ${entry.label}.`);
+      showCollectedModal({ icon: '🎬', label: entry.label, actionLabel: '▶ VISIONNER', onAction: () => playVideo(entry.src) });
+    } else {
+      showQRFeedback(`${entry.label} — déjà collecté (voir inventaire).`, 'info');
     }
-    playVideo(entry.src);
-    showQRFeedback(`🎬 ${entry.label}${isNew ? '' : ' — déjà collecté'}`, isNew ? 'success' : 'info');
     return;
   }
 
@@ -563,11 +567,10 @@ function handleQRCode(data, stage, state) {
       state.papers.push(value);
       saveState(state);
       updateInventoryBadge(state);
-      playSFX(SFX.cardFound);
       logScan(state, `paper:${value}`, `SEFY - Document physique numérisé : ${paper.label}.`);
-      showQRFeedback(`📜 ${paper.label} collecté !`, 'success');
+      showCollectedModal({ icon: '📜', label: paper.label });
     } else {
-      showQRFeedback(`📜 ${paper.label} — déjà collecté.`, 'info');
+      showQRFeedback(`${paper.label} — déjà collecté (voir inventaire).`, 'info');
     }
     return;
   }
@@ -600,28 +603,6 @@ function showQRFeedback(msg, type = 'info') {
     wrap.offsetHeight;
     wrap.style.animation = '';
   }
-}
-
-function showQRCardReveal(color) {
-  const overlay = document.getElementById(`${PREFIX}-card-overlay`);
-  const titleEl = document.getElementById(`${PREFIX}-card-title`);
-  const colorEl = document.getElementById(`${PREFIX}-card-color`);
-  if (!overlay) return;
-
-  const item = CARD_CODES[color] || { label: color, css: '#888' };
-  if (titleEl) titleEl.textContent = item.label;
-  if (colorEl) colorEl.style.background = item.css;
-
-  overlay.classList.remove('hidden');
-  overlay.classList.add('revealed');
-  setTimeout(() => {
-    overlay.classList.remove('revealed');
-    overlay.classList.add('dismissing');
-    setTimeout(() => {
-      overlay.classList.remove('dismissing');
-      overlay.classList.add('hidden');
-    }, 500);
-  }, 2500);
 }
 
 /* ═══════════════  AR Scanner  ═══════════════ */
@@ -910,12 +891,31 @@ function resumeARQRScanning(stage, state, onSolved) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
     if (!qr || !qr.data) return;
-    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data.trim());
-    if (!obj || foundObjects.includes(obj.id)) return;
-    cooldown = true;
-    if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX(SFX.positionFound);
-    startSeeking(obj, stage, state, onSolved);
+    const data = qr.data.trim();
+
+    // AR object → start the orientation-seek.
+    const obj = AR_OBJECTS.find(o => o.qrCode === data);
+    if (obj) {
+      if (foundObjects.includes(obj.id)) return;
+      cooldown = true;
+      if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+      playSFX(SFX.positionFound);
+      startSeeking(obj, stage, state, onSolved);
+      return;
+    }
+
+    // AR environmental cue → play its analysis audio (AR module only).
+    if (data.startsWith('SEFY:AUDIO:')) {
+      const id = data.split(':')[2];
+      const found = classifyAudioQR(id);
+      if (found && found.cat === 'cue' && found.entry.src) {
+        cooldown = true;
+        setTimeout(() => { cooldown = false; }, 3000); // avoid retriggering every frame
+        playSFX(found.entry.src);
+        showARFeedback(`🔊 ${found.entry.label}`, 'info');
+        logScan(state, `cue:${id}`, `SEFY - Analyse environnementale — ${found.entry.room} : ${found.entry.label}.`);
+      }
+    }
   }, 250);
 }
 

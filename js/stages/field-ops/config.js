@@ -41,16 +41,20 @@ export const VIDEO_LOG_CATALOG = {
   'chief-adrian': { label: 'Adrian — Message Final', room: 'Quartier du Chef (AR)', src: 'assets/field-ops/ar/quartier_chef_scientifique/adrian_video_log.mp4' },
 };
 
-/** AR scan cues (qr_ar_*) — played during AR scanning. NOT collected. */
+/**
+ * AR scan cues (qr_ar_*) — played during AR scanning (AR module only). NOT collected.
+ * A `seek` property marks a cue that also starts the orientation-seek minigame
+ * for that AR object (so the cue plays its audio AND triggers the hunt).
+ */
 export const AR_CUE_CATALOG = {
   'cmd-clear':       { label: 'Rien à signaler',         room: 'Centre de Commandement (AR)',    src: 'assets/field-ops/ar/commandement/qr_ar_rien_a_signale.wav' },
   'lab-virus':       { label: 'Présence Virus ARK-41',   room: 'Laboratoire Chimique (AR)',      src: 'assets/field-ops/ar/laboratoire/qr_ar_ark41.wav' },
   'infirmary-virus': { label: 'Présence Virus ARK-41',   room: 'Infirmerie (AR)',                src: 'assets/field-ops/ar/infirmerie/qr_ar_ark41.wav' },
   'quarters-clear':  { label: 'Rien à signaler',         room: 'Quartier du Personnel (AR)',     src: 'assets/field-ops/ar/quartier_personnel/qr_ar_rien_a_signale.wav' },
-  'science-hint':    { label: 'Engin explosif localisé', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav' },
+  'science-hint':    { label: 'Engin explosif localisé', room: 'Bureau Scientifique (AR)',       src: 'assets/field-ops/ar/science/qr_ar_engin_explosif_trouve.wav', seek: 'bomb' },
   'decon-virus':     { label: 'Présence Virus ARK-41',   room: 'Module de Décontamination (AR)', src: 'assets/field-ops/ar/decontamination/qr_ar_ark41.wav' },
   'security-clear':  { label: 'Rien à signaler',         room: 'Sécurité (AR)',                  src: 'assets/field-ops/ar/securite/qr_ar_rien_a_signale.wav' },
-  'servers-card4':   { label: 'Carte d\'accès 4',        room: 'Salle des Serveurs (AR)',        src: 'assets/field-ops/ar/serveurs/card_found.wav' },
+  'servers-card4':   { label: 'Carte d\'accès 4',        room: 'Salle des Serveurs (AR)',        src: 'assets/field-ops/ar/serveurs/card_found.wav', seek: 'ADRIAN' },
 };
 
 /** Audio logs — play an audio clip, collected and replayable from the inventory. */

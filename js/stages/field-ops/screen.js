@@ -607,6 +607,47 @@ function showQRFeedback(msg, type = 'info') {
 
 /* ═══════════════  AR Scanner  ═══════════════ */
 
+// Currently-playing AR cue audio — kept so a new scan can stop it (no layering).
+let arCueAudio = null;
+
+function stopArCue() {
+  if (arCueAudio) { try { arCueAudio.pause(); } catch { /* ignore */ } arCueAudio = null; }
+}
+
+function playArCue(src) {
+  stopArCue();
+  arCueAudio = new Audio(src);
+  arCueAudio.play().catch(() => {});
+}
+
+/**
+ * Handle an AR environmental cue: play its audio (replacing any cue still
+ * playing — no layering), log it, and — for cues placed on an AR object —
+ * also start that object's seek minigame.
+ * @returns {boolean} true if the scanned data was an AR cue
+ */
+function tryHandleARCue(data, stage, state, onSolved) {
+  if (!data.startsWith('SEFY:AUDIO:')) return false;
+  const id = data.split(':')[2];
+  const found = classifyAudioQR(id);
+  if (!found || found.cat !== 'cue' || !found.entry.src) return false;
+
+  playArCue(found.entry.src);
+  showARFeedback(`🔊 ${found.entry.label}`, 'info');
+  logScan(state, `cue:${id}`, `SEFY - Analyse environnementale — ${found.entry.room} : ${found.entry.label}.`);
+
+  // Cues placed on an AR object also kick off its seek minigame.
+  const seekId = found.entry.seek;
+  if (seekId) {
+    const obj = AR_OBJECTS.find(o => o.id === seekId);
+    if (obj && !foundObjects.includes(obj.id)) {
+      if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+      startSeeking(obj, stage, state, onSolved);
+    }
+  }
+  return true;
+}
+
 async function startARScanner(stage, state, onSolved) {
   try { await loadJsQR(); } catch {
     showARFeedback('Erreur : scanner indisponible.', 'error');
@@ -654,7 +695,7 @@ async function startARScanner(stage, state, onSolved) {
     if (!qr || !qr.data) return;
     const data = qr.data.trim();
 
-    // AR object → start the orientation-seek minigame.
+    // AR object QR → start the orientation-seek minigame.
     const obj = AR_OBJECTS.find(o => o.qrCode === data);
     if (obj) {
       if (foundObjects.includes(obj.id)) {
@@ -665,27 +706,22 @@ async function startARScanner(stage, state, onSolved) {
       }
       cooldown = true;
       if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+      stopArCue();
       playSFX(SFX.positionFound);
       startSeeking(obj, stage, state, onSolved);
       return;
     }
 
-    // AR environmental cue → play its analysis audio.
-    if (data.startsWith('SEFY:AUDIO:')) {
-      const id = data.split(':')[2];
-      const found = classifyAudioQR(id);
-      if (found && found.cat === 'cue' && found.entry.src) {
-        cooldown = true;
-        setTimeout(() => { cooldown = false; }, 3000);
-        playSFX(found.entry.src);
-        showARFeedback(`🔊 ${found.entry.label}`, 'info');
-        logScan(state, `cue:${id}`, `SEFY - Analyse environnementale — ${found.entry.room} : ${found.entry.label}.`);
-      }
+    // AR environmental cue → play audio (+ maybe trigger a seek).
+    if (tryHandleARCue(data, stage, state, onSolved)) {
+      cooldown = true;
+      setTimeout(() => { cooldown = false; }, 3000);
     }
   }, 250);
 }
 
 function stopARScanner() {
+  stopArCue();
   if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
   if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
   stopOrientationTracking();
@@ -909,28 +945,22 @@ function resumeARQRScanning(stage, state, onSolved) {
     if (!qr || !qr.data) return;
     const data = qr.data.trim();
 
-    // AR object → start the orientation-seek.
+    // AR object QR → start the orientation-seek.
     const obj = AR_OBJECTS.find(o => o.qrCode === data);
     if (obj) {
       if (foundObjects.includes(obj.id)) return;
       cooldown = true;
       if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+      stopArCue();
       playSFX(SFX.positionFound);
       startSeeking(obj, stage, state, onSolved);
       return;
     }
 
-    // AR environmental cue → play its analysis audio (AR module only).
-    if (data.startsWith('SEFY:AUDIO:')) {
-      const id = data.split(':')[2];
-      const found = classifyAudioQR(id);
-      if (found && found.cat === 'cue' && found.entry.src) {
-        cooldown = true;
-        setTimeout(() => { cooldown = false; }, 3000); // avoid retriggering every frame
-        playSFX(found.entry.src);
-        showARFeedback(`🔊 ${found.entry.label}`, 'info');
-        logScan(state, `cue:${id}`, `SEFY - Analyse environnementale — ${found.entry.room} : ${found.entry.label}.`);
-      }
+    // AR environmental cue → play audio (+ maybe trigger a seek).
+    if (tryHandleARCue(data, stage, state, onSolved)) {
+      cooldown = true;
+      setTimeout(() => { cooldown = false; }, 3000); // avoid retriggering every frame
     }
   }, 250);
 }

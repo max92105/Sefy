@@ -652,20 +652,36 @@ async function startARScanner(stage, state, onSolved) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const qr = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
     if (!qr || !qr.data) return;
+    const data = qr.data.trim();
 
-    const obj = AR_OBJECTS.find(o => o.qrCode === qr.data.trim());
-    if (!obj) return;
-    if (foundObjects.includes(obj.id)) {
-      showARFeedback(`${obj.label} — déjà collecté.`, 'info');
+    // AR object → start the orientation-seek minigame.
+    const obj = AR_OBJECTS.find(o => o.qrCode === data);
+    if (obj) {
+      if (foundObjects.includes(obj.id)) {
+        showARFeedback(`${obj.label} — déjà collecté.`, 'info');
+        cooldown = true;
+        setTimeout(() => { cooldown = false; }, 3000);
+        return;
+      }
       cooldown = true;
-      setTimeout(() => { cooldown = false; }, 3000);
+      if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
+      playSFX(SFX.positionFound);
+      startSeeking(obj, stage, state, onSolved);
       return;
     }
 
-    cooldown = true;
-    if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
-    playSFX(SFX.positionFound);
-    startSeeking(obj, stage, state, onSolved);
+    // AR environmental cue → play its analysis audio.
+    if (data.startsWith('SEFY:AUDIO:')) {
+      const id = data.split(':')[2];
+      const found = classifyAudioQR(id);
+      if (found && found.cat === 'cue' && found.entry.src) {
+        cooldown = true;
+        setTimeout(() => { cooldown = false; }, 3000);
+        playSFX(found.entry.src);
+        showARFeedback(`🔊 ${found.entry.label}`, 'info');
+        logScan(state, `cue:${id}`, `SEFY - Analyse environnementale — ${found.entry.room} : ${found.entry.label}.`);
+      }
+    }
   }, 250);
 }
 

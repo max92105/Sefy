@@ -743,10 +743,24 @@ function startOrientationTracking() {
   }
 }
 
+let smoothAlpha = null;
+let smoothBeta  = null;
+
+/** Low-pass filter for a circular angle (degrees), handling wraparound. */
+function smoothAngle(prev, next, f) {
+  if (prev == null) return next;
+  const d = ((next - prev + 540) % 360) - 180; // shortest signed diff
+  return (prev + d * f + 360) % 360;
+}
+
 function bindOrientationListener() {
   orientationHandler = (e) => {
-    currentOrientation.alpha = e.alpha;
-    currentOrientation.beta  = e.beta;
+    if (e.alpha == null) return;
+    const F = 0.2; // smoothing factor — lower is steadier but laggier
+    smoothAlpha = smoothAngle(smoothAlpha, e.alpha, F);
+    smoothBeta  = (smoothBeta == null) ? e.beta : smoothBeta * (1 - F) + e.beta * F;
+    currentOrientation.alpha = smoothAlpha;
+    currentOrientation.beta  = smoothBeta;
     currentOrientation.gamma = e.gamma;
   };
   window.addEventListener('deviceorientation', orientationHandler, true);
@@ -757,6 +771,20 @@ function stopOrientationTracking() {
     window.removeEventListener('deviceorientation', orientationHandler, true);
     orientationHandler = null;
   }
+  smoothAlpha = null;
+  smoothBeta  = null;
+}
+
+/**
+ * Build the seek hint text from the target direction so it ALWAYS matches the
+ * arrows (same convention): +yaw → left, +pitch → up.
+ */
+function seekHintFor(dir) {
+  const parts = [];
+  if (Math.abs(dir.yaw) > 135)     parts.push('retournez-vous');
+  else if (Math.abs(dir.yaw) > 20) parts.push(dir.yaw > 0 ? 'tournez à gauche' : 'tournez à droite');
+  if (Math.abs(dir.pitch) > 15)    parts.push(dir.pitch > 0 ? 'regardez vers le haut' : 'regardez vers le bas');
+  return parts.length ? `Signal détecté ! ${parts.join(', ')}.` : 'Signal détecté ! Cherchez autour de vous…';
 }
 
 function getOrientationDelta(origin) {
@@ -791,7 +819,7 @@ function startSeeking(obj, stage, state, onSolved) {
   if (searchingEl) searchingEl.classList.add('hidden');
   if (seekingEl)   seekingEl.classList.remove('hidden');
   if (markersEl)   { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
-  if (seekTextEl)  seekTextEl.textContent = obj.seekHint || 'Signal détecté ! Cherchez autour…';
+  if (seekTextEl)  seekTextEl.textContent = seekHintFor(obj.seekDirection);
 
   showARFeedback('Signal détecté ! Cherchez l\'objet…', 'success');
   startOrientationTracking();
@@ -825,12 +853,14 @@ function startSeeking(obj, stage, state, onSolved) {
 
         if (seekHEl) {
           const ok = Math.abs(yawError) <= tol;
-          seekHEl.textContent = ok ? '✓' : (yawError > 0 ? '▶' : '◀'); // flip ▶/◀ if reversed on device
+          // +yaw means we must increase alpha → turn LEFT (W3C convention).
+          seekHEl.textContent = ok ? '✓' : (yawError > 0 ? '◀' : '▶');
           seekHEl.classList.toggle('aligned', ok);
         }
         if (seekVEl) {
           const ok = Math.abs(pitchError) <= tol;
-          seekVEl.textContent = ok ? '✓' : (pitchError > 0 ? '▼' : '▲'); // flip ▼/▲ if reversed on device
+          // +pitch means we must increase beta → look UP.
+          seekVEl.textContent = ok ? '✓' : (pitchError > 0 ? '▲' : '▼');
           seekVEl.classList.toggle('aligned', ok);
         }
       }

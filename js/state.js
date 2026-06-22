@@ -168,7 +168,59 @@ export function getTotalHints(state) {
 /** Get elapsed time since mission start in ms, or 0 */
 export function getElapsedMs(state) {
   if (!state.timestamps.start) return 0;
-  return Date.now() - new Date(state.timestamps.start).getTime();
+  // Freeze at the completion time once an ending is reached (so the score is
+  // stable across refreshes); otherwise count up live.
+  const end = state.timestamps.end ? new Date(state.timestamps.end).getTime() : Date.now();
+  return end - new Date(state.timestamps.start).getTime();
+}
+
+/** Number of unique things the player discovered (curiosity metric). */
+export function getDiscoveryCount(state) {
+  return (state.loggedScans || []).length;
+}
+
+/**
+ * Compute the end-of-mission score as an itemized breakdown (so the end screen
+ * can show a satisfying, varied calculation). Rewards speed + curiosity,
+ * penalizes hints. Not meant to be perfect — just a fun comparison metric.
+ */
+export function computeScore(state) {
+  const elapsedMs  = getElapsedMs(state);
+  const elapsedMin = elapsedMs / 60000;
+
+  const scans      = state.loggedScans || [];
+  const intelReads = scans.filter(k => String(k).startsWith('read:')).length; // terminal files read
+  const fieldFinds = scans.length - intelReads;                               // scans / pickups
+  const hints      = getTotalHints(state);
+
+  // Minutes left on the PURGE countdown when the mission ended.
+  let purgeLeftMin = 0;
+  if (state.timestamps?.deadline && state.timestamps?.end) {
+    purgeLeftMin = Math.max(0,
+      (new Date(state.timestamps.deadline).getTime() - new Date(state.timestamps.end).getTime()) / 60000);
+  }
+
+  const breakdown = [
+    { label: 'Mission accomplie',    value: 1000 },
+    { label: 'Rapidité',             value: Math.max(0, Math.round((90 - elapsedMin) * 20)) },
+    { label: 'Temps restant',        value: Math.round(purgeLeftMin * 40) },
+    { label: 'Découvertes terrain',  value: fieldFinds * 50 },
+    { label: 'Renseignement',        value: intelReads * 30 },
+    { label: 'Indices utilisés',     value: -(hints * 150) },
+  ];
+  if (state.ending === 'victory')      breakdown.push({ label: 'Immunisation', value: 1000 });
+  else if (state.ending === 'survive') breakdown.push({ label: 'Évacuation',   value: 300 });
+
+  const score = Math.max(0, breakdown.reduce((sum, it) => sum + it.value, 0));
+  return { score, breakdown, elapsedMs, discoveries: scans.length, hints };
+}
+
+/** Star rating label for a score. */
+export function scoreRating(score) {
+  if (score >= 5000) return '★★★ LÉGENDE';
+  if (score >= 3500) return '★★ AGENT D\'ÉLITE';
+  if (score >= 2000) return '★ AGENT CONFIRMÉ';
+  return 'RECRUE';
 }
 
 /** Update a settings value */

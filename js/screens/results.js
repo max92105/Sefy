@@ -5,6 +5,7 @@
 import { formatTime, showScreen } from '../ui.js';
 import { hideNav } from '../components/nav.js';
 import { hideBanner } from '../components/banner.js';
+import { computeScore, scoreRating } from '../state.js';
 
 /** Create the success screen DOM */
 export function createSuccessScreen() {
@@ -23,18 +24,10 @@ export function createSuccessScreen() {
         Avez-vous vraiment gagné ?
       </p>
       <div class="score-card" id="score-card">
-        <div class="score-row">
-          <span>Temps écoulé</span>
-          <span id="score-time">--:--</span>
-        </div>
-        <div class="score-row">
-          <span>Indices utilisés</span>
-          <span id="score-hints">0</span>
-        </div>
-        <div class="score-row">
-          <span>Évaluation</span>
-          <span id="score-rating">—</span>
-        </div>
+        <div class="score-row score-meta"><span>Temps écoulé</span><span id="score-time">--:--</span></div>
+        <div class="score-breakdown" id="score-breakdown"></div>
+        <div class="score-row score-total"><span>SCORE</span><span id="score-value">0</span></div>
+        <div class="score-row"><span>Évaluation</span><span id="score-rating">—</span></div>
       </div>
       <button id="btn-restart" class="btn btn-outline">NOUVELLE MISSION</button>
     </div>
@@ -88,8 +81,9 @@ export function createTrueVictoryScreen() {
         Une seule dose. Une seule vie sauvée. La vôtre.
       </p>
       <div class="score-card" id="victory-score-card">
-        <div class="score-row"><span>Temps écoulé</span><span id="victory-time">--:--</span></div>
-        <div class="score-row"><span>Indices utilisés</span><span id="victory-hints">0</span></div>
+        <div class="score-row score-meta"><span>Temps écoulé</span><span id="victory-time">--:--</span></div>
+        <div class="score-breakdown" id="victory-breakdown"></div>
+        <div class="score-row score-total"><span>SCORE</span><span id="victory-value">0</span></div>
         <div class="score-row"><span>Évaluation</span><span id="victory-rating">—</span></div>
       </div>
       <button id="btn-victory-restart" class="btn btn-outline">NOUVELLE MISSION</button>
@@ -120,18 +114,26 @@ export function createEndChoiceScreen() {
   return section;
 }
 
-/** Populate a results score card with final stats (prefix = 'score' | 'victory'). */
-export function populateSuccess(elapsedMs, totalHints, idPrefix = 'score') {
-  const timeEl = document.getElementById(`${idPrefix}-time`);
-  const hintsEl = document.getElementById(`${idPrefix}-hints`);
-  const ratingEl = document.getElementById(`${idPrefix}-rating`);
+/** Populate a results score card with an itemized breakdown + score (prefix = 'score' | 'victory'). */
+export function populateSuccess(state, idPrefix = 'score') {
+  const r = computeScore(state);
+  const set = (suffix, val) => {
+    const el = document.getElementById(`${idPrefix}-${suffix}`);
+    if (el) el.textContent = val;
+  };
+  set('time', formatTime(r.elapsedMs));
+  set('value', String(r.score));
+  set('rating', scoreRating(r.score));
 
-  if (timeEl) timeEl.textContent = formatTime(elapsedMs);
-  if (hintsEl) hintsEl.textContent = String(totalHints);
-  if (ratingEl) {
-    if (totalHints === 0) ratingEl.textContent = '★★★ ÉLITE';
-    else if (totalHints <= 3) ratingEl.textContent = '★★ AGENT SENIOR';
-    else if (totalHints <= 6) ratingEl.textContent = '★ AGENT DE TERRAIN';
-    else ratingEl.textContent = 'RECRUE';
+  const container = document.getElementById(`${idPrefix}-breakdown`);
+  if (container) {
+    container.innerHTML = r.breakdown
+      .filter(it => it.value !== 0) // hide zero-value lines (e.g. no hints used)
+      .map(it => {
+        const sign = it.value < 0 ? '−' : '+';
+        const cls = it.value < 0 ? ' class="score-neg"' : '';
+        return `<div class="score-row"><span>${it.label}</span><span${cls}>${sign}${Math.abs(it.value)}</span></div>`;
+      })
+      .join('');
   }
 }

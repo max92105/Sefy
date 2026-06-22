@@ -53,6 +53,7 @@ export function start(stage, state, onSolved) {
       resetBanner(PURGE_MINUTES, () => {
         // Timer reached zero → death ending (persisted as a final save point).
         state.ending = 'death';
+        if (!state.timestamps.end) state.timestamps.end = new Date().toISOString();
         saveState(state);
         showFailureScreen();
       });

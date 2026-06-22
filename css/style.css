@@ -1485,6 +1485,32 @@ body.intro-playing .briefing-bottom {
   color: var(--accent-green);
 }
 
+/* Informational (non-scoring) meta row */
+.score-row.score-meta span:last-child {
+  color: var(--text-secondary);
+}
+
+/* Negative breakdown line (e.g. hint penalty) */
+.score-row span.score-neg {
+  color: var(--accent-red);
+}
+
+/* Emphasized total row */
+.score-row.score-total {
+  border-top: 1px solid var(--accent-green);
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-md);
+}
+
+.score-row.score-total span {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.score-row.score-total span:last-child {
+  color: var(--accent-amber);
+}
+
 /* --- Modal --- */
 .modal {
   position: fixed;

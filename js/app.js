@@ -3,7 +3,7 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, resetAgent, fetchState, startMission, setStage, getTotalHints, getElapsedMs, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
+import { loadState, saveState, resetState, resetAgent, fetchState, startMission, setStage, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
@@ -414,6 +414,9 @@ function endGame() {
 /** Persist the reached ending (so a refresh resumes here) and show its screen. */
 function setEnding(ending) {
   state.ending = ending;
+  // Freeze the completion time at the first ending (so deliberating on the
+  // choice screen doesn't inflate elapsed time / change the score).
+  if (!state.timestamps.end) state.timestamps.end = new Date().toISOString();
   saveState(state);
   showEnding(ending);
 }
@@ -423,10 +426,10 @@ function showEnding(ending) {
   hideBanner();
   hideNav();
   if (ending === 'victory') {
-    populateSuccess(getElapsedMs(state), getTotalHints(state), 'victory');
+    populateSuccess(state, 'victory');
     showScreen('screen-victory');
   } else if (ending === 'survive') {
-    populateSuccess(getElapsedMs(state), getTotalHints(state), 'score');
+    populateSuccess(state, 'score');
     showScreen('screen-success');
   } else if (ending === 'choice') {
     showScreen('screen-end-choice');

@@ -181,11 +181,12 @@ export const AR_BRIEFING_SEQUENCE = [
    ════════════════════════════════════════════════════════════ */
 export const PHASE_HINTS = {
   scanner: [
-    { text: '[À COMPLÉTER — phase scanner QR, indice vague]' },
-    { text: '[À COMPLÉTER — phase scanner QR, indice plus direct]' },
+    { text: 'Trouvez des indices grâce au scanner, des codes avec ce symbole peuvent être déchiffrés 📷.' },
+    { text: 'Regardez dans votre inventaire et cliquez sur les objets pour les examiners.' },
+    { text: 'Elodie a laissé des indices derrière elle sur des bouts de papiers.' },
   ],
   ar: [
-    { text: '[À COMPLÉTER — phase scanner AR, indice vague]' },
-    { text: '[À COMPLÉTER — phase scanner AR, indice plus direct]' },
+    { text: 'Utilisez le module AR pour localiser les objets cachés, scannez les codes avec ce symbole 📡. ' },
+    { text: 'La carte que vous devez trouver est celle d\'Adrian, mais elle n\'est pas dans son bureau, elle a été volée.' },
   ],
 };

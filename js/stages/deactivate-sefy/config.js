@@ -15,7 +15,5 @@ export const MEDIA = {
    Add or remove entries to give this puzzle more or fewer hints.
    ════════════════════════════════════════════════════════════ */
 export const HINTS = [
-  { text: '[À COMPLÉTER — indice vague]' },
-  { text: '[À COMPLÉTER — indice plus direct]' },
-  { text: '[À COMPLÉTER — indice quasi-solution]' },
+  { text: 'Entrez le code final pour désactiver SEFY.' },
 ];

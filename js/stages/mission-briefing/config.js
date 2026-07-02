@@ -10,8 +10,8 @@ const MEDIA = {
 
 /** Agent identity photos shown during the briefing. */
 export const AGENT_IMAGES = {
-  emy: 'assets/briefings/agente_emy.png',
-  lea: 'assets/briefings/agente_lea.png',
+  emy: 'assets/briefings/agente_emy.jpg',
+  lea: 'assets/briefings/agente_lea.jpg',
 };
 
 export const INTRO_SEQUENCE = [

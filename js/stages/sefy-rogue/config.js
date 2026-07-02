@@ -35,7 +35,7 @@ export const INTRO_SEQUENCE = [
    Add or remove entries to give this puzzle more or fewer hints.
    ════════════════════════════════════════════════════════════ */
 export const HINTS = [
-  { text: '[À COMPLÉTER — indice vague]' },
-  { text: '[À COMPLÉTER — indice plus direct]' },
-  { text: '[À COMPLÉTER — indice quasi-solution]' },
+  { text: 'Les cartes de couleur sont cachées dans le laboratoire utilisez le scanner 📷.' },
+  { text: 'Avec vos accès tiers 4, vous pouvez maintenant accéder à des fichiers supplémentaires sur le terminal.' },
+  { text: 'La carte rouge se trouve dans l\'infirmerie, la carte bleue dans les bureaux de la sécurité, et la carte jaune dans le quartier du personnel.' },
 ];

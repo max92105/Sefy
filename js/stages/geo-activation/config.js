@@ -28,7 +28,7 @@ export const INTRO_SEQUENCE = [
    Each reveal affects the final score (scoring added later).
    ════════════════════════════════════════════════════════════ */
 export const HINTS = [
-  { text: 'Le code d\'accès se trouve quelque part dans le centre de commande. Cherchez un objet qui attire l\'attention.' },
+  { text: 'Le code d\'accès se trouve quelque part dans le centre de commande. Cherchez un objet qui attire l\'attention. Si vous avez de la difficulté à utiliser le terminal, tapez "Aide" (HELP).' },
   { text: 'Les scientifiques étaient tous passionnés par l\’empire Romain.' },
   { text: '_G_éolocalisation.' },
 ];

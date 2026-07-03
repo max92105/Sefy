@@ -1292,6 +1292,15 @@ body.intro-playing .briefing-bottom {
   transition: color 0.5s ease;
 }
 
+.geo-accuracy {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-align: center;
+  opacity: 0.7;
+}
+
 /* Zone label colors */
 .geo-radar.geo-freezing ~ .geo-status .geo-zone-label { color: #4488ff; }
 .geo-radar.geo-cold ~ .geo-status .geo-zone-label { color: #66bbff; }

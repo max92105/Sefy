@@ -46,6 +46,7 @@ let cameraStream = null;
 let qrScanLoop = null;
 let arScanLoop = null;
 let seekLoop = null;
+let activeSeekAbort = null; // abort handle of the in-flight seek (so teardown cancels its timeouts)
 let orientationHandler = null;
 let foundObjects = [];
 let currentOrientation = { alpha: null, beta: null, gamma: null };
@@ -686,6 +687,7 @@ async function startARScanner(stage, state, onSolved) {
   showARFeedback('Explorez pour détecter les signaux…', 'info');
   let cooldown = false;
 
+  if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; } // never leak a previous loop
   arScanLoop = setInterval(() => {
     if (!video || video.readyState < 2 || cooldown) return;
     if (!video.videoWidth || !video.videoHeight) return;
@@ -726,6 +728,13 @@ function stopARScanner() {
   stopArCue();
   if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
   if (seekLoop) { clearInterval(seekLoop); seekLoop = null; }
+  // Cancel any in-flight seek so its 60s/15s timeouts can't fire later and
+  // restart the AR scan loop while another tab/screen is active.
+  if (activeSeekAbort) { activeSeekAbort.aborted = true; activeSeekAbort = null; }
+  // Tear down any leftover seek UI (previously cleaned by those timeouts).
+  document.getElementById(`${PREFIX}-ar-seeking`)?.classList.add('hidden');
+  const markersEl = document.getElementById(`${PREFIX}-ar-markers`);
+  if (markersEl) { markersEl.classList.add('hidden'); markersEl.innerHTML = ''; }
   stopOrientationTracking();
 }
 
@@ -826,6 +835,7 @@ function startSeeking(obj, stage, state, onSolved) {
 
   let objectRevealed = false;
   const abort = { aborted: false };
+  activeSeekAbort = abort; // let stopARScanner cancel this seek's timeouts
 
   setTimeout(() => {
     if (abort.aborted || objectRevealed) return;
@@ -971,6 +981,10 @@ function completeARScan(stage, state, onSolved) {
 }
 
 function resumeARQRScanning(stage, state, onSolved) {
+  // Delayed callers (seek/marker timeouts, post-collect resume) may fire after
+  // the player left the AR tab — never restart the AR loop in that case.
+  if (activeTab !== 'ar') return;
+
   // Stop any leftover loops before starting fresh
   if (arScanLoop) { clearInterval(arScanLoop); arScanLoop = null; }
 

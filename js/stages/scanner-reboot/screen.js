@@ -19,7 +19,18 @@ import { INTRO_SEQUENCE, ROUTES, ZONES, ZONE_FOUND_AUDIO } from './config.js';
 
 const PREFIX = 'scanner-reboot';
 
-const POLL_INTERVAL_MS = 800;
+/* ───────── GPS precision tuning ─────────
+   Balance: smooth out stationary jitter, but react FAST when the player runs
+   (closer or farther). Old fixes decay quickly, and a good fix that clearly
+   disagrees with the average flushes it (movement snap). */
+const WATCHDOG_MS      = 3000;   // poll manually if the GPS watch goes silent this long
+const ACCURACY_REJECT  = 100;    // discard fixes worse than this (m) — usually IP/wifi junk
+const SMOOTH_WINDOW_MS = 5000;   // fixes older than this drop out of the moving average
+const SMOOTH_MAX_FIXES = 4;      // cap on fixes kept in the average
+const RECENCY_HALF_MS  = 1500;   // a fix's weight halves every 1.5s — newest dominates
+const SNAP_MIN_M       = 8;      // min jump (m) that counts as real movement → snap
+const SOLVE_CONFIRM    = 2;      // consecutive in-radius readings required to lock on
+const ZONE_HYST_M      = 2;      // extra metres required before switching to a FARTHER zone
 
 /* ───────── Module state ───────── */
 let watchId = null;
@@ -65,6 +76,7 @@ export function createScreen() {
       </div>
 
       <div class="geo-distance" id="${PREFIX}-distance">-- m</div>
+      <div class="geo-accuracy" id="${PREFIX}-accuracy"></div>
 
       <!-- DEBUG: Remove before production -->
       <button id="${PREFIX}-skip-geo" class="btn btn-outline" style="margin-top:1rem;border-color:var(--accent-red);color:var(--accent-red);font-size:0.7rem;">⚠ SKIP GEO (DEBUG)</button>
@@ -237,38 +249,59 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
   if (distanceEl) distanceEl.textContent = '-- m';
   if (radar)      { radar.className = 'geo-radar'; }
 
+  const accuracyEl = document.getElementById(`${PREFIX}-accuracy`);
+  if (accuracyEl) accuracyEl.textContent = '';
+
   const targetLat = step.geo.lat;
   const targetLng = step.geo.lng;
   const radius    = step.geo.radius || 4;
   let solved = false;
-  let lastZoneCls = '';
+  let lastZone = null;
   let simulating = false; // once true, debug sim drives the distance (real GPS ignored)
+  let fixes = [];         // recent GPS fixes { lat, lng, acc, t } for the moving average
+  let insideCount = 0;    // consecutive smoothed readings inside the radius
+  let lastFixTime = 0;    // watchdog: last time the GPS produced ANY fix
 
-  // Core proximity logic — applies a distance to the zone UI / radar / solve.
-  // Driven by real GPS (onPosition) or the debug sim buttons.
-  function applyDistance(dist) {
+  // Core proximity logic — applies a (smoothed) distance to the zone UI / radar /
+  // solve. Driven by real GPS (onPosition) or the debug sim buttons.
+  function applyDistance(dist, acc) {
     if (solved) return;
-    const zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
 
-    if (distanceEl) { distanceEl.textContent = `${Math.round(dist)} m`; distanceEl.style.color = zone.color; }
+    if (distanceEl) distanceEl.textContent = `${Math.round(dist)} m`;
+    if (accuracyEl) accuracyEl.textContent = simulating ? 'SIMULATION' : (acc ? `précision GPS ± ${Math.round(acc)} m` : '');
+
+    // Pick the zone, with hysteresis: moving CLOSER switches immediately, but a
+    // FARTHER zone needs ZONE_HYST_M extra metres — kills boundary flip-flapping
+    // (and the re-triggered audio cues that came with it).
+    let zone = ZONES.find(z => dist <= z.maxDist) || ZONES[ZONES.length - 1];
+    if (lastZone && zone.maxDist > lastZone.maxDist && dist <= lastZone.maxDist + ZONE_HYST_M) {
+      zone = lastZone;
+    }
+
+    if (distanceEl) distanceEl.style.color = zone.color;
     if (zoneLabel)  zoneLabel.textContent = zone.label;
     if (zoneMsg)    { zoneMsg.textContent = zone.msg; zoneMsg.style.color = zone.color; }
 
     // Zone changed → update radar pulse and play this zone's proximity cue.
-    if (zone.cls !== lastZoneCls) {
-      const isFirstZone = lastZoneCls === ''; // initial landing — no cue
+    if (!lastZone || zone.cls !== lastZone.cls) {
+      const isFirstZone = !lastZone; // initial landing — no cue
       if (radar) {
-        if (lastZoneCls) radar.classList.remove(lastZoneCls);
+        if (lastZone) radar.classList.remove(lastZone.cls);
         radar.classList.add(zone.cls);
       }
-      lastZoneCls = zone.cls;
+      lastZone = zone;
       // Only play on actual movement, not on the first reading (always GLACIAL).
       if (!isFirstZone) playAudio(zone.audio); // no-op if zone.audio is null
     }
 
     if (dot) dot.style.animationDuration = `${Math.max(0.3, Math.min(2, dist / 10))}s`;
 
+    // Lock-on: require SOLVE_CONFIRM consecutive in-radius readings so a single
+    // jittery blip can't false-trigger. The debug sim confirms immediately.
     if (dist <= radius) {
+      insideCount++;
+      if (!simulating && insideCount < SOLVE_CONFIRM) return;
+
       solved = true;
       stopWatching();
 
@@ -290,13 +323,52 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
       Promise.all([minWait, audioEnd]).then(() => {
         showCodeEntry(stage, state, route, stepIndex, onSolved);
       });
+    } else {
+      insideCount = 0;
     }
+  }
+
+  // Weighted average of the fix buffer: precise fixes dominate (1/acc²) and
+  // recent fixes dominate (weight halves every RECENCY_HALF_MS).
+  function smoothedFrom(list, now) {
+    let wSum = 0, latSum = 0, lngSum = 0;
+    for (const f of list) {
+      const w = (1 / (f.acc * f.acc)) * Math.pow(0.5, (now - f.t) / RECENCY_HALF_MS);
+      wSum += w; latSum += f.lat * w; lngSum += f.lng * w;
+    }
+    return { lat: latSum / wSum, lng: lngSum / wSum };
   }
 
   function onPosition(pos) {
     if (solved || simulating) return;
-    const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, targetLat, targetLng);
-    applyDistance(dist);
+    lastFixTime = Date.now(); // any fix (even a rejected one) proves the GPS is alive
+
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const acc = Math.max(pos.coords.accuracy || 1, 1);
+
+    // Reject junk fixes (IP/wifi-level accuracy) once we have anything better —
+    // but if the buffer is empty, accept it so the radar still reacts.
+    if (acc > ACCURACY_REJECT && fixes.length) return;
+
+    const now = Date.now();
+
+    // MOVEMENT SNAP — fast feedback for players running (closer OR farther):
+    // if this fix lands clearly away from the current average (beyond its own
+    // error margin), the player really moved → drop the stale average and track
+    // from here. Smoothing then only applies while roughly stationary.
+    if (fixes.length) {
+      const s = smoothedFrom(fixes, now);
+      const jump = haversineDistance(lat, lng, s.lat, s.lng);
+      if (jump > Math.max(acc * 1.2, SNAP_MIN_M)) fixes = [];
+    }
+
+    fixes.push({ lat, lng, acc, t: now });
+    fixes = fixes.filter(f => now - f.t <= SMOOTH_WINDOW_MS).slice(-SMOOTH_MAX_FIXES);
+
+    const p = smoothedFrom(fixes, now);
+    const dist = haversineDistance(p.lat, p.lng, targetLat, targetLng);
+    const bestAcc = Math.min(...fixes.map(f => f.acc));
+    applyDistance(dist, bestAcc);
   }
 
   function onError(err) {
@@ -311,11 +383,17 @@ function showGeoTracker(stage, state, route, stepIndex, onSolved) {
     }
   }
 
+  // watchPosition delivers fixes as fast as the GPS chip produces them; the old
+  // 800ms getCurrentPosition spam only added noisy duplicates. Keep a watchdog
+  // poll ONLY for when the watch goes silent.
   watchId = navigator.geolocation.watchPosition(onPosition, onError, GEO_OPTS);
-  navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
+  navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS); // fast first fix
   pollInterval = setInterval(() => {
-    if (!solved) navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
-  }, POLL_INTERVAL_MS);
+    if (!solved && !simulating && Date.now() - lastFixTime > WATCHDOG_MS) {
+      lastFixTime = Date.now(); // throttle: at most one manual poll per WATCHDOG_MS
+      navigator.geolocation.getCurrentPosition(onPosition, onError, GEO_OPTS);
+    }
+  }, 1000);
 
   // DEBUG: Skip button
   const skipBtn = document.getElementById(`${PREFIX}-skip-geo`);

@@ -104,8 +104,8 @@ export const ROOM_HINTS = {
 
 const LOCATIONS = {
   serverRoom: {
-    lat: 48.41325316283909,
-    lng: -71.10566405986845,
+    lat: 48.413214843806756,
+    lng: -71.10565167581494, 
     radius: 4,
   },
   security: {

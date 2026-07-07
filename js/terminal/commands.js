@@ -430,7 +430,16 @@ function handleColor() {
   const tid = getTerminalId();
   const info = TERMINAL_COLORS[tid];
   if (!info) {
-    printLine('✗ Terminal non identifié — paramètre ?t= manquant dans l\'URL.', 'error');
+    // Not every terminal controls a PURGE lock — some are plain workstations.
+    printLines([
+      '╔═══════════════════════════════════════╗',
+      '║  IDENTIFICATION TERMINAL              ║',
+      '╠═══════════════════════════════════════╣',
+      '║  Verrou PURGE: AUCUN                  ║',
+      '╚═══════════════════════════════════════╝',
+    ]);
+    printLine('Ce poste n\'est relié à aucun verrou de sécurité.', 'dim');
+    printLine('Cherchez un terminal identifié par une couleur.', 'dim');
     return;
   }
   printLines([
@@ -465,7 +474,8 @@ async function handleOverride(args) {
   const tid = getTerminalId();
   const termInfo = TERMINAL_COLORS[tid];
   if (!termInfo) {
-    printLine('✗ Terminal non identifié.', 'error');
+    printLine('✗ OVERRIDE impossible — ce poste n\'est relié à aucun verrou de sécurité.', 'error');
+    printLine('Utilisez un terminal identifié par une couleur (commande COLOR).', 'dim');
     return;
   }
   if (termInfo.color !== expectedColor) {

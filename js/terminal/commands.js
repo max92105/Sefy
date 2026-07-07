@@ -139,10 +139,10 @@ function showHelp() {
       '║  CD <dossier> .. Changer de dossier   ║',
       '║  CAT <fichier>  Lire un fichier       ║',
       '║  PLAY <fichier> Jouer un média        ║',
-      '║  CLEAR / CLS ... Effacer l\'écran     ║',
+      '║  CLEAR / CLS ... Effacer l\'écran      ║',
       '║  WHOAMI ........ Identité courante    ║',
       '╠═══════════════════════════════════════╣',
-      '║  PROMOTE <agent> <code>                ║',
+      '║  PROMOTE <agent> <code>               ║',
       '║  Promouvoir un agent au tier associé  ║',
       '╠═══════════════════════════════════════╣',
       '║  LOGOUT ........ Se déconnecter       ║',
@@ -217,7 +217,7 @@ function handleActionCode(code) {
   if (action.giveCode) {
     printBlank();
     printLine('╔═══════════════════════════════════╗', 'success');
-    printLine(`║  CODE OBTENU: ${action.giveCode.padEnd(19)}║`, 'success');
+    printLine(`║  CODE OBTENU: ${action.giveCode.padEnd(20)}║`, 'success');
     printLine('╚═══════════════════════════════════╝', 'success');
     printLine('Transmettez ce code à votre équipe.', 'bright');
   }
@@ -446,8 +446,8 @@ function handleColor() {
     '╔═══════════════════════════════════════╗',
     `║  IDENTIFICATION TERMINAL              ║`,
     '╠═══════════════════════════════════════╣',
-    `║  Couleur: ${info.label.padEnd(27)}║`,
-    `║  ID:      ${tid.padEnd(27)}║`,
+    `║  Couleur: ${info.label.padEnd(28)}║`,
+    `║  ID:      ${tid.padEnd(28)}║`,
     '╚═══════════════════════════════════════╝',
   ]);
 }
@@ -499,7 +499,7 @@ async function handleOverride(args) {
   updateAgentFields(id, { overrides: state.overrides, systemLog: state.systemLog });
 
   await typeLine(`╔═══════════════════════════════════════╗`, 'success');
-  await typeLine(`║  OVERRIDE ${termInfo.label.padEnd(27)}║`, 'success');
+  await typeLine(`║  OVERRIDE ${termInfo.label.padEnd(28)}║`, 'success');
   await typeLine(`╠═══════════════════════════════════════╣`, 'success');
   await typeLine(`║  Code accepté. Verrou désactivé.      ║`, 'success');
   await typeLine(`╚═══════════════════════════════════════╝`, 'success');
@@ -569,7 +569,7 @@ async function handlePromote(args) {
   await typeLine(`Mise à jour des accréditations de ${agentLabel}…`, '');
   await delay(500);
   await typeLine('╔═══════════════════════════════════╗', 'success');
-  await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER ${targetTier}       ║`, 'success');
+  await typeLine(`║  AGENT ${agentLabel.padEnd(4)} PROMU → TIER ${targetTier}        ║`, 'success');
   await typeLine('╚═══════════════════════════════════╝', 'success');
   printBlank();
   printLine(`L'agent ${agentLabel} dispose maintenant d'un accès Tier ${targetTier}.`, 'bright');

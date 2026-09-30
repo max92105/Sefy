@@ -100,6 +100,24 @@ export function createModals() {
         </div>
       </div>
     </div>
+
+    <!-- MODAL: Validated codes (every code the agent entered successfully) -->
+    <div id="modal-codes" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="header-tag">CODES VALIDÉS</span>
+          <button class="modal-close" aria-label="Fermer">&times;</button>
+        </div>
+        <div class="modal-body">
+          <ul class="codes-list" id="codes-list"></ul>
+          <p class="codes-empty" id="codes-empty">Aucun code validé pour l'instant.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-close-codes" class="btn btn-outline">FERMER</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // Append each modal to body

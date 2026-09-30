@@ -14,6 +14,9 @@ import {
   fbOnStateChange,
   createDefaultState,
   getDeviceId,
+  codeKey,
+  mergeCodeEntry,
+  mergeValidCodes,
 } from './firebase-config.js';
 
 export { fbOnStateChange } from './firebase-config.js';
@@ -112,6 +115,39 @@ export function addLogEntry(state, text) {
   state.systemLog.push(`[${ts}] ${text}`);
   saveState(state);
   return state;
+}
+
+/**
+ * Remember a code the player just validated, so they can look it up later
+ * (nav 🔑 → "Codes validés") instead of writing it down.
+ * @param {string} code  — the code as typed
+ * @param {string} label — what it was used for
+ */
+export function recordValidCode(state, code, label) {
+  const clean = String(code || '').trim().toUpperCase();
+  if (!clean) return state;
+  const key = codeKey(clean);
+  state.validCodes = state.validCodes || {};
+  state.validCodes[key] = mergeCodeEntry(state.validCodes[key], { code: clean, label, t: Date.now() });
+  saveState(state);
+  window.dispatchEvent(new CustomEvent('sefy:codes-changed'));
+  return state;
+}
+
+/** Pull codes validated elsewhere (the terminal) into the local state. */
+export async function syncValidCodes(state) {
+  if (!state.playerAgent) return state;
+  try {
+    const remote = await fbLoadState(state.playerAgent);
+    state.validCodes = mergeValidCodes(remote.validCodes, state.validCodes);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { /* offline — show what we have */ }
+  return state;
+}
+
+/** Validated codes, oldest first. */
+export function getValidCodes(state) {
+  return Object.values(state.validCodes || {}).sort((a, b) => (a.t || 0) - (b.t || 0));
 }
 
 /** Record a hint used for a puzzle */

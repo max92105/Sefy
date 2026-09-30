@@ -3,7 +3,7 @@
  */
 
 import { validateAnswer } from './stages.js';
-import { solvePuzzle, useHint } from './state.js';
+import { solvePuzzle, useHint, recordValidCode } from './state.js';
 import { showFeedback, hideFeedback, glitch } from './ui.js';
 import { getHintContext } from './stages/hints.js';
 
@@ -99,6 +99,7 @@ async function _doSubmit() {
     if (correct) {
       ctx.solved = true;
       showFeedback(ctx.feedbackId, 'ACCÈS AUTORISÉ', 'success');
+      recordValidCode(ctx.state, answer, ctx.stage.title || ctx.stage.id);
       solvePuzzle(ctx.state, ctx.stage.id);
       if (ctx.submitBtn) ctx.submitBtn.disabled = true;
       if (liveInput) liveInput.disabled = true;

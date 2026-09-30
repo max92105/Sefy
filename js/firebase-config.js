@@ -69,6 +69,7 @@ function createDefaultState() {
     hasSyringe: false,  // found Adrian's single vaccine dose (SEFY:SERINGE)
     vaccinated: false,  // used the vaccine on self → unlocks the true ending
     ending: null,       // 'choice' | 'victory' | 'survive' | 'death' — set when an end screen is reached
+    validCodes: {},     // codeKey → { code, label, t } — every code the agent validated (app + terminal)
 
     settings: {
       soundEnabled: true,
@@ -112,9 +113,37 @@ async function fbSaveState(agent, state) {
     if (remote.systemLog && (!state.systemLog || remote.systemLog.length > state.systemLog.length)) {
       state.systemLog = remote.systemLog;
     }
+    // Union of validated codes (the terminal adds its own directly in Firebase)
+    if (remote.validCodes) state.validCodes = mergeValidCodes(remote.validCodes, state.validCodes);
   }
 
   await agentRef(agent).set(state);
+}
+
+/**
+ * Firebase-safe key for a validated code (keys can't contain . # $ [ ] /).
+ * @param {string} code
+ */
+function codeKey(code) {
+  return String(code).trim().toUpperCase().replace(/[.#$[\]/\s]/g, '_');
+}
+
+/**
+ * Merge a label into an existing validated-code entry (same code used for
+ * several purposes, e.g. a room code that is also the admin login).
+ */
+function mergeCodeEntry(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const labels = [...new Set([...(a.label || '').split(' · '), ...(b.label || '').split(' · ')])].filter(Boolean);
+  return { code: a.code, label: labels.join(' · '), t: Math.min(a.t || Infinity, b.t || Infinity) };
+}
+
+/** Union of two validCodes maps. */
+function mergeValidCodes(a = {}, b = {}) {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b || {})) out[k] = mergeCodeEntry(out[k], v);
+  return out;
 }
 
 /**
@@ -184,4 +213,7 @@ export {
   fbForceState,
   fbOnStateChange,
   fbClaimAgent,
+  codeKey,
+  mergeCodeEntry,
+  mergeValidCodes,
 };

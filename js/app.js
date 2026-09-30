@@ -3,7 +3,7 @@
  */
 
 // -- State & Data --
-import { loadState, saveState, resetState, resetAgent, fetchState, startMission, setStage, checkDeviceLock, getDeviceId, addLogEntry } from './state.js';
+import { loadState, saveState, resetState, resetAgent, fetchState, startMission, setStage, checkDeviceLock, getDeviceId, addLogEntry, syncValidCodes, getValidCodes } from './state.js';
 import { loadStageData, getFirstStage, getStageById, getNextStage } from './stages.js';
 
 // -- Shared UI helpers --
@@ -11,7 +11,7 @@ import { showScreen, initButtonSounds } from './ui.js';
 
 // -- Components --
 import { createBanner, showBanner, resetBanner, resumeBanner, hideBanner, getDeadlineISO, setAgentBadge } from './components/banner.js';
-import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible, setHintButton } from './components/nav.js';
+import { createNav, showNav, hideNav, bindNav, setInventoryVisible, setReplayVisible, setHintButton, setCodesBadge } from './components/nav.js';
 import { replayIntroCinematic, clearIntroPlaying } from './components/intro-cinematic.js';
 import { createStageBriefingScreen, BRIEFING_PREFIX, BRIEFING_SCREEN_ID } from './screens/stage-briefing.js';
 import { INTRO_SEQUENCE as geoIntroSequence } from './stages/geo-activation/config.js';
@@ -228,6 +228,7 @@ function enterStage(stage) {
   // The scanner/PURGE/final stages always keep the inventory available.
   const inventoryStages = ['field-ops', 'sefy-rogue', 'deactivate-sefy'];
   setInventoryVisible(inventoryStages.includes(stage.id) || hasItems);
+  setCodesBadge(getValidCodes(state).length);
 
   const screenId = `screen-${stage.id}`;
 
@@ -544,6 +545,36 @@ function returnFromInventory() {
   }
 }
 
+// ---- Validated codes ----
+
+function renderCodes() {
+  const codes  = getValidCodes(state);
+  const listEl = document.getElementById('codes-list');
+  const empty  = document.getElementById('codes-empty');
+  setCodesBadge(codes.length);
+  if (!listEl) return;
+  listEl.replaceChildren(...codes.map(({ code, label }) => {
+    const li = document.createElement('li');
+    li.className = 'codes-item';
+    const codeEl = document.createElement('span');
+    codeEl.className = 'codes-code';
+    codeEl.textContent = code;
+    const labelEl = document.createElement('span');
+    labelEl.className = 'codes-label';
+    labelEl.textContent = label || '';
+    li.append(codeEl, labelEl);
+    return li;
+  }));
+  if (empty) empty.hidden = codes.length > 0;
+}
+
+async function showCodes() {
+  renderCodes();              // local list right away…
+  openModal('modal-codes');
+  await syncValidCodes(state); // …then add codes validated on the terminal
+  renderCodes();
+}
+
 // ---- Sound Toggle ----
 
 function toggleSound() {
@@ -560,7 +591,11 @@ function bindGlobalEvents() {
   // Hint modal opens from the nav hint button (see bindNav below).
   document.addEventListener('click', (e) => {
     if (e.target instanceof Element && e.target.closest('#btn-close-hint')) closeModal('modal-hint');
+    if (e.target instanceof Element && e.target.closest('#btn-close-codes')) closeModal('modal-codes');
   });
+
+  // A code was just validated in the app → refresh the 🔑 badge.
+  window.addEventListener('sefy:codes-changed', () => setCodesBadge(getValidCodes(state).length));
 
   // Inventory
   document.addEventListener('click', (e) => {
@@ -570,6 +605,7 @@ function bindGlobalEvents() {
   // Nav
   bindNav({
     onInventory: () => showInventory(),
+    onCodes: () => showCodes(),
     onSoundToggle: () => toggleSound(),
     onHint: () => openHintModal(currentStage, state),
     onReplayIntro: () => replayCurrentIntro(),

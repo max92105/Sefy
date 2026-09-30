@@ -3,12 +3,12 @@
  */
 
 import { ACTION_CODES, AGENT_HASHES, PROMOTE_CODES, TERMINAL_COLORS, OVERRIDE_CODES } from './config.js';
-import { fetchAgentState, pushAgentState, updateAgentFields } from './firebase.js';
+import { fetchAgentState, pushAgentState, updateAgentFields, addValidCode } from './firebase.js';
 import { printLine, printLines, printBlank, typeLine, delay, clearScreen, sha256 } from './io.js';
 import {
   getAgentName, getAgentId, getAgentState, setAgentState,
   isCodeUsed, markCodeUsed, resetInactivityTimer, doLogout, pushHistoryEntry,
-  isStaff, setPendingConfirm, getTerminalId,
+  isStaff, setPendingConfirm, getTerminalId, getLoginCode,
 } from './state.js';
 import { listDir, changeDir, readFile, playMedia } from './filesystem.js';
 
@@ -319,6 +319,7 @@ async function handleGeo() {
     appendLog(state, 'SEFY - Balise GPS terrain en ligne.');
     setAgentState(state);
     updateAgentFields(id, { geoActivated: true, systemLog: state.systemLog });
+    addValidCode(id, '1054', 'Activation module GEO (terminal)');
     printBlank();
     await typeLine('Initialisation du module de géolocalisation…', 'bright');
     await delay(800);
@@ -362,6 +363,7 @@ async function handleDecrypt() {
     appendLog(state, 'SEFY - Accès aux données internes détecté.');
     setAgentState(state);
     updateAgentFields(id, { decryptActivated: true, systemLog: state.systemLog });
+    addValidCode(id, '5715', 'Activation module DECRYPT (terminal)');
     printBlank();
     await typeLine('Initialisation du module de décryptage…', 'bright');
     await delay(800);
@@ -405,6 +407,7 @@ async function handleActivateAR() {
     appendLog(state, 'SEFY - Scanner environnemental en ligne.');
     setAgentState(state);
     updateAgentFields(id, { arActivated: true, systemLog: state.systemLog });
+    addValidCode(id, '1657', 'Activation module AR (terminal)');
     printBlank();
     await typeLine('Initialisation du scanner environnemental…', 'bright');
     await delay(800);
@@ -497,6 +500,7 @@ async function handleOverride(args) {
   appendLog(state, `OVERRIDE ${termInfo.label} — Code ${code} accepté.`);
   setAgentState(state);
   updateAgentFields(id, { overrides: state.overrides, systemLog: state.systemLog });
+  addValidCode(id, code, `OVERRIDE terminal ${termInfo.label}`);
 
   await typeLine(`╔═══════════════════════════════════════╗`, 'success');
   await typeLine(`║  OVERRIDE ${termInfo.label.padEnd(28)}║`, 'success');
@@ -562,6 +566,9 @@ async function handlePromote(args) {
   appendLog(state, `PROMOTE — Agent ${agentLabel} promu Tier ${targetTier} par ${getAgentName()}.`);
   appendLog(state, 'SEFY - Escalade de privilèges détectée.');
   updateAgentFields(agentId, { accessTier: targetTier, systemLog: state.systemLog });
+  addValidCode(agentId, getLoginCode(), 'Compte administrateur (terminal)');
+  addValidCode(agentId, agentCode, 'Code agent');
+  addValidCode(agentId, tierCode, `Code promotion Tier ${targetTier}`);
 
   printBlank();
   await typeLine('Autorisation de promotion en cours…', 'bright');

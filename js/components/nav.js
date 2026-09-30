@@ -19,6 +19,10 @@ export function createNav() {
       <span class="nav-icon">🎒</span>
       <span class="nav-badge hidden" id="inv-badge">0</span>
     </button>
+    <button class="nav-btn" data-action="codes" id="nav-codes" title="Codes validés">
+      <span class="nav-icon">🔑</span>
+      <span class="nav-badge hidden" id="codes-badge">0</span>
+    </button>
     <button class="nav-btn" data-action="sound-toggle" title="Son">
       <span class="nav-icon" id="sound-icon">🔊</span>
     </button>
@@ -69,17 +73,26 @@ export function setHintButton(remaining, total) {
   }
 }
 
+/** Show the number of validated codes on the 🔑 button. */
+export function setCodesBadge(count) {
+  const badge = document.getElementById('codes-badge');
+  if (!badge) return;
+  badge.textContent = String(count);
+  badge.classList.toggle('hidden', !count);
+}
+
 /** Show/hide the replay-intro button */
 export function setReplayVisible(visible) {
   document.getElementById('nav-replay-intro')?.classList.toggle('hidden', !visible);
 }
 
 /** Bind nav button actions */
-export function bindNav({ onInventory, onSoundToggle, onHint, onReplayIntro }) {
+export function bindNav({ onInventory, onCodes, onSoundToggle, onHint, onReplayIntro }) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.action;
       if (action === 'inventory' && onInventory) onInventory();
+      if (action === 'codes' && onCodes) onCodes();
       if (action === 'sound-toggle' && onSoundToggle) onSoundToggle();
       if (action === 'hint' && onHint) onHint();
       if (action === 'replay-intro' && onReplayIntro) onReplayIntro();

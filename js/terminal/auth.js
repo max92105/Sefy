@@ -3,9 +3,9 @@
  */
 
 import { AGENT_HASHES, STAFF_HASHES, BOOT_LINES } from './config.js';
-import { fetchAgentState } from './firebase.js';
+import { fetchAgentState, addValidCode } from './firebase.js';
 import { sha256, delay, printLine, printLines, printBlank, typeLine, setPrompt, setStatus, showInputLine, hideInputLine, clearScreen } from './io.js';
-import { setSession, resetInactivityTimer } from './state.js';
+import { setSession, setLoginCode, resetInactivityTimer } from './state.js';
 
 /* ═══════════════  Boot  ═══════════════ */
 
@@ -44,7 +44,9 @@ export async function handleLogin(code) {
   }
 
   if (staffEntry) {
-    return handleStaffLogin(staffEntry);
+    await handleStaffLogin(staffEntry);
+    setLoginCode(code.trim().toUpperCase());
+    return;
   }
 
   // Agent login
@@ -52,6 +54,7 @@ export async function handleLogin(code) {
   const agentState = await fetchAgentState(agentId);
 
   setSession(agentName, agentId, agentState, false);
+  addValidCode(agentId, agentName, 'Code agent — connexion terminal');
   resetInactivityTimer();
   clearScreen();
 

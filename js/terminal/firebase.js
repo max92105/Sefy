@@ -2,6 +2,8 @@
  * Terminal Firebase helpers — init, fetch/push agent state.
  */
 
+import { codeKey, mergeCodeEntry } from '../firebase-config.js';
+
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBl7-2Ck4vxIQm1vI6AAFkbnnN6hCr1LHc",
   authDomain: "sefy-c1d5f.firebaseapp.com",
@@ -29,4 +31,18 @@ export function pushAgentState(id, state) {
 /** Update only specific fields on an agent's state (shallow merge, won't overwrite other fields). */
 export function updateAgentFields(id, fields) {
   fbDb.ref(`agents/${id}`).update(fields).catch(() => {});
+}
+
+/**
+ * Record a code the agent validated on the terminal so it shows up in the
+ * phone's "Codes validés" list. Transaction on the single entry so it never
+ * clobbers codes the phone recorded meanwhile.
+ */
+export function addValidCode(id, code, label) {
+  const clean = String(code || '').trim().toUpperCase();
+  if (!id || !clean) return;
+  const entry = { code: clean, label, t: Date.now() };
+  fbDb.ref(`agents/${id}/validCodes/${codeKey(clean)}`)
+    .transaction(current => mergeCodeEntry(current, entry))
+    .catch(() => {});
 }

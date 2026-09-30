@@ -63,6 +63,12 @@ export function setSession(name, id, state, staff = false) {
 
 export function setAgentState(state) { agentState = state; }
 
+/* Code typed at login — kept for staff sessions so PROMOTE can credit the
+   admin code to the promoted agent's "Codes validés" list. */
+let loginCode = null;
+export function setLoginCode(code) { loginCode = code; }
+export function getLoginCode()     { return loginCode; }
+
 /* ═══════════════  Inactivity Timer  ═══════════════ */
 
 let inactivitySuspended = false;

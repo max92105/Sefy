@@ -59,7 +59,7 @@ function buildState(agent, stages, stageId, opts = {}) {
   s.deviceId = getDeviceId();
 
   const now = Date.now();
-  const minutes = opts.purge ? 20 : 90;
+  const minutes = opts.purge ? 30 : 90;
   s.timestamps = {
     start: new Date(now).toISOString(),
     deadline: new Date(now + minutes * 60 * 1000).toISOString(),
@@ -132,11 +132,11 @@ const CHECKPOINTS = [
   { label: '4 · PURGE — briefing 5 (révélation)',
     color: '#ff40ff',
     build: (a, st) => buildState(a, st, 'sefy-rogue', { tier: 4, geo: true, decrypt: true, ar: true, arBriefingDone: true, fieldFinds: true }) },
-  { label: '4 · PURGE — chasse aux cartes couleur (timer 20 min)',
+  { label: '4 · PURGE — chasse aux cartes couleur (timer 30 min)',
     color: '#ff40ff',
     build: (a, st) => buildState(a, st, 'sefy-rogue', { tier: 4, geo: true, decrypt: true, ar: true, arBriefingDone: true, fieldFinds: true, purge: true }) },
 
-  { label: '5 · Désactivation finale (code en boucle, timer 20 min)',
+  { label: '5 · Désactivation finale (code en boucle, timer 30 min)',
     color: 'var(--accent-red)',
     build: (a, st) => buildState(a, st, 'deactivate-sefy', { tier: 4, geo: true, decrypt: true, ar: true, arBriefingDone: true, fieldFinds: true, purge: true, allOverrides: true }) },
 ];

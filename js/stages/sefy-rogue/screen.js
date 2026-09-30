@@ -1,7 +1,7 @@
 /**
  * Screen: SEFY Rogue — "Protocole PURGE".
  *
- * Plays the reveal (briefing 5), starts the real 20-min countdown, then reuses
+ * Plays the reveal (briefing 5), starts the real 30-min countdown, then reuses
  * the field-ops scanner for the 3-colour-card hunt. The player reads each card's
  * code (zoom in inventory) and runs OVERRIDE on the matching-colour terminal;
  * once all 3 overrides are done the stage advances to deactivate-sefy.
@@ -15,7 +15,7 @@ import { startColorHunt } from '../field-ops/screen.js';
 import { INTRO_SEQUENCE } from './config.js';
 
 const PREFIX = 'sefy-rogue';
-const PURGE_MINUTES = 20;
+const PURGE_MINUTES = 30;
 
 /* ═══════════════  DOM  ═══════════════ */
 
@@ -38,7 +38,7 @@ export function start(stage, state, onSolved) {
   };
 
   // Resume: the reveal already played → straight to the colour hunt.
-  // (app.js resumes the 20-min PURGE timer from the saved deadline.)
+  // (app.js resumes the 30-min PURGE timer from the saved deadline.)
   if (state.purgeActive) {
     return startColorHunt(stage, state, onHuntComplete);
   }
@@ -58,7 +58,7 @@ export function start(stage, state, onSolved) {
         showFailureScreen();
       });
       state.timestamps = state.timestamps || {};
-      state.timestamps.deadline = getDeadlineISO(); // persist the 20-min deadline
+      state.timestamps.deadline = getDeadlineISO(); // persist the 30-min deadline
       saveState(state);
     },
     complete() {

@@ -1,7 +1,7 @@
 /**
  * Stage config: sefy-rogue — "Protocole PURGE".
  * The reveal (briefing 5): there was never a bomb; the virus is airborne and
- * SEFY activated PURGE. A real 20-min countdown starts (showCountdown), then
+ * SEFY activated PURGE. A real 30-min countdown starts (showCountdown), then
  * the players hunt the 3 colour cards using the field-ops scanner.
  *
  * Timings below are rough — tune them to briefing 5.wav.
@@ -38,4 +38,5 @@ export const HINTS = [
   { text: 'Les cartes de couleur sont cachées dans le laboratoire utilisez le scanner 📷.' },
   { text: 'Avec vos accès tiers 4, vous pouvez maintenant accéder à des fichiers supplémentaires sur le terminal.' },
   { text: 'La carte rouge se trouve dans l\'infirmerie, la carte bleue dans les bureaux de la sécurité, et la carte jaune dans le quartier du personnel.' },
+  { text: 'Les terminals ont des coleurs qui leur sont associées. COLOR vous donne la bonne carte a entrer.' },
 ];

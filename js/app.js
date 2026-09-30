@@ -511,8 +511,8 @@ async function resumeMission() {
     }
 
     if (deadlineMs && !finalSolved) {
-      // PURGE in progress → 20-min timer that ends the game at zero.
-      if (state.purgeActive) resumeBanner(state.timestamps.deadline, { onZero: () => setEnding('death'), totalMs: 20 * 60 * 1000 });
+      // PURGE in progress → 30-min timer that ends the game at zero.
+      if (state.purgeActive) resumeBanner(state.timestamps.deadline, { onZero: () => setEnding('death'), totalMs: 30 * 60 * 1000 });
       else resumeBanner(state.timestamps.deadline);
     }
     if (state.playerAgent) setAgentBadge(state.playerAgent);

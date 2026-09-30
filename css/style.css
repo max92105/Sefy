@@ -1278,14 +1278,15 @@ body.intro-playing .briefing-bottom {
 .geo-zone-msg {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
-  color: var(--text-dim);
+  color: var(--text-primary);
   transition: color 0.5s ease;
 }
 
 .geo-distance {
   font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  color: var(--text-dim);
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  color: var(--text-primary);
   letter-spacing: 0.1em;
   text-align: center;
   margin-top: var(--space-sm);
@@ -1295,10 +1296,13 @@ body.intro-playing .briefing-bottom {
 .geo-accuracy {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  color: var(--text-dim);
+  color: var(--text-secondary);
   letter-spacing: 0.05em;
   text-align: center;
-  opacity: 0.7;
+}
+
+.geo-tracker .header-title {
+  color: var(--text-primary);
 }
 
 /* Zone label colors */

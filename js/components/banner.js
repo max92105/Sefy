@@ -5,7 +5,7 @@
  * The countdown can be (re)started with a custom duration and an `onZero`
  * callback that fires once when it reaches 0:
  *   - mission timer (90 min): on zero → plays countdown_0_before_purge (flavor).
- *   - PURGE timer (20 min):   on zero → caller's onZero (the end-game screen).
+ *   - PURGE timer (30 min):   on zero → caller's onZero (the end-game screen).
  */
 
 import { APP_AUDIO } from '../config.js';
@@ -109,7 +109,7 @@ export function resetBanner(minutes, onZero) {
  * Resume the banner from a saved deadline.
  * @param {string}   deadlineISO
  * @param {object}   [opts] — { onZero, totalMs } (PURGE resume passes the failure
- *                   callback + 20-min total; otherwise defaults to the mission timer)
+ *                   callback + 30-min total; otherwise defaults to the mission timer)
  */
 export function resumeBanner(deadlineISO, opts = {}) {
   startTimer(

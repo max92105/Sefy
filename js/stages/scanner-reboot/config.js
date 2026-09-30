@@ -85,15 +85,19 @@ export const INTRO_SEQUENCE = [
    score (scoring added later) and are tracked separately per room.
    ════════════════════════════════════════════════════════════ */
 export const ROOM_HINTS = {
-  'server-room': [
-    { text: 'Attention vers le terminal.' },
-    { text: 'As-tu tenté de naviguer dans le terminal ?' },
+'server-room': [
+    { text: 'La note est sur le terminal, il te faut ensuite naviguer sur le termminal.' },
+    { text: 'Trouve les dossiers personnels des employés sur le terminal' },
+    { text: 'Tu as besoin d\'un numéro de téléphone et une adresse.' },
   ],
   'security': [
     { text: 'Il prend beaucoup de notes sur les tâches qu\’il doit faire autant professionnel que personnel.' },
+    { text: 'La racine du système se trouve à /, tapez AIDE pour voir comment accédé au fichier.' },
+    { text: 'Trouvez son calpin de notes dans le bureau. Il est très coloré. Le mot de passe devrais y être.' },
   ],
   'command-center': [
-    { text: '_D_écryption.' },
+    { text: 'Retour vers le murs _D_écryption. Vous allez devoir vous connecter en administrateur.' },
+    { text: 'Placer en ordre D1, D2, etc.' },
   ],
 };
 

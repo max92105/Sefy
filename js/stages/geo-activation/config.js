@@ -31,4 +31,6 @@ export const HINTS = [
   { text: 'Le code d\'accès se trouve quelque part dans le centre de commande. Cherchez un objet qui attire l\'attention. Si vous avez de la difficulté à utiliser le terminal, tapez "Aide" (HELP).' },
   { text: 'Les scientifiques étaient tous passionnés par l\’empire Romain.' },
   { text: '_G_éolocalisation.' },
+  { text: 'La solution se trouve collée sur le murs.'},
+  { text: 'place en ordre G1, G2, G3.'},
 ];

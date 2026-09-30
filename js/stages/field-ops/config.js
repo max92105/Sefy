@@ -184,9 +184,11 @@ export const PHASE_HINTS = {
     { text: 'Trouvez des indices grâce au scanner, des codes avec ce symbole peuvent être déchiffrés 📷.' },
     { text: 'Regardez dans votre inventaire et cliquez sur les objets pour les examiners.' },
     { text: 'Elodie a laissé des indices derrière elle sur des bouts de papiers.' },
+    { text: 'Il y a quatre morceaux de papier a touver. (Centre de Commandement, Module de Décontamination, Quartier du Chef Scientifique, Salle des Serveurs)' },
   ],
   ar: [
     { text: 'Utilisez le module AR pour localiser les objets cachés, scannez les codes avec ce symbole 📡. ' },
     { text: 'La carte que vous devez trouver est celle d\'Adrian, mais elle n\'est pas dans son bureau, elle a été volée.' },
+    { text: 'La carte est dans la salle des serveurs.' },
   ],
 };

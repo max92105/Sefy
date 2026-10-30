@@ -5,6 +5,7 @@
 import { loadState, resetState, resetAgent, getDeviceId, setLocalState } from './state.js';
 import { loadStageData, getAllStages } from './stages.js';
 import { fbLoadState, fbForceState, fbResetAgent, createDefaultState } from './firebase-config.js';
+import { initQrSetup, startQrScanner, stopQrScanner } from './admin-qr.js';
 
 let state = null;
 
@@ -14,6 +15,31 @@ async function init() {
   renderState();
   renderCheckpoints();
   bindEvents();
+  bindTabs();
+  initQrSetup();
+}
+
+/** The camera only runs while the QR Setup tab is open and the page is visible. */
+function bindTabs() {
+  const tabs = document.querySelectorAll('.admin-tabs .fo-tab');
+  let activeTab = 'mission';
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      activeTab = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.toggle('active', t === tab));
+      document.getElementById('admin-tab-mission')?.classList.toggle('hidden', activeTab !== 'mission');
+      document.getElementById('admin-tab-qr')?.classList.toggle('hidden', activeTab !== 'qr');
+      if (activeTab === 'qr') startQrScanner();
+      else stopQrScanner();
+    });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (activeTab !== 'qr') return;
+    if (document.hidden) stopQrScanner();
+    else startQrScanner();
+  });
 }
 
 function renderState() {

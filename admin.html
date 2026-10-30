@@ -81,41 +81,128 @@
       flex-wrap: wrap;
       margin-top: var(--space-md);
     }
+    .admin-tabs {
+      margin-bottom: var(--space-xl);
+    }
+    .qr-setup-camera {
+      height: 45vh;
+      flex: none;
+    }
+    .qr-setup-status {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      color: var(--text-dim);
+      margin-top: var(--space-sm);
+    }
+    .qr-setup-status.error { color: var(--accent-red); }
+    .qr-setup-result {
+      font-family: var(--font-mono);
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--border);
+    }
+    .qr-setup-id {
+      font-size: var(--font-size-xl);
+      color: var(--accent-amber);
+      word-break: break-all;
+    }
+    .qr-setup-kind {
+      font-size: var(--font-size-xs);
+      color: var(--accent-green);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: var(--space-sm);
+    }
+    .qr-setup-kind.error { color: var(--accent-red); }
+    .qr-setup-label {
+      font-size: var(--font-size-md);
+      color: var(--text-primary);
+      margin-top: var(--space-sm);
+    }
+    .qr-setup-room {
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      margin-top: var(--space-xs);
+    }
+    .qr-setup-raw {
+      font-size: var(--font-size-xs);
+      color: var(--text-dim);
+      margin-top: var(--space-sm);
+      word-break: break-all;
+    }
+    .qr-setup-image {
+      display: block;
+      max-width: 100%;
+      max-height: 240px;
+      margin-top: var(--space-md);
+    }
+    .qr-setup-play {
+      width: 100%;
+      margin-top: var(--space-md);
+    }
   </style>
 </head>
 <body>
   <div class="admin-panel">
     <h1 class="admin-title">⚙ SEFY ADMIN PANEL</h1>
 
-    <!-- Current State -->
-    <div class="admin-section">
-      <h2>Current State</h2>
-      <div id="state-display" class="state-dump">Loading...</div>
-      <div class="admin-actions">
-        <button id="btn-refresh-state" class="btn btn-outline">Refresh</button>
-        <button id="btn-export-state" class="btn btn-outline">Export JSON</button>
+    <div class="fo-tabs admin-tabs">
+      <button class="fo-tab active" data-tab="mission">⚙ Mission</button>
+      <button class="fo-tab" data-tab="qr">📷 QR Setup</button>
+    </div>
+
+    <div id="admin-tab-mission">
+      <!-- Current State -->
+      <div class="admin-section">
+        <h2>Current State</h2>
+        <div id="state-display" class="state-dump">Loading...</div>
+        <div class="admin-actions">
+          <button id="btn-refresh-state" class="btn btn-outline">Refresh</button>
+          <button id="btn-export-state" class="btn btn-outline">Export JSON</button>
+        </div>
+      </div>
+
+      <!-- Jump to Stage -->
+      <div class="admin-section">
+        <h2>Jump to Stage</h2>
+        <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-dim); margin-bottom: var(--space-sm);">
+          Sets currentStage and redirects to main site.
+        </p>
+        <div id="stage-jump-grid" class="stage-jump-grid">
+          Loading stages...
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="admin-section">
+        <h2>Danger Zone</h2>
+        <div class="admin-actions">
+          <button id="btn-reset-emy" class="btn btn-danger">Reset Émy</button>
+          <button id="btn-reset-lea" class="btn btn-danger">Reset Léa</button>
+          <button id="btn-reset-all" class="btn btn-danger">Reset All</button>
+          <button id="btn-back" class="btn btn-outline">← Back to Mission</button>
+        </div>
       </div>
     </div>
 
-    <!-- Jump to Stage -->
-    <div class="admin-section">
-      <h2>Jump to Stage</h2>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-dim); margin-bottom: var(--space-sm);">
-        Sets currentStage and redirects to main site.
-      </p>
-      <div id="stage-jump-grid" class="stage-jump-grid">
-        Loading stages...
-      </div>
-    </div>
-
-    <!-- Danger Zone -->
-    <div class="admin-section">
-      <h2>Danger Zone</h2>
-      <div class="admin-actions">
-        <button id="btn-reset-emy" class="btn btn-danger">Reset Émy</button>
-        <button id="btn-reset-lea" class="btn btn-danger">Reset Léa</button>
-        <button id="btn-reset-all" class="btn btn-danger">Reset All</button>
-        <button id="btn-back" class="btn btn-outline">← Back to Mission</button>
+    <div id="admin-tab-qr" class="hidden">
+      <div class="admin-section">
+        <h2>QR Setup</h2>
+        <div class="qr-camera-wrap qr-setup-camera">
+          <video id="qr-setup-video" autoplay playsinline muted></video>
+          <canvas id="qr-setup-canvas" class="hidden"></canvas>
+          <div class="qr-crosshair"></div>
+        </div>
+        <div id="qr-setup-status" class="qr-setup-status"></div>
+        <div id="qr-setup-result" class="qr-setup-result hidden">
+          <div id="qr-setup-id" class="qr-setup-id"></div>
+          <div id="qr-setup-kind" class="qr-setup-kind"></div>
+          <div id="qr-setup-label" class="qr-setup-label"></div>
+          <div id="qr-setup-room" class="qr-setup-room"></div>
+          <div id="qr-setup-raw" class="qr-setup-raw"></div>
+          <img id="qr-setup-image" class="qr-setup-image hidden" alt="">
+          <button id="qr-setup-play" class="btn btn-primary qr-setup-play hidden">▶ Play</button>
+        </div>
       </div>
     </div>
   </div>
@@ -124,6 +211,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script type="module" src="js/admin.js"></script>
 </body>
 </html>
